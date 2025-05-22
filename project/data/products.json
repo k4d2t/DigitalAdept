@@ -1,0 +1,69 @@
+[
+    {
+        "id": 1,
+        "name": "Pack de Sons Lo-Fi",
+        "short_description": "La meilleure s\u00e9lection Lo-Fi pour beatmakers cr\u00e9atifs.",
+        "description": "<p>Une <strong>collection de sons Lo-Fi</strong> pour vos projets.Inclut 120 samples et 35 loops, qualit\u00e9 studio.</p><ul><li>Format WAV/MP3</li><li>Compatibilit\u00e9 FL Studio, Ableton, Logic Pro</li></ul>",
+        "price": 20000,
+        "old_price": "70000",
+        "currency": "XOF",
+        "images": [
+            "/static/img/lofi-pack.jpg",
+            "/static/img/lofi-pack2.png"
+        ],
+        "resource_file_id": "AgACAgQAAyEFAASgim1aAAMJaBenVZ7dpwehd1RQs7OK3jhLJbQAApHPMRvPx7hQBAQhLF1u_2cBAAMCAAN5AAM2BA",
+        "featured": true,
+        "badges": [
+            {
+                "type": "promo",
+                "text": "-70%"
+            },
+            {
+                "type": "limite",
+                "text": "Offre limit\u00e9e !"
+            }
+        ],
+        "category": "Sons",
+        "stock": 9999,
+        "sku": "DALOFI-1",
+        "faq": [
+            {
+                "question": "Puis-je utiliser ces sons \u00e0 des fins commerciales ?",
+                "answer": "Oui, licence incluse pour projets commerciaux."
+            },
+            {
+                "question": "Comment vais-je recevoir le pack ?",
+                "answer": "Un lien de t\u00e9l\u00e9chargement sera envoy\u00e9 imm\u00e9diatement apr\u00e8s achat."
+            }
+        ],
+        "slug": "pack-de-sons-lo-fi"
+    },
+    {
+        "id": 2,
+        "name": "Kit de Samples Afrobeat",
+        "short_description": "Des samples exclusifs pour vos beats Afro.",
+        "description": "<p>200+ samples Afro et percussions authentiques, pr\u00eats \u00e0 l'emploi.</p>",
+        "price": 20000,
+        "currency": "XOF",
+        "old_price": 25000,
+        "images": [
+            "/static/img/afrobeat-kit.jpg"
+        ],
+        "featured": true,
+        "badges": [
+            {
+                "type": "nouveau",
+                "text": "Nouveaut\u00e9"
+            },
+            {
+                "type": "promo",
+                "text": "-70%"
+            }
+        ],
+        "category": "Sons",
+        "stock": 9999,
+        "sku": "AFRO-2",
+        "faq": [],
+        "slug": "kit-de-samples-afrobeat"
+    }
+]

@@ -1,0 +1,49 @@
+{% extends "admin_base.html" %}
+
+{% block admin_content %}
+<div class="logs-page -h1">
+    <h1>Journal d'Activité</h1>
+
+        <nav class="admin-nav ">
+            <a href="{{ url_for('admin_settings') }}">Retour</a>
+        </nav>
+    <button onclick="exportLogs()" class="export-btn">Exporter en CSV</button>
+    <table>
+        <thead>
+            <tr>
+                <th>Timestamp</th>
+                <th>Utilisateur</th>
+                <th>Action</th>
+                <th>Détails</th>
+            </tr>
+        </thead>
+        <tbody id="logsTableBody">
+            <!-- Les logs seront chargés ici -->
+        </tbody>
+    </table>
+</div>
+<script>
+    // Charger les logs via AJAX
+    fetch('/settings/logs')
+        .then(response => response.json())
+        .then(logs => {
+            const tableBody = document.getElementById('logsTableBody');
+            logs.forEach(log => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${log.timestamp || "N/A"}</td>
+                    <td>${log.user || "Anonyme"}</td>
+                    <td>${log.action || "Non spécifié"}</td>
+                    <td>${log.details ? JSON.stringify(log.details) : "Aucun détail"}</td>
+                `;
+                tableBody.appendChild(row);
+            });
+        })
+        .catch(error => console.error('Erreur lors du chargement des logs :', error));
+
+    // Exporter les logs en CSV
+    function exportLogs() {
+        window.location.href = '/settings/logs/export';
+    }
+</script>
+{% endblock %}

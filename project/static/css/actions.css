@@ -1,0 +1,44 @@
+/* Actions dans la table */
+.actions-column {
+    text-align: center;
+    width: auto; /* Colonne compacte */
+}
+
+.action-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: 50%;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+    transition: background 0.3s;
+}
+
+.action-btn svg {
+    width: 20px;
+    height: 20px;
+    color: white);
+}
+
+/* Icône Modifier (crayon) */
+.edit-btn:hover {
+    background: var(--primary-light);
+}
+
+.edit-btn {
+    background: gray;
+    color: white;
+}
+
+/* Icône Supprimer (poubelle) */
+.delete-btn {
+    background: red;
+    color: white;
+}
+
+.delete-btn:hover {
+    background:*/;
+}
+

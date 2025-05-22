@@ -1,0 +1,460 @@
+{% extends "admin_base.html" %}
+
+{% block admin_title %}
+    Gestion des Produits
+{% endblock %}
+
+{% block admin_content %}
+<div class="products-manage -h1">
+    <h1>Gestion des Produits</h1>
+    <nav class="admin-nav">
+        <a href="{{ url_for('admin_products_page') }}">Retour</a>
+    </nav>
+    <div class="products-grid" id="productsGrid">
+        <!-- Les cartes des produits seront générées ici par JavaScript -->
+    </div>
+</div>
+
+<div id="productEditModal" class="custom-modal">
+    <div class="custom-modal-content">
+        <span class="custom-modal-close" onclick="closeProductModal()">&times;</span>
+        <h2>Modifier le Produit</h2>
+        <form id="productEditForm" enctype="multipart/form-data">
+            <!-- Nom -->
+            <label for="productName">Nom du Produit :</label>
+            <input type="text" id="productName" name="name" required>
+
+            <!-- Description courte -->
+            <label for="productShortDescription">Description Courte :</label>
+            <input type="text" id="productShortDescription" name="short_description" required>
+
+            <!-- Description enrichie -->
+            <label for="productDescription">Description :</label>
+            <div id="productDescriptionEditor"></div> <!-- Quill.js pour l'édition enrichie -->
+
+            <!-- Prix -->
+            <label for="productPrice">Prix :</label>
+            <input type="number" id="productPrice" name="price" required>
+
+            <!-- Ancien Prix -->
+            <label for="productOldPrice">Ancien Prix :</label>
+            <input type="number" id="productOldPrice" name="old_price">
+
+            <!-- Devise -->
+            <label for="productCurrency">Devise :</label>
+            <select id="productCurrency" name="currency" required>
+                <option value="XOF">XOF (Franc CFA)</option>
+                <option value="USD">USD (Dollar)</option>
+                <option value="EUR">EUR (Euro)</option>
+            </select>
+
+            <!-- Stock -->
+            <label for="productStock">Stock :</label>
+            <input type="number" id="productStock" name="stock" required>
+
+            <!-- SKU -->
+            <label for="productSku">SKU :</label>
+            <input type="text" id="productSku" name="sku" required>
+
+            <!-- Catégorie -->
+            <label for="productCategory">Catégorie :</label>
+            <input type="text" id="productCategory" name="category" required>
+
+            <!-- Fichier de ressource -->
+            <label for="productResourceFileId">Resource File ID :</label>
+            <input type="text" id="productResourceFileId" name="resource_file_id">
+
+            <!-- Images -->
+            <div class="custom-file-upload-container">
+                <label for="productImages">Images :</label>
+                <input type="file" id="productImages" name="images[]" multiple accept="image/*" class="file-input-hidden">
+                <button type="button" id="customFileUploadButton">Sélectionner des fichiers</button>
+                <span id="fileUploadStatus">Aucun fichier sélectionné</span>
+            </div>
+
+            <div id="productImagesContainer" class="images-preview-container">
+                <!-- Les images prévisualisées s'afficheront ici -->
+            </div>
+            <small>Les chemins des images seront automatiquement générés.</small>
+
+            <!-- Gestion des badges -->
+            <label>Badges :</label>
+            <div id="productBadgesContainer"></div> <!-- Liste dynamique des badges -->
+            <button type="button" id="addBadgeButton">Ajouter un Badge</button>
+
+            <!-- FAQ -->
+            <label>FAQ :</label>
+            <div id="productFaqContainer"></div> <!-- Liste dynamique des FAQ -->
+            <button type="button" id="addFaqButton">Ajouter une Question/Réponse</button>
+
+            <!-- Produit en vedette -->
+            <label for="productFeatured">En Vedette :</label>
+            <input type="checkbox" id="productFeatured" name="featured">
+
+            <!-- Bouton Enregistrer -->
+            <button type="submit">Enregistrer</button>
+        </form>
+    </div>
+</div>
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+    const form = document.getElementById("productEditForm");
+    const imageInput = document.getElementById("productImages");
+    const customFileUploadButton = document.getElementById("customFileUploadButton");
+    const fileUploadStatus = document.getElementById("fileUploadStatus");
+    const imagesContainer = document.getElementById("productImagesContainer");
+    const badgesContainer = document.getElementById("productBadgesContainer");
+    const faqContainer = document.getElementById("productFaqContainer");
+    let imagesField = []; // Tableau des images associées au produit
+    let quill;
+
+    initializeRichTextEditor();
+
+    // Événement pour soumission du formulaire
+    form.setAttribute("enctype", "multipart/form-data");
+    form.addEventListener("submit", (e) => {
+        e.preventDefault();
+        updateProduct();
+    });
+
+    // Gestion du bouton personnalisé pour les fichiers
+    customFileUploadButton.addEventListener("click", () => imageInput.click());
+    imageInput.addEventListener("change", handleFileSelection);
+
+    // Ajouter dynamiquement des badges et FAQ
+    document.getElementById("addBadgeButton").addEventListener("click", addBadge);
+    document.getElementById("addFaqButton").addEventListener("click", addFaq);
+
+    // Charger les produits pour la liste
+    loadProducts();
+
+    // Activer la suppression des images
+    setupImageDeletion();
+
+    // Gestion des fichiers sélectionnés
+    function handleFileSelection(event) {
+        const files = event.target.files;
+        if (files.length > 0) {
+            Array.from(files).forEach((file) => {
+                if (!imagesField.includes(file.name)) {
+                    displayImagePreview(file);
+                    imagesField.push(file.name);
+                } else {
+                    console.warn(`L'image "${file.name}" est déjà sélectionnée.`);
+                }
+            });
+
+            // Mettre à jour le texte d'état
+            const fileNames = imagesField.join(", ");
+            fileUploadStatus.textContent = `Fichiers sélectionnés : ${fileNames}`;
+        } else {
+            fileUploadStatus.textContent = "Aucun fichier sélectionné";
+        }
+    }
+
+    // Prévisualisation et ajout d'une image au conteneur
+    function displayImagePreview(file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const imageWrapper = document.createElement("div");
+            imageWrapper.className = "image-wrapper";
+
+            imageWrapper.innerHTML = `
+                <img src="${e.target.result}" alt="${file.name}" class="preview-image">
+                <span class="remove-image">&times;</span>
+            `;
+
+            // Suppression d'une image
+            imageWrapper.querySelector(".remove-image").addEventListener("click", () => {
+                imagesField = imagesField.filter((img) => img !== file.name);
+                imageWrapper.remove();
+                updateFileUploadStatus();
+            });
+
+            imagesContainer.appendChild(imageWrapper);
+        };
+        reader.readAsDataURL(file);
+    }
+
+    // Mise à jour du texte d'état des fichiers
+    function updateFileUploadStatus() {
+        fileUploadStatus.textContent =
+            imagesField.length > 0
+                ? `Fichiers sélectionnés : ${imagesField.join(", ")}`
+                : "Aucun fichier sélectionné";
+    }
+
+    // Ajouter dynamiquement un badge
+    function addBadge() {
+        const badgeDiv = document.createElement("div");
+        badgeDiv.innerHTML = `
+            <label>Type :</label>
+            <input type="text" placeholder="Type">
+            <label>Contenu :</label>
+            <input type="text" placeholder="Contenu">
+            <button type="button" onclick="this.parentElement.remove()">Supprimer</button>
+        `;
+        badgesContainer.appendChild(badgeDiv);
+    }
+
+    // Ajouter dynamiquement une FAQ
+    function addFaq() {
+        const faqDiv = document.createElement("div");
+        faqDiv.innerHTML = `
+            <label>Question :</label>
+            <input type="text" placeholder="Question">
+            <label>Réponse :</label>
+            <textarea placeholder="Réponse"></textarea>
+            <button type="button" onclick="this.parentElement.remove()">Supprimer</button>
+        `;
+        faqContainer.appendChild(faqDiv);
+    }
+
+    // Charger la liste des produits
+    function loadProducts() {
+        fetch("/admin/products")
+            .then((response) => response.json())
+            .then((products) => {
+                const grid = document.getElementById("productsGrid");
+                grid.innerHTML = "";
+
+                products.forEach((product) => {
+                    const card = document.createElement("div");
+                    card.className = "product-card";
+                    card.setAttribute("data-id", product.id);
+                    card.innerHTML = `
+                        <h2>${product.name}</h2>
+                        <p><strong>Prix :</strong> ${product.price}</p>
+                        <p><strong>Catégorie :</strong> ${product.category}</p>
+                        <p><strong>Stock :</strong> ${product.stock}</p>
+                        <div class="product-card-actions">
+                            <button class="delete-button" onclick="deleteProduct(${product.id})">
+                                <?xml version="1.0" encoding="utf-8"?><!-- SVG intégré -->
+                                <svg width="60px" height="40px" viewBox="-2.5 0 61 61" xmlns="http://www.w3.org/2000/svg">
+                                    <defs>
+                                        <filter id="a" width="200%" height="200%" x="-50%" y="-50%" filterUnits="objectBoundingBox">
+                                            <feOffset dy="1" in="SourceAlpha" result="shadowOffsetOuter1"/>
+                                            <feGaussianBlur stdDeviation="10" in="shadowOffsetOuter1" result="shadowBlurOuter1"/>
+                                            <feColorMatrix values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.1 0" in="shadowBlurOuter1" result="shadowMatrixOuter1"/>
+                                            <feMerge>
+                                                <feMergeNode in="shadowMatrixOuter1"/>
+                                                <feMergeNode in="SourceGraphic"/>
+                                            </feMerge>
+                                        </filter>
+                                    </defs>
+                                    <path fill-rule="evenodd" d="M36 26v10.997c0 1.659-1.337 3.003-3.009 3.003h-9.981c-1.662 0-3.009-1.342-3.009-3.003v-10.997h16zm-2 0v10.998c0 .554-.456 1.002-1.002 1.002h-9.995c-.554 0-1.002-.456-1.002-1.002v-10.998h12zm-9-5c0-.552.451-1 .991-1h4.018c.547 0 .991.444.991 1 0 .552-.451 1-.991 1h-4.018c-.547 0-.991-.444-.991-1zm0 6.997c0-.551.444-.997 1-.997.552 0 1 .453 1 .997v6.006c0 .551-.444.997-1 .997-.552 0-1-.453-1-.997v-6.006zm4 0c0-.551.444-.997 1-.997.552 0 1 .453 1 .997v6.006c0 .551-.444.997-1 .997-.552 0-1-.453-1-.997v-6.006zm-6-5.997h-4.008c-.536 0-.992.448-.992 1 0 .556.444 1 .992 1h18.016c.536 0 .992-.448.992-1 0-.556-.444-1-.992-1h-4.008v-1c0-1.653-1.343-3-3-3h-3.999c-1.652 0-3 1.343-3 3v1z" filter="url(#a)"/>
+                                </svg>
+                            </button>
+                        </div>
+                    `;
+                    card.addEventListener("click", () => openProductModal(product.id));
+                    card.querySelector(".delete-button").addEventListener("click", (event) => {
+                        event.stopPropagation();
+                        ConfirmModal(
+                            "Êtes-vous sûr de vouloir supprimer ce produit ?",
+                            "Oui",
+                            "Non",
+                            () => deleteProduct(product.id),
+                            () => showNotification("Suppression annulée.", "info")
+                        );
+                    });
+                    grid.appendChild(card);
+                });
+            })
+            .catch((error) => console.error("Erreur lors du chargement des produits :", error));
+    }
+
+    // Supprimer un produit
+    function deleteProduct(productId) {
+        fetch(`/admin/products/manage/${productId}`, {
+            method: "DELETE",
+        })
+            .then((response) => {
+                if (response.ok) {
+                    showNotification("Produit supprimé avec succès !", "success");
+                    loadProducts();
+                } else {
+                    showNotification("Erreur lors de la suppression du produit.", "error");
+                }
+            })
+            .catch((error) => console.error("Erreur lors de la suppression du produit :", error));
+    }
+
+    // Ouvrir la modale de gestion d'un produit
+    function openProductModal(productId) {
+        fetch(`/admin/products/manage/${productId}`)
+            .then((response) => response.json())
+            .then((product) => {
+                document.getElementById("productName").value = product.name;
+                document.getElementById("productShortDescription").value = product.short_description || "";
+                quill.root.innerHTML = product.description;
+                document.getElementById("productPrice").value = product.price;
+                document.getElementById("productOldPrice").value = product.old_price || "";
+                document.getElementById("productStock").value = product.stock;
+                document.getElementById("productSku").value = product.sku || "";
+                document.getElementById("productCategory").value = product.category;
+                document.getElementById("productResourceFileId").value = product.resource_file_id || "";
+
+                badgesContainer.innerHTML = "";
+                product.badges.forEach((badge) => addBadgeWithData(badge));
+
+                faqContainer.innerHTML = "";
+                product.faq.forEach((faq) => addFaqWithData(faq));
+
+                imagesContainer.innerHTML = "";
+                imagesField = [...product.images];
+                imagesField.forEach((imageUrl) => displayExistingImage(imageUrl));
+
+                document.getElementById("productEditModal").style.display = "block";
+                form.setAttribute("data-product-id", productId);
+            })
+            .catch((error) => console.error("Erreur lors de l'ouverture de la modale :", error));
+    }
+
+    // Ajouter un badge avec des données existantes
+    function addBadgeWithData(badge) {
+        const badgeDiv = document.createElement("div");
+        badgeDiv.innerHTML = `
+            <label>Type :</label>
+            <input type="text" value="${badge.type}" placeholder="Type">
+            <label>Contenu :</label>
+            <input type="text" value="${badge.text}" placeholder="Contenu">
+            <button type="button" onclick="this.parentElement.remove()">Supprimer</button>
+        `;
+        badgesContainer.appendChild(badgeDiv);
+    }
+
+    // Ajouter une FAQ avec des données existantes
+    function addFaqWithData(faq) {
+        const faqDiv = document.createElement("div");
+        faqDiv.innerHTML = `
+            <label>Question :</label>
+            <input type="text" value="${faq.question}" placeholder="Question">
+            <label>Réponse :</label>
+            <textarea placeholder="Réponse">${faq.answer}</textarea>
+            <button type="button" onclick="this.parentElement.remove()">Supprimer</button>
+        `;
+        faqContainer.appendChild(faqDiv);
+    }
+
+    // Afficher une image existante
+    function displayExistingImage(imageUrl) {
+        const imageWrapper = document.createElement("div");
+        imageWrapper.className = "image-wrapper";
+
+        imageWrapper.innerHTML = `
+            <img src="${imageUrl}" alt="Image du produit" class="preview-image" style="width:100px; height:100px;">
+            <span class="remove-image">&times;</span>
+        `;
+
+        imageWrapper.querySelector(".remove-image").addEventListener("click", () => {
+            fetch(`/admin/products/manage/${form.dataset.productId}/image/delete`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ imageUrl }),
+            })
+                .then((res) => res.json())
+                .then((result) => {
+                    if (result.message) {
+                        showNotification("Image supprimée avec succès.", "success");
+                        imageWrapper.remove();
+                    } else {
+                        showNotification("Erreur lors de la suppression de l'image.", "error");
+                    }
+                })
+                .catch((error) => console.error("Erreur lors de la suppression de l'image :", error));
+        });
+
+        imagesContainer.appendChild(imageWrapper);
+    }
+
+    // Mettre à jour un produit
+    function updateProduct() {
+        const productId = form.getAttribute("data-product-id");
+        const formData = new FormData(form);
+
+        formData.append("badges", JSON.stringify(Array.from(badgesContainer.children).map((badgeDiv) => ({
+            type: badgeDiv.querySelector("input[placeholder='Type']").value,
+            text: badgeDiv.querySelector("input[placeholder='Contenu']").value,
+        }))));
+        formData.append("faq", JSON.stringify(Array.from(faqContainer.children).map((faqDiv) => ({
+            question: faqDiv.querySelector("input[placeholder='Question']").value,
+            answer: faqDiv.querySelector("textarea").value,
+        }))));
+
+        // Ajouter les fichiers image
+        const files = imageInput.files;
+        for (const file of files) {
+            formData.append("images", file);
+        }
+
+        fetch(`/admin/products/manage/${productId}`, {
+            method: "PUT",
+            body: formData,
+        })
+            .then((response) => response.json())
+            .then(() => {
+                showNotification("Produit mis à jour avec succès !", "success");
+                closeProductModal();
+                loadProducts();
+            })
+            .catch((error) => {
+                showNotification("Erreur lors de la mise à jour du produit.", "error");
+                console.error(error);
+            });
+    }
+
+    // Ajouter un gestionnaire d'événement pour fermer la modale avec la croix
+    const closeModalButton = document.querySelector(".custom-modal-close");
+    if (closeModalButton) {
+        closeModalButton.addEventListener("click", closeProductModal);
+    }
+
+    function closeProductModal() {
+        document.getElementById("productEditModal").style.display = "none";
+    }
+
+    // Initialisation de Quill.js
+    function initializeRichTextEditor() {
+        quill = new Quill("#productDescriptionEditor", {
+            theme: "snow",
+            modules: {
+                toolbar: [
+                    [{ header: [1, 2, 3, false] }],
+                    ["bold", "italic", "underline", "strike"],
+                    [{ list: "ordered" }, { list: "bullet" }],
+                    ["link", "image", "video"],
+                    ["clean"],
+                ],
+            },
+        });
+    }
+
+    // Configuration de la suppression des images
+    function setupImageDeletion() {
+        imagesContainer.addEventListener("click", (event) => {
+            if (event.target.classList.contains("remove-image")) {
+                const imageWrapper = event.target.closest(".image-wrapper");
+                const imageUrl = imageWrapper.querySelector("img").src;
+
+                fetch(`/admin/products/manage/${form.dataset.productId}/image/delete`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ imageUrl }),
+                })
+                    .then((res) => res.json())
+                    .then((result) => {
+                        if (result.message) {
+                            showNotification("Image supprimée avec succès.", "success");
+                            imageWrapper.remove();
+                        } else {
+                            showNotification("Erreur lors de la suppression de l'image.", "error");
+                        }
+                    })
+                    .catch((error) => console.error("Erreur lors de la suppression de l'image :", error));
+            }
+        });
+    }
+});
+</script>
+{% endblock %}
