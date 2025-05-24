@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+{% block title %}{{ produit.name }} - Digital Adept{% endblock %}
+{% block content %}
+<section class="product-page">
+  <!-- Barre du panier -->
+  <div id="cart-bar" class="hidden">
+      <div id="cart-header">
+          <h3>Votre panier</h3>
+          <button id="close-cart">✘</button>
+      </div>
+      <div id="cart-items">
+          <!-- Les produits ajoutés au panier seront affichés ici -->
+      </div>
+      <div id="cart-footer">
+          <p>Total : <span id="cart-total">0</span> XOF</p>
+          <!-- Bouton pour acheter maintenant depuis le panier -->
+          <button id="buy-from-cart">Acheter maintenant</button>
+      </div>
+  </div>
+  <div class="product-container">
+    <!-- Carousel Section -->
+    <div class="product-gallery">
+      <div class="gallery-main">
+        <div class="gallery-images">
+          {% for img in produit.images %}
+            <img src="{{ img }}" alt="{{ produit.name }}" class="gallery-img{% if loop.first %} active{% endif %}" loading="lazy">
+          {% endfor %}
+        </div>
+        {% if produit.images and produit.images|length > 1 %}
+          <button class="gallery-arrow left" aria-label="Image précédente">&#8249;</button>
+          <button class="gallery-arrow right" aria-label="Image suivante">&#8250;</button>
+        {% endif %}
+      </div>
+      {% if produit.images and produit.images|length > 1 %}
+      <div class="gallery-thumbnails">
+        {% for img in produit.images %}
+          <img src="{{ img }}" alt="Miniature {{ loop.index }}" class="gallery-thumb{% if loop.first %} active{% endif %}">
+        {% endfor %}
+      </div>
+      {% endif %}
+      <div class="gallery-zoom-hint">Survolez ou touchez pour zoomer</div>
+    </div>
+
+    <!-- Product Information Section -->
+    <div class="product-details">
+      <div class="product-badges">
+        {% for badge in produit.badges %}
+          <span class="badge badge-{{ badge.type|lower }}">{{ badge.text }}</span>
+        {% endfor %}
+      </div>
+      <h1 class="product-title">{{ produit.name }}</h1>
+      {% if produit.rating %}
+        <div class="product-rating">
+          <span class="stars" data-stars="{{ produit.rating }}"></span>
+          <span class="rating-value">({{ produit.rating }} étoiles)</span>
+        </div>
+      {% else %}
+        <div class="product-rating">
+          <span class="stars" data-stars="0"></span>
+          <span class="rating-value">(Non noté)</span>
+        </div>
+      {% endif %}
+      <div class="product-price-detailed">
+        <span class="current-price">{{ produit.price }} {{ produit.currency }}</span>
+        {% if produit.old_price %}
+          <span class="old-price">{{ produit.old_price }} {{ produit.currency }}</span>
+        {% endif %}
+      </div>
+      <div class="product-stock">
+        {% if produit.stock > 0 %}
+          <span class="in-stock">En stock</span>
+        {% else %}
+          <span class="out-stock">Rupture</span>
+        {% endif %}
+      </div>
+      <div class="product-short-desc">
+        {{ produit.short_description or produit.description|striptags|truncate(120) }}
+      </div>
+      <div class="reference">
+        Référence : {{ produit.sku }}
+      </div>
+      <div class="product-meta">
+        <div class="product-buttons">
+            <!-- Bouton Acheter Maintenant -->
+          <!-- Bouton Acheter Maintenant -->
+          <button class="btn btn-buy" data-name="{{ produit.name }}" data-price="{{ produit.price }}">
+              Acheter maintenant
+          </button>
+
+          <!-- Bouton Ajouter au Panier -->
+          <button class="btn btn-cart add-to-cart" data-id="{{ produit.id }}" data-name="{{ produit.name }}" data-price="{{ produit.price }}">
+              Ajouter au panier
+          </button>
+
+            <!-- Bouton Partager -->
+            <button class="btn btn-share" id="share-btn">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M18 16c-.76 0-1.44.3-1.96.77l-7.12-4.2c.05-.18.08-.37.08-.57s-.03-.39-.08-.57l7.12-4.2c.52.47 1.2.77 1.96.77 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .2.03.39.08.57l-7.12 4.2c-.52-.47-1.2-.77-1.96-.77-1.66 0-3 1.34-3 3s1.34 3 3 3c.76 0 1.44-.3 1.96-.77l7.12 4.2c-.05.18-.08.37-.08.57 0 1.66 1.34 3 3 3s3-1.34 3-3-1.34-3-3-3z"></path>
+                </svg>
+                Partager
+            </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Full Description -->
+  <div class="product-description">
+    <h2>Description</h2>
+    <div class="description-content">
+      {{ produit.description|safe }}
+    </div>
+  </div>
+
+  <!-- FAQ Section -->
+  {% if produit.faq and produit.faq|length > 0 %}
+  <div class="product-faq">
+    <h2>FAQ</h2>
+    <div class="faq-container">
+      {% for faq in produit.faq %}
+      <div class="faq-item">
+        <button class="faq-question">{{ faq.question }}</button>
+        <div class="faq-answer">{{ faq.answer }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Comments Section -->
+  <div class="comments-section">
+    <h3>Commentaires</h3>
+    <div class="comment-list">
+      {% for comment in comments %}
+        <div class="comment">
+          <div class="comment-date">{{ comment.date }}</div>
+          <div class="comment-content">{{ comment.comment }}</div>
+          <div class="comment-rating">Note : {{ comment.rating }} ⭐</div>
+        </div>
+      {% endfor %}
+    </div>
+    <form class="add-comment" method="POST" action="/produit/{{ produit.slug }}/comment">
+      <textarea name="comment" placeholder="Laissez un commentaire..." required></textarea>
+      <div class="rating">
+        <span>Noter le produit :</span>
+        <select name="rating">
+          {% for i in range(1, 6) %}
+          <option value="{{ i }}">{{ i }} ⭐</option>
+          {% endfor %}
+        </select>
+      </div>
+      <button type="submit">Soumettre</button>
+    </form>
+  </div>
+
+  <!-- Back to Products -->
+  <div class="back-to-products">
+    <a href="/produits" class="btn btn-back"> Retour aux produits</a>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,180 @@
+{% extends "admin_base.html" %}
+
+{% block admin_title %}
+    Modération des Commentaires
+{% endblock %}
+
+{% block admin_content %}
+        <nav class="admin-nav">
+            <a href="{{ url_for('admin_dashboard') }}" id="retour">Retour</a>
+        </nav>
+<div class="messenger">
+    <div class="messenger-sidebar">
+
+
+        <h2>Commentaires</h2>
+
+        <div class="tabs">
+            <button onclick="filterComments('all')">Tous</button>
+            <button onclick="filterComments('unread')">Non lus</button>
+            <button onclick="filterComments('read')">Lus</button>
+        </div>
+        <ul id="commentList">
+            <!-- Liste des commentaires générée par JavaScript -->
+        </ul>
+        <div id="pagination"></div>
+    </div>
+    <div class="messenger-main">
+        <div id="commentDetails">
+            <h2>Commentaire sélectionné</h2>
+            <div id="commentContent">
+                <p style="text-align: center;">Sélectionnez un commentaire pour plus de détails.</p>
+            </div>
+            <div class="actions">
+            <button id="markReadButton" onclick="markAsRead()">Marquer comme lu</button>
+            <button id="deleteButton" onclick="deleteComment()">Supprimer</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentFilter = 'all';
+    let currentPage = 1;
+
+    function filterComments(filter) {
+        currentFilter = filter; // Mettre à jour le filtre actif
+        currentPage = 1; // Réinitialiser à la première page
+        loadComments(); // Recharger les commentaires avec le nouveau filtre
+    }
+
+    // Fonction pour charger les commentaires
+    function loadComments() {
+        fetch(`/admin/comments/data?filter=${currentFilter}&page=${currentPage}`)
+            .then(response => response.json())
+            .then(data => {
+                const commentList = document.getElementById('commentList');
+                commentList.innerHTML = ''; // Réinitialiser la liste
+
+                if (data.comments.length === 0) {
+                    commentList.innerHTML = '<p style="text-align: center;">Aucun commentaire à afficher</p>';
+                    return;
+                }
+
+                data.comments.forEach(comment => {
+                    const li = document.createElement('li');
+                    li.className = comment.is_read ? 'read' : 'unread';
+                    li.innerHTML = `
+                        <div onclick="viewComment(${comment.id})">
+                            <strong>Produit : ${comment.product_id}</strong>
+                            <p>${comment.preview}</p>
+                            <small>${comment.date}</small>
+                        </div>
+                    `;
+                    commentList.appendChild(li);
+                });
+
+                renderPagination(data.total);
+            })
+            .catch(error => console.error('Erreur lors du chargement des commentaires :', error));
+    }
+
+    // Fonction pour afficher le contenu d'un commentaire
+    function viewComment(id) {
+        fetch(`/admin/comments/${id}`)
+            .then(response => response.json())
+            .then(comment => {
+                if (!comment.error) {
+                    document.getElementById('commentContent').innerHTML = `
+                        <h3>Produit commenté : ${comment.product_id}</h3>
+                        <p>${comment.content}</p>
+                        <small>Posté le ${comment.date}</small>
+                    `;
+
+                    // Mettre à jour les boutons avec l'ID du commentaire
+                    const markReadButton = document.getElementById('markReadButton');
+                    const deleteButton = document.getElementById('deleteButton');
+
+                    if (markReadButton) {
+                        markReadButton.setAttribute('data-id', id);
+                    }
+
+                    if (deleteButton) {
+                        deleteButton.setAttribute('data-id', id);
+                    }
+                } else {
+                    console.error('Erreur :', comment.error);
+                }
+            })
+            .catch(error => console.error('Erreur lors de la récupération du commentaire :', error));
+    }
+
+    // Fonction pour marquer un commentaire comme lu
+    function markAsRead() {
+        const button = document.getElementById('markReadButton');
+        const commentId = parseInt(button.getAttribute('data-id'), 10);
+
+        if (!commentId && commentId !== 0) {
+            console.error("Aucun ID de commentaire disponible pour marquer comme lu");
+            return;
+        }
+
+        fetch('/admin/comments/mark_as_read', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ comment_id: commentId }),
+        })
+            .then(response => response.json())
+            .then(data => {
+                showNotification(data.message, "success");
+                loadComments(); // Recharger les commentaires
+            })
+            .catch(error => console.error('Erreur lors du marquage comme lu :', error));
+    }
+
+    // Fonction pour supprimer un commentaire
+    function deleteComment() {
+        const button = document.getElementById('deleteButton');
+        const commentId = parseInt(button.getAttribute('data-id'), 10);
+
+        if (!commentId && commentId !== 0) {
+            console.error('Aucun ID de commentaire disponible pour suppression');
+            return;
+        }
+
+        fetch(`/admin/comments/${commentId}`, {
+            method: 'DELETE',
+        })
+            .then(response => response.json())
+            .then(data => {
+                showNotification(data.message, "success");
+                loadComments(); // Recharger les commentaires
+                document.getElementById('commentContent').innerHTML = `
+                    <p style="text-align: center; color: #555;">Aucun commentaire sélectionné</p>
+                `;
+            })
+            .catch(error => console.error('Erreur lors de la suppression :', error));
+    }
+
+    // Fonction pour la pagination
+    function renderPagination(total) {
+        const pagination = document.getElementById('pagination');
+        const pages = Math.ceil(total / 5);
+        pagination.innerHTML = '';
+
+        for (let i = 1; i <= pages; i++) {
+            const button = document.createElement('button');
+            button.textContent = i;
+            button.className = i === currentPage ? 'active' : '';
+            button.onclick = () => {
+                currentPage = i;
+                loadComments();
+            };
+            pagination.appendChild(button);
+        }
+    }
+
+    // Charger les commentaires au chargement de la page
+    document.addEventListener('DOMContentLoaded', loadComments);
+</script>
+{% endblock %}
