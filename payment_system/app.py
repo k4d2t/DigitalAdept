@@ -115,7 +115,7 @@ def send_proof():
             try:
                 with open(filepath, "rb") as img:
                     r = requests.post(
-                        "http://localhost:5001/notify",
+                        "https://digitaladeptpaymentsystembot.onrender.com/notify",
                         files={"photo": img},
                         data={"user_id": user_id}
                     )
@@ -129,7 +129,7 @@ def send_proof():
                     print(f"[WARN] Impossible de supprimer {filepath}: {e}")
         elif proof_type == "ref":
             r = requests.post(
-                "http://localhost:5001/notify",
+                "https://digitaladeptpaymentsystembot.onrender.com/notify",
                 json={"user_id": user_id, "reference": data[user_id]["proof"]}
             )
             if not r.ok:
@@ -167,4 +167,5 @@ def result(user_id):
     return render_template("result.html", status=status, user_id=user_id)
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    port = int(os.environ.get('PORT', 5000))  # Utilise le PORT de Render ou 5000 en local
+    app.run(port=port)
