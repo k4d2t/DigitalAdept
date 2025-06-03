@@ -180,7 +180,6 @@ def notify():
 # --- Lancement Flask et Bot Telegram ---
 
 def start_flask():
-    if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5001)  # Utilise le PORT de Render
     flask_app.run(host='0.0.0.0', port=port, threaded=True)
 
