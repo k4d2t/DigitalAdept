@@ -545,7 +545,7 @@ window.initProductPage = function () {
                 const encodedKey = btoa(rawDetails); // Encodage Base64 (simple et lisible)
 
                 // Construire l'URL de redirection avec la clé encodée
-                const paymentUrl = `https://digitaladept.onrender.com:5000/payment/${encodedKey}`;
+                const paymentUrl = `https://digitaladept.onrender.com/payment/${encodedKey}`;
                 console.log("[Site] Redirection vers :", paymentUrl);
 
                 // Rediriger vers l'URL de paiement
