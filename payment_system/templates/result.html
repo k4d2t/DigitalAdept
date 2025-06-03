@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Résultat paiement</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png') }}">
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const status = "{{ status }}"; // Statut injecté depuis le backend
+            const userId = "{{ user_id }}"; // ID utilisateur injecté depuis le backend
+
+            if (status === "approved") {
+                // Redirection vers la route de téléchargement avec l'user_id
+                setTimeout(() => {
+                    window.location.href = `https://digitaladept.store/download/${userId}`;
+                }, 2000); // 2 secondes de délai avant la redirection
+            } else if (status === "rejected") {
+                // Redirection vers l'accueil du site après 2 secondes
+                setTimeout(() => {
+                    window.location.href = "https://digitaladept.store";
+                }, 2000);
+            }
+        });
+    </script>
+</head>
+<body>
+<div class="container">
+    {% if status == "approved" %}
+        <h2>Merci pour votre paiement ! Ne quittez pas la page</h2>
+         <p>Vous serez redirigé dans quelques secondes.</p>
+        <audio autoplay>
+            <source src="{{ url_for('static', filename='success.wav') }}" type="audio/mpeg">
+        </audio>
+    {% elif status == "rejected" %}
+        <h2>Paiement refusé, preuve invalide.</h2>
+        <p>Vous serez redirigé sur la page d'accueil .</p>
+        <audio autoplay>
+            <source src="{{ url_for('static', filename='error.wav') }}" type="audio/mpeg">
+        </audio>
+    {% else %}
+        <h2>Vérification en cours...</h2>
+        <p>Merci de patienter.</p>
+    {% endif %}
+</div>
+</body>
+</html>

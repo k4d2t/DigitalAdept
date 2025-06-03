@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <title>Preuve de Paiement</title>
+  <link rel="icon" type="image/png" href="{{ url_for('static', filename='favicon.png')}}">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;700&family=Roboto:wght@400;700&display=swap">
+</head>
+<body>
+  <main class="paiement-main">
+    <div class="form-card paiement-card">
+      <!-- Barre de progression -->
+      <div class="progress-bar-container">
+        <div class="progress-bar-bg">
+          <div class="progress-bar" id="progress-bar" style="width: 33%;"></div>
+        </div>
+      </div>
+
+      <header class="paiement-header">
+        <h2>Paiement Mobile Money</h2>
+        <div class="user-id-badge">
+          <span>ID utilisateur :</span>
+          <span class="user-id-value">{{ user_id|default('Inconnu') }}</span>
+        </div>
+      </header>
+
+      <section class="paiement-amount-section">
+        <div class="payment-amount">
+          <h3>Montant à payer :</h3>
+          <span class="amount-value">{{ amount|default('0') }} FCFA</span>
+        </div>
+      </section>
+
+      <section class="choix-moyen-section">
+        <p class="choix-moyen">Veuillez sélectionner votre moyen de paiement</p>
+        <div class="network-choice">
+          <button type="button" id="yas" class="network-btn network-yas">Yas</button>
+          <button type="button" id="moov" class="network-btn network-moov">Moov</button>
+        </div>
+        <div class="other-payment-line">
+          <span><b>Pas au Togo ?</b> Cliquez sur le bouton ci-dessous</span>
+          <br>
+          <a
+            id="other-btn"
+            class="network-btn network-other"
+            target="_blank"
+            href="https://wa.me/22897883870?text=Bonjour,%20je%20souhaite%20payer%20par%20un%20autre%20moyen%20pour%20l'utilisateur%20{{ user_id|default('Inconnu') }}"
+          >
+            <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" alt="WhatsApp" class="wa-icon"/>
+            Payer
+          </a>
+        </div>
+        <div id="payment-infos" class="payment-infos"></div>
+      </section>
+
+      <section id="proof-section" style="display:none;">
+        <div class="proof-type-choice">
+          <p class="info-envoyer-preuve">Veuillez sélectionner le type de preuve et l'envoyer</p>
+          <div class="proof-btns">
+            <button type="button" id="img-btn" class="proof-btn">Capture/Photo</button>
+            <button type="button" id="ref-btn" class="proof-btn">Référence</button>
+          </div>
+        </div>
+
+        <!-- Formulaire pour image -->
+        <form id="img-form" class="styled-form" style="display:none;" enctype="multipart/form-data" autocomplete="off">
+          <input type="hidden" id="user_id" name="user_id" value="{{ user_id|default('') }}">
+          <label for="proof_file">Preuve de paiement (capture/photo)</label>
+          <div class="file-upload">
+            <label class="file-upload-label" for="proof_file" id="customFileLabel">
+              <svg viewBox="0 0 24 24"><path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM6.5 17c-.83 0-1.5-.67-1.5-1.5S5.67 14 6.5 14s1.5.67 1.5 1.5S7.33 17 6.5 17zm2.5-6l2.03 2.71 2.44-3.22L17.5 17h-11l3-4z"/></svg>
+              <span id="file-label-text">Sélectionner une image</span>
+            </label>
+            <input type="file" id="proof_file" name="proof_file" accept="image/*" required onchange="showFileName(event)" style="display:none;" />
+            <div class="file-name" id="file-name"></div>
+          </div>
+          <div class="center-btn">
+            <button type="submit" class="cta-btn">Envoyer la preuve</button>
+          </div>
+        </form>
+
+        <!-- Formulaire pour référence -->
+        <form id="ref-form" class="styled-form" style="display:none;" autocomplete="off">
+          <input type="hidden" id="user_id" name="user_id" value="{{ user_id|default('') }}">
+          <label for="reference">Référence de paiement</label>
+          <input type="text" id="reference" name="reference" placeholder="Code de paiement ou transaction" required autocomplete="off" />
+          <div class="center-btn">
+            <button type="submit" class="cta-btn">Envoyer la preuve</button>
+          </div>
+        </form>
+      </section>
+
+      <div id="message" class="feedback-message"></div>
+      {% if message %}
+        <div class="feedback">{{ message }}</div>
+      {% endif %}
+    </div>
+  </main>
+  <script src="{{ url_for('static', filename='script.js') }}"></script>
+
+  <script>// Gestion de la barre de progression animée ET scroll automatique
+
+let currentStep = 1;
+const totalSteps = 3;
+const progressBar = document.getElementById('progress-bar');
+const paiementCard = document.querySelector('.form-card.paiement-card'); // ta modale principale
+
+// Fait défiler automatiquement jusqu'à la modale ou section
+function autoScrollToForm() {
+  if (paiementCard) {
+    paiementCard.scrollIntoView({
+      behavior: 'auto',
+      block: 'end' // ou 'start'
+    });
+  }
+}
+
+// Met à jour la largeur de la barre selon l'étape
+function setProgressBar(step) {
+  const percent = Math.round((step / totalSteps) * 100);
+  progressBar.style.width = percent + '%';
+  autoScrollToForm();
+}
+
+// Avancer d'une étape
+function nextStep() {
+  if (currentStep < totalSteps) {
+    currentStep++;
+    setProgressBar(currentStep);
+  }
+}
+
+// Reculer d'une étape
+function prevStep() {
+  if (currentStep > 1) {
+    currentStep--;
+    setProgressBar(currentStep);
+  }
+}
+
+// Réinitialiser la barre de progression
+function resetProgress() {
+  currentStep = 1;
+  setProgressBar(currentStep);
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+  setProgressBar(currentStep);
+
+  // Avancer à l'étape 2 : choix du réseau (Yas/Moov/Autre)
+  document.querySelectorAll('.network-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      currentStep = 2;
+      setProgressBar(currentStep);
+    });
+  });
+
+  // Avancer à l'étape 3 : choix type de preuve (capture/référence)
+  ['img-btn', 'ref-btn'].forEach(id => {
+    const btn = document.getElementById(id);
+    if (btn) {
+      btn.addEventListener('click', () => {
+        currentStep = 3;
+        setProgressBar(currentStep);
+      });
+    }
+  });
+
+  // Retour en arrière si bouton retour (classe .back-btn)
+  document.querySelectorAll('.back-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      prevStep();
+    });
+  });
+
+  // Réinitialiser après soumission d'un formulaire
+  document.querySelectorAll('form').forEach(form => {
+    form.addEventListener('submit', function(e) {
+      setTimeout(resetProgress, 800); // attend un peu avant de reset (pour voir le feedback)
+    });
+  });
+});
+</script>
+</body>
+</html>
