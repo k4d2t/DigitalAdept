@@ -1238,5 +1238,5 @@ def admin_logout():
 
 
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5005))  # Utilise le PORT de Render ou 5000 en local
-    app.run(host='0.0.0.0', port=port)
+    port = int(os.environ.get('PORT', 5005))  # Utilise le PORT de Render ou 5005 en local
+    app.run(port=port)
