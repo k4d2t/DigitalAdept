@@ -14,12 +14,12 @@
             if (status === "approved") {
                 // Redirection vers la route de téléchargement avec l'user_id
                 setTimeout(() => {
-                    window.location.href = `https://digitaladept.store/download/${userId}`;
+                    window.location.href = `https://digitaladepts.store/download/${userId}`;
                 }, 2000); // 2 secondes de délai avant la redirection
             } else if (status === "rejected") {
                 // Redirection vers l'accueil du site après 2 secondes
                 setTimeout(() => {
-                    window.location.href = "https://digitaladept.store";
+                    window.location.href = "https://digitaladepts.store";
                 }, 2000);
             }
         });
