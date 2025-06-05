@@ -1,5 +1,4 @@
 import os
-import json
 import asyncio
 import tempfile
 from flask import Flask, request
@@ -8,40 +7,46 @@ from telegram import Update
 from telegram.ext import (
     ApplicationBuilder, CommandHandler, MessageHandler, ContextTypes, filters
 )
-import tempfile
+import requests
 
 TELEGRAM_TOKEN = "8033540599:AAHfLrLZ4HJqHcAb0b26MoePsRdh_5DMAFY"
 GROUP_ID = -1002630529273
 THREAD_ID = 10
-DATA_FILE = "paiement_data.json"
-TEMP_DIR = "static"  # ou "tmp" si tu préfères
+MOCKAPI_URL = "https://6840a10f5b39a8039a58afb0.mockapi.io/api/paiement/paiement"
+TEMP_DIR = "static"
 
 flask_app = Flask(__name__)
-
 os.makedirs(TEMP_DIR, exist_ok=True)
 
-def load_data():
-    if not os.path.exists(DATA_FILE):
-        return {}
-    with open(DATA_FILE, "r", encoding="utf-8") as f:
-        try:
-            return json.load(f)
-        except Exception as e:
-            print("Erreur lecture JSON:", e)
-            return {}
+def get_user_by_userid(user_id):
+    try:
+        r = requests.get(MOCKAPI_URL, params={"user_id": user_id}, timeout=5)
+        res = r.json()
+        if isinstance(res, list) and res:
+            return res[0]
+        return None
+    except Exception as e:
+        print("Erreur get_user_by_userid:", e)
+        return None
 
-def save_data(data):
-    with open(DATA_FILE, "w", encoding="utf-8") as f:
-        json.dump(data, f, indent=2, ensure_ascii=False)
-
+def update_user_by_userid(user_id, update_dict):
+    user = get_user_by_userid(user_id)
+    if not user:
+        return False
+    try:
+        r = requests.put(f"{MOCKAPI_URL}/{user['id']}", json=update_dict, timeout=5)
+        return r.ok
+    except Exception as e:
+        print("Erreur update_user_by_userid:", e)
+        return False
+x
 async def send_proof_to_group(application, user_id):
-    data = load_data()
-    user_data = data.get(user_id)
-    if not user_data:
+    user = get_user_by_userid(user_id)
+    if not user:
         print(f"[ERREUR] Aucun user_data pour {user_id}")
         return
-    proof = user_data.get("proof")
-    proof_type = user_data.get("type")
+    proof = user.get("proof")
+    proof_type = user.get("type")
     caption = (
         "Nouvelle preuve de paiement !\n"
         f"ID utilisateur : <code>{user_id}</code>\n"
@@ -75,10 +80,7 @@ async def approve(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Utilisation: /approve <user_id>")
         return
     user_id = args[0]
-    data = load_data()
-    if user_id in data:
-        data[user_id]["status"] = "approved"
-        save_data(data)
+    if update_user_by_userid(user_id, {"status": "approved"}):
         await update.message.reply_text(f"Preuve approuvée pour {user_id}")
     else:
         await update.message.reply_text(f"Utilisateur {user_id} introuvable.")
@@ -89,10 +91,7 @@ async def reject(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("Utilisation: /reject <user_id>")
         return
     user_id = args[0]
-    data = load_data()
-    if user_id in data:
-        data[user_id]["status"] = "rejected"
-        save_data(data)
+    if update_user_by_userid(user_id, {"status": "rejected"}):
         await update.message.reply_text(f"Preuve refusée pour {user_id}")
     else:
         await update.message.reply_text(f"Utilisateur {user_id} introuvable.")
@@ -113,7 +112,6 @@ def notify():
     if 'photo' in request.files:
         user_id = request.form.get("user_id")
         photo = request.files.get("photo")
-        # Crée un fichier temporaire unique
         with tempfile.NamedTemporaryFile(delete=False, suffix=".png", dir=TEMP_DIR) as tmp:
             temp_path = tmp.name
             photo.save(temp_path)
@@ -138,7 +136,6 @@ def notify():
             except Exception as e:
                 print(f"[EXCEPTION] lors de l'envoi Telegram (image): {e}")
 
-        # Lance l'envoi, puis supprime dans le thread principal (toujours exécuté)
         try:
             future = asyncio.run_coroutine_threadsafe(send_image(), event_loop)
             future.result(timeout=10)
@@ -177,11 +174,9 @@ def notify():
         return {"ok": True}
 
     return {"ok": False, "error": "Aucune preuve envoyée"}
-# --- Lancement Flask et Bot Telegram ---
 
 def start_flask():
-    port = int(os.environ.get('PORT', 5001))  # Utilise le PORT de Render
-    flask_app.run(host='0.0.0.0', port=port, threaded=True)
+    flask_app.run(port=5001, threaded=True)
 
 def main():
     global application
@@ -196,7 +191,6 @@ def main():
     flask_thread = threading.Thread(target=start_flask, daemon=True)
     flask_thread.start()
 
-# --- Initialisation auto de la boucle Telegram ici ---
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     application.bot_data["tg_event_loop"] = loop
