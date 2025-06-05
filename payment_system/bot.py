@@ -39,7 +39,7 @@ def update_user_by_userid(user_id, update_dict):
     except Exception as e:
         print("Erreur update_user_by_userid:", e)
         return False
-x
+
 async def send_proof_to_group(application, user_id):
     user = get_user_by_userid(user_id)
     if not user:
