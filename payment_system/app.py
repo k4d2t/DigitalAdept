@@ -5,7 +5,7 @@ from flask import Flask, render_template, request, jsonify
 import time
 import base64
 
-MOCKAPI_URL = "https://6840a10f5b39a8039a58afb0.mockapi.io/api/paiement/paiement"
+MOCKAPI_URL = "https://6840a10f5b39a8039a58afb0.mockapi.io/api/externalapi/paiement"
 transactions = {}
 app = Flask(__name__, static_folder="static", template_folder="templates")
 
