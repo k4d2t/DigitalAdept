@@ -12,7 +12,7 @@ import requests
 TELEGRAM_TOKEN = "8033540599:AAHfLrLZ4HJqHcAb0b26MoePsRdh_5DMAFY"
 GROUP_ID = -1002630529273
 THREAD_ID = 10
-MOCKAPI_URL = "https://6840a10f5b39a8039a58afb0.mockapi.io/api/paiement/paiement"
+MOCKAPI_URL = "https://6840a10f5b39a8039a58afb0.mockapi.io/api/externalapi/paiement"
 TEMP_DIR = "static"
 
 flask_app = Flask(__name__)
