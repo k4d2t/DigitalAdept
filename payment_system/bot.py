@@ -176,8 +176,9 @@ def notify():
     return {"ok": False, "error": "Aucune preuve envoyée"}
 
 def start_flask():
-    # Utilise le PORT de Render ou 5000 en local
-    flask_app.run(port=5001, threaded=True)
+    port = int(os.environ.get('PORT', 5001))  # Utilise le PORT de Render ou 5000 en local
+    flask_app.run(host='0.0.0.0', port=port, threaded=True)
+    
 
 def main():
     global application
