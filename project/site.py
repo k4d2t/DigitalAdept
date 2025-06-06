@@ -344,7 +344,7 @@ def messages():
 
 @app.route("/download/<user_id>")
 def download(user_id):
-    produits = PRODUIT_CACHE  # Utilisation du cache pour les produits
+    produits = fetch_products() # Utilisation du cache pour les produits
     product_names = request.args.get('products', '').split(',')
 
     if not product_names or product_names == ['']:
