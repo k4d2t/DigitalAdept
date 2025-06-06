@@ -39,7 +39,7 @@ import threading
 
 def wakeup_bot():
     try:
-        requests.get("https://digitaladeptpaymentsystembot.onrender.com/ping", timeout=5)
+        requests.get("https://digitaladeptpaymentsystembot.onrender.com/ping", timeout=10)
     except Exception as e:
         print(f"[WARN] Impossible de réveiller le bot : {e}")
 
@@ -56,7 +56,7 @@ def payment(encoded_key):
             "products": products,
             "timestamp": timestamp
         }
-        threading.Thread(target=wakeup_bot, daemon=True).start()
+        wakeup_bot()
         return render_template("paiement.html", user_id=user_id, amount=amount, products=products)
     except Exception as e:
         print(f"Erreur de décodage : {e}")
