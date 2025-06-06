@@ -35,6 +35,15 @@ def update_user_by_userid(user_id, update_dict):
     r = requests.put(f"{MOCKAPI_URL}/{user['id']}", json=update_dict)
     return r.ok
 
+import threading
+
+def wakeup_bot():
+    try:
+        requests.get("https://digitaladeptpaymentsystembot.onrender.com/ping", timeout=3)
+        requests.get("https://digitaladeptpayment.onrender.com/ping", timeout=3)
+    except Exception as e:
+        print(f"[WARN] Impossible de réveiller le bot : {e}")
+
 @app.route("/payment/<encoded_key>")
 def payment(encoded_key):
     try:
@@ -48,14 +57,6 @@ def payment(encoded_key):
             "products": products,
             "timestamp": timestamp
         }
-        # --- Réveil du bot Render ! ---
-        try:
-            # On fait un appel GET "inutile" juste pour réveiller le site et le bot
-            requests.get("https://digitaladeptpaymentsystembot.onrender.com", timeout=3)
-            requests.get("https://digitaladept.onrender.com", timeout=3)
-        except Exception as e:
-            # Ce n'est pas bloquant, on ignore l'erreur
-            print(f"[WARN] Impossible de réveiller le bot : {e}")
         threading.Thread(target=wakeup_bot, daemon=True).start()
         return render_template("paiement.html", user_id=user_id, amount=amount, products=products)
     except Exception as e:
