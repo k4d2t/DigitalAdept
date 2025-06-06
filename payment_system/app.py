@@ -51,7 +51,7 @@ def payment(encoded_key):
         # --- Réveil du bot Render ! ---
         try:
             # On fait un appel GET "inutile" juste pour réveiller le bot
-            requests.get("https://digitaladeptpaymentsystembot.onrender.com/ping", timeout=3)
+            requests.get("https://digitaladeptpaymentsystembot.onrender.com", timeout=10)
         except Exception as e:
             # Ce n'est pas bloquant, on ignore l'erreur
             print(f"[WARN] Impossible de réveiller le bot : {e}")
