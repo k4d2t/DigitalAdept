@@ -4,12 +4,21 @@ import requests
 from flask import Flask, render_template, request, jsonify
 import time
 import base64
-
+import threading
 MOCKAPI_URL = "https://6840a10f5b39a8039a58afb0.mockapi.io/api/externalapi/paiement"
 transactions = {}
 app = Flask(__name__, static_folder="static", template_folder="templates")
 
+
+
+def wakeup_bot():
+    try:
+        requests.get("https://digitaladeptpaymentsystembot.onrender.com/ping", timeout=10)
+    except Exception as e:
+        print(f"[WARN] Impossible de réveiller le bot : {e}")
+
 def create_user():
+    wakeup_bot()
     user_id = str(uuid.uuid4())[:8]
     data = {
         "user_id": user_id,
@@ -35,13 +44,6 @@ def update_user_by_userid(user_id, update_dict):
     r = requests.put(f"{MOCKAPI_URL}/{user['id']}", json=update_dict)
     return r.ok
 
-import threading
-
-def wakeup_bot():
-    try:
-        requests.get("https://digitaladeptpaymentsystembot.onrender.com/ping", timeout=10)
-    except Exception as e:
-        print(f"[WARN] Impossible de réveiller le bot : {e}")
 
 @app.route("/payment/<encoded_key>")
 def payment(encoded_key):
