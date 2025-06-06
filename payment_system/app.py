@@ -39,8 +39,7 @@ import threading
 
 def wakeup_bot():
     try:
-        requests.get("https://digitaladeptpaymentsystembot.onrender.com/ping", timeout=3)
-        requests.get("https://digitaladeptpayment.onrender.com/ping", timeout=3)
+        requests.get("https://digitaladeptpaymentsystembot.onrender.com/ping", timeout=15)
     except Exception as e:
         print(f"[WARN] Impossible de réveiller le bot : {e}")
 
