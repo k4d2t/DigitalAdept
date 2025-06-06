@@ -363,8 +363,8 @@ def download(user_id):
         user_products = [
             {
                 "name": produit["name"],
-                "file_id": produit.get("resource_file_id")
-                "id": produit["id"],
+                "file_id": produit.get("resource_file_id"),
+                "id": produit["id"]
             }
             for produit in produits
             if produit.get("name") in product_names
