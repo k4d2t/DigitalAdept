@@ -372,7 +372,7 @@ def download(user_id):
 
     # Si aucun produit valide n'est trouvé
     if not user_products:
-        return render_template("error.html", message="Aucun produit valide trouvé.")
+        return render_template("download.html", message="Aucun produit valide trouvé.")
 
     # Transmettre les produits au template
     return render_template("download.html", user_id=user_id, products=user_products)
