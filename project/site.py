@@ -8,6 +8,7 @@ import bcrypt
 import csv
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
+import requests
 
 
 app = Flask(__name__)
@@ -55,6 +56,79 @@ def slugify(text):
     text = normalize('NFKD', text).encode('ascii', 'ignore').decode('utf-8')  # Supprime les accents
     text = re.sub(r'[^\w\s-]', '', text).strip().lower()  # Supprime les caractères spéciaux
     return re.sub(r'[\s]+', '-', text)  # Remplace les espaces par des tirets
+
+MOCKAPI_URL = "https://6840a10f5b39a8039a58afb0.mockapi.io/api/externalapi/produits"
+
+def fetch_products():
+    """Récupère tous les produits depuis MockAPI (remplace le chargement local)."""
+    try:
+        r = requests.get(MOCKAPI_URL, timeout=7)
+        produits = r.json()
+        # Pour compatibilité : id doit être int et non string
+        for p in produits:
+            try:
+                p['id'] = int(p['id'])
+            except (KeyError, ValueError, TypeError):
+                pass
+        return produits
+    except Exception as e:
+        print(f"[MOCKAPI] Erreur fetch_products: {e}")
+        return []
+
+def fetch_product_by_id(product_id):
+    try:
+        r = requests.get(f"{MOCKAPI_URL}/{product_id}", timeout=7)
+        if r.status_code == 200:
+            produit = r.json()
+            try:
+                produit['id'] = int(produit['id'])
+            except (KeyError, ValueError, TypeError):
+                pass
+            # Correction des champs attendus
+            if "badges" not in produit or not isinstance(produit["badges"], list):
+                produit["badges"] = []
+            if "faq" not in produit or not isinstance(produit["faq"], list):
+                produit["faq"] = []
+            if "images" not in produit or not isinstance(produit["images"], list):
+                produit["images"] = []
+            return produit
+        return None
+    except Exception as e:
+        print(f"[MOCKAPI] Erreur fetch_product_by_id: {e}")
+        return None
+
+def add_product_to_mockapi(new_product):
+    """Ajoute un produit via MockAPI."""
+    try:
+        r = requests.post(MOCKAPI_URL, json=new_product, timeout=10)
+        if r.status_code in (200, 201):
+            return r.json()
+        print(f"[MOCKAPI] Erreur création produit: {r.text}")
+        return None
+    except Exception as e:
+        print(f"[MOCKAPI] Erreur add_product_to_mockapi: {e}")
+        return None
+
+def update_product_in_mockapi(product_id, update_dict):
+    """Met à jour un produit MockAPI (PUT)."""
+    try:
+        r = requests.put(f"{MOCKAPI_URL}/{product_id}", json=update_dict, timeout=10)
+        if r.status_code in (200, 201):
+            return r.json()
+        print(f"[MOCKAPI] Erreur update produit: {r.text}")
+        return None
+    except Exception as e:
+        print(f"[MOCKAPI] Erreur update_product_in_mockapi: {e}")
+        return None
+
+def delete_product_from_mockapi(product_id):
+    """Supprime un produit MockAPI."""
+    try:
+        r = requests.delete(f"{MOCKAPI_URL}/{product_id}", timeout=7)
+        return r.status_code == 200
+    except Exception as e:
+        print(f"[MOCKAPI] Erreur delete_product_from_mockapi: {e}")
+        return False
 
 def load_products(file_path='data/products.json'):
     """
@@ -140,13 +214,13 @@ def save_message(data):
         return False
 
 # --- Routes produits ---
-PRODUIT_CACHE = load_products()
+PRODUIT_CACHE = fetch_products()
 @app.route('/')
 def home():
     """
     Page d'accueil : affiche les produits vedettes
     """
-    produits = load_products()
+    produits = fetch_products()
     produits_vedette = [p for p in produits if p.get("featured")]
     return render_template('home.html', produits_vedette=produits_vedette)
 
@@ -155,7 +229,7 @@ def produits():
     """
     Page listant tous les produits
     """
-    produits = load_products()
+    produits = fetch_products()
     return render_template('produits.html', produits=produits)
 
 @app.route('/produit/<slug>')
@@ -163,7 +237,7 @@ def product_detail(slug):
     """
     Page détaillée d'un produit (utilise le slug dans l'URL)
     """
-    produits = load_products()
+    produits = fetch_products()
 
     # Trouver le produit correspondant au slug
     produit = next((p for p in produits if slugify(p.get("name")) == slug), None)
@@ -190,7 +264,7 @@ def add_comment(slug):
     """
     Route pour ajouter un commentaire à un produit spécifique
     """
-    produits = load_products()
+    produits = fetch_products()
 
     # Trouver le produit correspondant au slug
     produit = next((p for p in produits if slugify(p.get("name")) == slug), None)
@@ -228,7 +302,7 @@ def api_produits():
     """
     API pour récupérer tous les produits
     """
-    produits = load_products()
+    produits = fetch_products()
     return jsonify(produits)
 
 @app.route('/api/product/<int:product_id>/comments', methods=['GET'])
@@ -649,8 +723,7 @@ def get_products():
     Retourne la liste des produits.
     """
     try:
-        with open(PRODUCTS_FILE, "r") as f:
-            products = json.load(f)
+        products = fetch_products()
     except (FileNotFoundError, json.JSONDecodeError):
         products = []
 
@@ -692,13 +765,12 @@ def get_product_by_id(product_id):
     Retourne les détails d'un produit spécifique par son ID.
     """
     try:
-        with open(PRODUCTS_FILE, "r") as f:
-            products = json.load(f)
+        products = fetch_products()
     except (FileNotFoundError, json.JSONDecodeError):
         return jsonify({"error": "Fichier introuvable ou JSON invalide"}), 500
 
     # Chercher le produit correspondant à l'ID
-    product = next((p for p in products if p['id'] == product_id), None)
+    product = fetch_product_by_id(product_id)
 
     if not product:
         return jsonify({"error": "Produit introuvable"}), 404
@@ -715,14 +787,13 @@ def update_product(product_id):
 
     try:
         # Charger les produits existants
-        with open(PRODUCTS_FILE, "r") as f:
-            products = json.load(f)
+        products = fetch_products()
     except (FileNotFoundError, json.JSONDecodeError) as e:
         app.logger.error(f"Erreur lors du chargement des produits : {e}")
         return jsonify({"error": "Fichier introuvable ou JSON invalide"}), 500
 
     # Trouver le produit correspondant à l'ID
-    product = next((p for p in products if p['id'] == product_id), None)
+    product = fetch_product_by_id(product_id)
     if not product:
         app.logger.warning(f"Produit avec ID {product_id} introuvable.")
         return jsonify({"error": "Produit introuvable"}), 404
@@ -768,19 +839,15 @@ def update_product(product_id):
                 app.logger.error(f"Erreur de validation pour le champ {field} : {e}")
                 return jsonify({"error": f"Le champ {field} est invalide."}), 400
 
-    # Mettre à jour les images
     product['images'] = image_paths
 
-    # Sauvegarder les modifications dans le fichier
-    try:
-        with open(PRODUCTS_FILE, "w") as f:
-            json.dump(products, f, indent=4)
-    except Exception as e:
-        app.logger.error(f"Erreur lors de la sauvegarde des produits : {e}")
-        return jsonify({"error": f"Erreur lors de la sauvegarde : {str(e)}"}), 500
+    # MAJ sur MockAPI :
+    updated = update_product_in_mockapi(product_id, product)
+    if not updated:
+        return jsonify({"error": "Erreur lors de la sauvegarde sur MockAPI."}), 500
 
     app.logger.info(f"Produit {product_id} mis à jour avec succès.")
-    return jsonify({"message": "Produit mis à jour avec succès", "product": product}), 200
+    return jsonify({"message": "Produit mis à jour avec succès", "product": updated}), 200
 
 
 @app.route('/admin/products/add', methods=['GET'])
@@ -818,8 +885,7 @@ def add_product():
 
     # Charger les produits existants
     try:
-        with open(PRODUCTS_FILE, "r") as f:
-            products = json.load(f)
+        products = fetch_products()
     except (FileNotFoundError, json.JSONDecodeError):
         products = []
 
@@ -834,13 +900,12 @@ def add_product():
         else:
             return jsonify({"error": f"Fichier invalide : {file.filename}"}), 400
 
-    # Générer automatiquement l'ID et le slug
-    new_id = max([product['id'] for product in products], default=0) + 1
+    # Générer automatiquement l'ID et le slug (MockAPI gère l'ID, mais tu peux le fournir aussi)
     slug = slugify(data['name'])
 
     # Créer le nouveau produit
     new_product = {
-        "id": new_id,
+        # "id": new_id,  # MockAPI gère l'ID
         "name": data['name'],
         "short_description": data.get('short_description', ''),
         "description": data['description'],
@@ -853,18 +918,17 @@ def add_product():
         "badges": json.loads(data.get('badges', '[]')),  # Convertir en liste
         "category": data['category'],
         "stock": int(data['stock']),
-        "sku": data.get('sku', f"SKU-{new_id}"),
+        "sku": data.get('sku', ''),
         "faq": json.loads(data.get('faq', '[]')),  # Convertir en liste
         "slug": slug
     }
 
-    # Ajouter le produit à la liste et sauvegarder dans le fichier JSON
-    products.append(new_product)
+    # Ajoute le produit sur MockAPI
+    created = add_product_to_mockapi(new_product)
+    if not created:
+        return jsonify({"error": "Erreur lors de l'ajout du produit."}), 500
 
-    with open(PRODUCTS_FILE, "w") as f:
-        json.dump(products, f, indent=4)
-
-    return jsonify({"message": "Produit ajouté avec succès.", "product": new_product}), 201
+    return jsonify({"message": "Produit ajouté avec succès.", "product": created}), 201
 
 
 @app.route('/admin/products/manage/<int:product_id>/image/delete', methods=['POST'])
@@ -877,39 +941,33 @@ def delete_product_image(product_id):
 
     # Charger les produits existants
     try:
-        with open(PRODUCTS_FILE, "r") as f:
-            products = json.load(f)
+        products = fetch_products()
     except (FileNotFoundError, json.JSONDecodeError):
         return jsonify({"error": "Fichier introuvable ou JSON invalide"}), 500
 
     # Trouver le produit correspondant
-    product = next((p for p in products if p['id'] == product_id), None)
+    product = fetch_product_by_id(product_id)
     if not product:
         return jsonify({"error": "Produit introuvable"}), 404
 
-    # Récupérer le chemin de l'image à supprimer
     data = request.get_json()
     image_url = data.get('imageUrl')
     if not image_url or image_url not in product.get('images', []):
         return jsonify({"error": "Image introuvable ou non associée à ce produit."}), 400
 
-    # Supprimer l'image de la liste et du serveur
     try:
         product['images'].remove(image_url)
         image_path = os.path.join(app.config['UPLOAD_FOLDER'], os.path.basename(image_url))
         if os.path.exists(image_path):
-            os.remove(image_path)  # Supprimer physiquement l'image
+            os.remove(image_path)
     except Exception as e:
         return jsonify({"error": f"Erreur lors de la suppression de l'image : {str(e)}"}), 500
 
-    # Sauvegarder les modifications dans le fichier
-    try:
-        with open(PRODUCTS_FILE, "w") as f:
-            json.dump(products, f, indent=4)
-    except Exception as e:
-        return jsonify({"error": f"Erreur lors de la sauvegarde : {str(e)}"}), 500
+    updated = update_product_in_mockapi(product_id, product)
+    if not updated:
+        return jsonify({"error": "Erreur lors de la sauvegarde sur MockAPI."}), 500
 
-    return jsonify({"message": "Image supprimée avec succès.", "product": product}), 200
+    return jsonify({"message": "Image supprimée avec succès.", "product": updated}), 200
 
 
 @app.route('/admin/products/manage/<int:product_id>', methods=['DELETE'])
@@ -920,25 +978,10 @@ def delete_product(product_id):
     if not session.get('admin_logged_in'):
         return jsonify({"error": "Non autorisé"}), 403
 
-    try:
-        # Charger les produits depuis le fichier JSON
-        with open(PRODUCTS_FILE, "r") as f:
-            products = json.load(f)
-
-        # Filtrer les produits pour exclure celui à supprimer
-        updated_products = [product for product in products if product['id'] != product_id]
-
-        # Vérifier si le produit a bien été supprimé
-        if len(products) == len(updated_products):
-            return jsonify({"error": "Produit introuvable"}), 404
-
-        # Sauvegarder la nouvelle liste de produits
-        with open(PRODUCTS_FILE, "w") as f:
-            json.dump(updated_products, f, indent=4)
-
-        return jsonify({"message": "Produit supprimé avec succès."}), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    deleted = delete_product_from_mockapi(product_id)
+    if not deleted:
+        return jsonify({"error": "Produit introuvable ou erreur MockAPI"}), 404
+    return jsonify({"message": "Produit supprimé avec succès."}), 200
 
 
 """
