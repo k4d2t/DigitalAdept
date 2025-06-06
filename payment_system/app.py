@@ -56,7 +56,7 @@ def payment(encoded_key):
         except Exception as e:
             # Ce n'est pas bloquant, on ignore l'erreur
             print(f"[WARN] Impossible de réveiller le bot : {e}")
-        
+        threading.Thread(target=wakeup_bot, daemon=True).start()
         return render_template("paiement.html", user_id=user_id, amount=amount, products=products)
     except Exception as e:
         print(f"Erreur de décodage : {e}")
