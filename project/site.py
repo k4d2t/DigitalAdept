@@ -353,7 +353,7 @@ def download(user_id):
             {
                 "id": produit["id"],
                 "name": produit["name"],
-                "file_id": produit.get("resource_file_id")
+                "file_id": produit.get("resource_file_id"),
             }
             for produit in produits
             if produit.get("resource_file_id")
