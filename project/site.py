@@ -140,7 +140,7 @@ def save_message(data):
         return False
 
 # --- Routes produits ---
-PRODUIT_CACHE = load_products()
+PRODUIT_CACHE = fetch_products()
 @app.route('/')
 def home():
     """
