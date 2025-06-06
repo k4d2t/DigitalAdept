@@ -4,7 +4,7 @@ import requests
 from flask import Flask, render_template, request, jsonify
 import time
 import base64
-import threading
+
 MOCKAPI_URL = "https://6840a10f5b39a8039a58afb0.mockapi.io/api/externalapi/paiement"
 transactions = {}
 app = Flask(__name__, static_folder="static", template_folder="templates")
@@ -18,7 +18,6 @@ def wakeup_bot():
         print(f"[WARN] Impossible de réveiller le bot : {e}")
 
 def create_user():
-    wakeup_bot()
     user_id = str(uuid.uuid4())[:8]
     data = {
         "user_id": user_id,
@@ -47,6 +46,7 @@ def update_user_by_userid(user_id, update_dict):
 
 @app.route("/payment/<encoded_key>")
 def payment(encoded_key):
+    wakeup_bot()
     try:
         raw_details = base64.b64decode(encoded_key).decode('utf-8')
         amount, products, timestamp = raw_details.split(':')
@@ -58,7 +58,7 @@ def payment(encoded_key):
             "products": products,
             "timestamp": timestamp
         }
-        wakeup_bot()
+        
         return render_template("paiement.html", user_id=user_id, amount=amount, products=products)
     except Exception as e:
         print(f"Erreur de décodage : {e}")
