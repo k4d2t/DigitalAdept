@@ -9,6 +9,8 @@ import csv
 from flask_cors import CORS
 from werkzeug.utils import secure_filename
 import requests
+import threading
+import time
 
 
 app = Flask(__name__)
@@ -19,6 +21,20 @@ CORS(app)
 LOGS_FILE = "data/logs.json"
 COMMENTS_FILE = "data/comments.json"
 CONTACTS_FILE = "data/contacts.json"
+
+def periodic_ping():
+    urls = [
+        "https://digitaladeptpaymentsystembot.onrender.com/ping",
+        "https://digitaladept.onrender.com/ping"
+    ]
+    while True:
+        for url in urls:
+            try:
+                r = requests.get(url, timeout=10)
+                print(f"[PING] {url} -> {r.status_code}")
+            except Exception as e:
+                print(f"[PING ERROR] {url} -> {e}")
+        time.sleep(300)  # 5 minutes en secondes
 
 def log_action(action, details=None):
     """Ajoute une action au journal des activités en incluant l'utilisateur connecté."""
@@ -1279,5 +1295,6 @@ def admin_logout():
 
 
 if __name__ == '__main__':
+    threading.Thread(target=periodic_ping, daemon=True).start()
     port = int(os.environ.get('PORT', 5005))  # Utilise le PORT de Render ou 5005 en local
     app.run(host='0.0.0.0', port=port)
