@@ -6,6 +6,13 @@
     <p>Accédez facilement aux fichiers de vos produits achetés ou obtenus.</p>
   </div>
 
+  <span class="download-header error-message">
+  <br>
+  {% if message %}
+    {{ message }}
+  {% endif %}
+  </span>
+  
   <div id="modals-container" class="modals-container">
     <!-- Les modales des produits seront insérées ici dynamiquement -->
   </div>
