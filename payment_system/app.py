@@ -11,12 +11,6 @@ app = Flask(__name__, static_folder="static", template_folder="templates")
 
 
 
-def wakeup_bot():
-    try:
-        requests.get("https://digitaladeptpaymentsystembot.onrender.com/ping", timeout=10)
-    except Exception as e:
-        print(f"[WARN] Impossible de réveiller le bot : {e}")
-
 def create_user():
     user_id = str(uuid.uuid4())[:8]
     data = {
@@ -46,7 +40,6 @@ def update_user_by_userid(user_id, update_dict):
 
 @app.route("/payment/<encoded_key>")
 def payment(encoded_key):
-    wakeup_bot()
     try:
         raw_details = base64.b64decode(encoded_key).decode('utf-8')
         amount, products, timestamp = raw_details.split(':')
@@ -63,6 +56,10 @@ def payment(encoded_key):
     except Exception as e:
         print(f"Erreur de décodage : {e}")
         return "Invalid payment details", 400
+
+@app.route('/ping')
+def ping():
+    return "pong", 200
 
 @app.route("/send_proof", methods=["POST"])
 def send_proof():
