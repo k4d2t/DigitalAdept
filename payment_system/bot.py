@@ -101,7 +101,7 @@ async def private_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # --- Flask route pour notification ---
 
-@app.route('/ping')
+@flask_app.route('/ping')
 def ping():
     return "pong", 200
     
