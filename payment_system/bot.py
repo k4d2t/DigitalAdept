@@ -100,6 +100,11 @@ async def private_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("Ce bot ne répond qu'aux commandes dans le groupe.")
 
 # --- Flask route pour notification ---
+
+@flask_app.route('/ping')
+def ping():
+    return "pong", 200
+    
 @flask_app.route("/notify", methods=["POST"])
 def notify():
     print("Requête /notify reçue")
@@ -176,7 +181,7 @@ def notify():
     return {"ok": False, "error": "Aucune preuve envoyée"}
 
 def start_flask():
-    port = int(os.environ.get('PORT', 5001))  # Utilise le PORT de Render ou 5000 en local
+    port = int(os.environ.get('PORT', 5001))  # Render te donne un port spécifique
     flask_app.run(host='0.0.0.0', port=port, threaded=True)
     
 
