@@ -268,39 +268,38 @@ def messages():
         return jsonify({"status": "error", "message": "Une erreur est survenue."}), 500
 
 
+
 @app.route("/download/<user_id>")
 def download(user_id):
-    produits = PRODUIT_CACHE  # Utilisation du cache pour les produits
+    produits = PRODUIT_CACHE
     product_names = request.args.get('products', '').split(',')
 
     if not product_names or product_names == ['']:
-        # Si aucun paramètre `products` n'est fourni, afficher tous les produits
         user_products = [
             {
                 "id": produit["id"],
                 "name": produit["name"],
-                "file_id": produit.get("resource_file_id")
+                "file_id": produit.get("resource_file_id"),
             }
             for produit in produits
             if produit.get("resource_file_id")
         ]
     else:
-        # Filtre basé sur les noms des produits envoyés
         user_products = [
             {
-                "id": produit["id"],
                 "name": produit["name"],
-                "file_id": produit.get("resource_file_id")
+                "file_id": produit.get("resource_file_id"),
+                "id": produit["id"]
             }
             for produit in produits
             if produit.get("name") in product_names
         ]
 
-    # Si aucun produit valide n'est trouvé
     if not user_products:
-        return render_template("error.html", message="Aucun produit valide trouvé.")
+        # Passe products=[] et un message d’erreur
+        return render_template("download.html", products=[], message="Erreur, Veuillez nous contacter")
 
-    # Transmettre les produits au template
+    # Passe les produits trouvés, sans message d’erreur
     return render_template("download.html", user_id=user_id, products=user_products)
 
 
