@@ -1,0 +1,31 @@
+{% extends "admin_base.html" %}
+
+{% block admin_title %}
+    Paramètres du Site
+{% endblock %}
+
+{% block admin_content %}
+<div class="settings-page -h1">
+    <h1>Paramètres</h1>
+
+        <nav class="admin-nav ">
+            <a href="{{ url_for('admin_dashboard') }}">Retour</a>
+        </nav>
+
+    <!-- Sections des paramètres -->
+    <div class="dashboard-sections">
+        <a href="{{ url_for('admin_settings_users') }}" class="tile-link">
+            <section>
+                <h2>Administrateurs et Rôles</h2>
+                <p>Gérez les administrateurs et leurs rôles.</p>
+            </section>
+        </a>
+        <a href="{{ url_for('view_logs') }}" class="tile-link">
+            <section>
+                <h2>Journal d'Activité</h2>
+                <p>Consultez les actions effectuées sur le site.</p>
+            </section>
+        </a>
+    </div>
+</div>
+{% endblock %}

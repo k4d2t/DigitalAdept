@@ -1,0 +1,248 @@
+{% extends "admin_base.html" %}
+
+{% block admin_title %}
+    Messages Reçus
+{% endblock %}
+
+{% block admin_content %}
+
+        <nav class="admin-nav">
+            <a href="{{ url_for('admin_dashboard') }}" id="retour">Retour</a>
+        </nav>
+<div class="messenger">
+    <div class="messenger-sidebar">
+
+        <h2>Conversations</h2>
+        <div class="tabs">
+            <button onclick="filterMessages('unread')" id="unreadTab">Non lus</button>
+            <button onclick="filterMessages('all')" id="allTab">Tous</button>
+        </div>
+        <input type="text" id="searchInput" placeholder="Rechercher..." oninput="searchMessages(this.value)">
+        <ul id="messageList">
+            <!-- Liste des messages générée par JavaScript -->
+        </ul>
+        <div id="pagination"></div>
+    </div>
+    <div class="messenger-main">
+        <div id="conversationDetails">
+            <h2 id="messageTitle">Message sélectionné</h2>
+            <div id="messageContent">
+                <!-- Contenu du message affiché ici -->
+            </div>
+            <div class="actions">
+                <button id="markReadButton" onclick="markAsRead()">Marquer comme lu</button>
+                <button id="deleteButton" onclick="deleteMessage()">Supprimer</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentFilter = 'all';
+    let currentPage = 1;
+    const messagesPerPage = 5;
+    let allMessages = []; // Stocker tous les messages localement
+    // Charger les messages au chargement initial avec le filtre par défaut
+    document.addEventListener("DOMContentLoaded", () => {
+        currentFilter = 'all'; // Définir le filtre par défaut sur "tous"
+        loadMessages();
+    });
+    // Charger les messages
+    function loadMessages() {
+        fetch(`/admin/messages/data?filter=${currentFilter}`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error("Erreur lors du chargement des messages");
+                }
+                return response.json();
+            })
+            .then(data => {
+                allMessages = data.messages; // Stocker tous les messages
+                renderMessages();
+                renderPagination();
+            })
+            .catch(error => console.error("Erreur :", error));
+    }
+
+    // Rendre les messages selon la pagination
+    function renderMessages() {
+        const messageList = document.getElementById('messageList');
+        messageList.innerHTML = ''; // Réinitialiser la liste
+
+        if (allMessages.length === 0) {
+            messageList.innerHTML = `
+                <li style="text-align: center; color: #555; padding: 15px;">
+                    Aucun message à afficher
+                </li>
+            `;
+            return;
+        }
+
+        const startIndex = (currentPage - 1) * messagesPerPage;
+        const paginatedMessages = allMessages.slice(startIndex, startIndex + messagesPerPage);
+
+        paginatedMessages.forEach(message => {
+            const li = document.createElement('li');
+            li.className = message.is_read ? 'read' : 'unread';
+            li.innerHTML = `
+                <div data-id="${message.id}">
+                    <strong>${message.nom}</strong>
+                    <p>${message.message.slice(0, 30)}...</p>
+                    <small>${new Date(message.date).toLocaleString()}</small>
+                </div>
+            `;
+
+            // Ajout de l'événement onclick pour afficher le message
+            li.addEventListener('click', () => viewMessage(message.id)); // Passer l'ID correct
+            messageList.appendChild(li);
+        });
+    }
+    // Rendre la pagination
+    function renderPagination() {
+        const pagination = document.getElementById('pagination');
+
+        if (!pagination) {
+            console.error("L'élément pagination est introuvable dans le DOM.");
+            return;
+        }
+
+        pagination.innerHTML = ''; // Réinitialiser la pagination
+
+        const totalPages = Math.ceil(allMessages.length / messagesPerPage);
+
+        for (let i = 1; i <= totalPages; i++) {
+            const button = document.createElement('button');
+            button.textContent = i;
+            button.className = i === currentPage ? 'active' : '';
+            button.onclick = () => {
+                currentPage = i;
+                renderMessages();
+            };
+            pagination.appendChild(button);
+        }
+    }
+
+    // Rechercher des messages
+    function searchMessages(query) {
+        const lowerCaseQuery = query.toLowerCase();
+        const filteredMessages = allMessages.filter(message =>
+            message.nom.toLowerCase().includes(lowerCaseQuery) ||
+            message.message.toLowerCase().includes(lowerCaseQuery)
+        );
+        renderMessages(filteredMessages);
+    }
+
+    // Filtrer les messages
+    function filterMessages(filter) {
+        currentFilter = filter;
+        currentPage = 1; // Réinitialiser à la première page
+        loadMessages();
+    }
+
+    // Afficher un message
+    function viewMessage(id) {
+    const message = allMessages.find(msg => msg.id === id);
+
+    if (message) {
+        document.getElementById('messageContent').innerHTML = `
+            <h3>${message.nom}</h3>
+            <p>${message.message}</p>
+            <p>Email : <span id="emailField">${message.email}</span>
+                <button class="copy" onclick="copyEmail()>
+                <span data-text-end="Copié!" data-text-initial="Copier dans le Presse-Papiers" class="tooltip"></span>
+                <span>
+                    <svg xml:space="preserve" style="enable-background:new 0 0 512 512" viewBox="0 0 6.35 6.35" y="0" x="0" height="20" width="20" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" xmlns="http://www.w3.org/2000/svg" class="clipboard">
+                    <g>
+                        <path fill="currentColor" d="M2.43.265c-.3 0-.548.236-.573.53h-.328a.74.74 0 0 0-.735.734v3.822a.74.74 0 0 0 .735.734H4.82a.74.74 0 0 0 .735-.734V1.529a.74.74 0 0 0-.735-.735h-.328a.58.58 0 0 0-.573-.53zm0 .529h1.49c.032 0 .049.017.049.049v.431c0 .032-.017.049-.049.049H2.43c-.032 0-.05-.017-.05-.049V.843c0-.032.018-.05.05-.05zm-.901.53h.328c.026.292.274.528.573.528h1.49a.58.58 0 0 0 .573-.529h.328a.2.2 0 0 1 .206.206v3.822a.2.2 0 0 1-.206.205H1.53a.2.2 0 0 1-.206-.205V1.529a.2.2 0 0 1 .206-.206z"></path>
+                    </g>
+                    </svg>
+                    <svg xml:space="preserve" style="enable-background:new 0 0 512 512" viewBox="0 0 24 24" y="0" x="0" height="18" width="18" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" xmlns="http://www.w3.org/2000/svg" class="checkmark">
+                    <g>
+                        <path data-original="#000000" fill="currentColor" d="M9.707 19.121a.997.997 0 0 1-1.414 0l-5.646-5.647a1.5 1.5 0 0 1 0-2.121l.707-.707a1.5 1.5 0 0 1 2.121 0L9 14.171l9.525-9.525a1.5 1.5 0 0 1 2.121 0l.707.707a1.5 1.5 0 0 1 0 2.121z"></path>
+                    </g>
+                    </svg>
+                </span>
+                </button>
+            </p>
+            <small>Reçu le ${new Date(message.date).toLocaleString()}</small>
+        `;
+
+        // Mettre à jour l'ID dans les boutons
+        const markReadButton = document.getElementById('markReadButton');
+        const deleteButton = document.getElementById('deleteButton');
+
+        if (markReadButton) {
+            markReadButton.setAttribute('data-id', id);
+        }
+
+        if (deleteButton) {
+            deleteButton.setAttribute('data-id', id);
+        }
+    } else {
+        console.error(`Aucun message trouvé avec l'ID : ${id}`);
+    }
+    }
+
+    // Fonction pour copier l'email dans le presse-papiers
+    function copyEmail() {
+        const emailField = document.getElementById('emailField');
+        navigator.clipboard.writeText(emailField.textContent)
+            .then(() => {
+                showNotification("Email copié dans le presse-papiers", "success");
+            })
+            .catch(() => {
+                showNotification("Impossible de copier l'email", "error");
+            });
+    }
+
+    // Marquer un message comme lu
+    function markAsRead() {
+        const button = document.getElementById('markReadButton');
+        const messageId = parseInt(button.getAttribute('data-id'), 10);
+
+        fetch('/admin/messages/mark_as_read', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ message_id: messageId })
+        })
+        .then(response => response.json())
+        .then(data => {
+            showNotification(data.message, "success"); // Notifier avec succès
+            loadMessages(); // Recharger les messages
+        });
+    }
+
+    // Supprimer un message
+   function deleteMessage() {
+        const button = document.getElementById('deleteButton'); // Assurez-vous que ce bouton a un ID défini
+        const messageId = parseInt(button.getAttribute('data-id'), 10);
+
+        if (!messageId && messageId !== 0) {
+            console.error('Aucun ID de message disponible pour suppression');
+            return;
+        }
+
+        fetch(`/admin/messages/${messageId}`, {
+            method: 'DELETE',
+        })
+        .then(response => response.json())
+        .then(data => {
+            showNotification(data.message, "success"); // Notifier avec succès
+            loadMessages(); // Recharger les messages
+
+            // Réinitialiser le contenu de la section "Message sélectionné"
+            document.getElementById('messageContent').innerHTML = `
+                <p style="text-align: center; color: #555;">Aucun message sélectionné</p>
+            `;
+
+            // Réinitialiser l'ID des boutons
+            document.getElementById('markReadButton').removeAttribute('data-id');
+            document.getElementById('deleteButton').removeAttribute('data-id');
+        })
+        .catch(error => console.error('Erreur lors de la suppression du message :', error));
+        // Réinitialiser les boutons
+        document.getElementById('markReadButton').removeAttribute('data-id');
+        document.getElementById('deleteButton').removeAttribute('data-id');
+    }
+</script>
+{% endblock %}

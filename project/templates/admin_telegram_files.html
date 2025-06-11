@@ -1,0 +1,212 @@
+{% extends "admin_base.html" %}
+
+{% block admin_title %}
+    Gestion des Fichiers Telegram
+{% endblock %}
+
+{% block admin_content %}
+<div class="dashboard">
+    <nav class="admin-nav ">
+        <a href="{{ url_for('admin_products_page') }}">Retour</a>
+    </nav>
+    <h1>Fichiers Telegram</h1>
+    <div class="file-toolbar">
+        <input type="text" class="file-search" placeholder="Rechercher un fichier par nom ou extension...">
+        <button class="file-refresh-btn" type="button">Rafraîchir</button>
+        <!--<button class="file-reset-btn" type="button">Reset</button>-->
+    </div>
+    <div class="telegram-files-grid" id="telegram-files-grid">
+        <!-- Les tuiles fichiers seront générées ici par JS -->
+    </div>
+    <div class="no-files-message" id="no-files-message" style="display:none;">
+        Aucun fichier à afficher.
+    </div>
+</div>
+<script>document.addEventListener("DOMContentLoaded", function () {
+    const grid = document.getElementById('telegram-files-grid');
+    const refreshBtn = document.querySelector('.file-refresh-btn');
+    const searchInput = document.querySelector('.file-search');
+    const noFilesMsg = document.getElementById('no-files-message');
+    const resetBtn = document.querySelector('.file-reset-btn');
+
+
+    let allFiles = [];
+
+    // Génère le HTML d'une tuile fichier
+    function createFileTile(file) {
+        // Définir l'icône ou l'aperçu selon le type
+        let icon = "";
+        let preview = "";
+
+        if (file.type === "image" && file.variants && file.variants.length) {
+            // Pour les images, on peut afficher l'aperçu via Telegram (si besoin)
+            // Ici, on prend la dernière variante (la plus grande)
+            const fileId = file.preview_file_id || file.variants[file.variants.length - 1].file_id;
+            // Aperçu via Telegram API : https://api.telegram.org/file/bot<TOKEN>/<file_path>
+            // Ici on ne peut pas générer l'URL sans /getFile, donc on affiche une icône
+            preview = `<div class="file-type-icon file-type-image" title="Aperçu image">&#128247;</div>`;
+        } else if (file.type && file.type.includes("pdf")) {
+            preview = `<div class="file-type-icon file-type-pdf" title="PDF">&#128196;</div>`;
+        } else if (file.type && (file.type.includes("zip") || file.type.includes("rar"))) {
+            preview = `<div class="file-type-icon file-type-zip" title="Archive">&#128230;</div>`;
+        } else if (file.type && (file.type.includes("doc") || file.type.includes("word"))) {
+            preview = `<div class="file-type-icon file-type-doc" title="Document">&#128209;</div>`;
+        } else {
+            preview = `<div class="file-type-icon file-type-other" title="Fichier">&#128196;</div>`;
+        }
+
+        // Générer les variantes (pour images)
+        let variantsHTML = "";
+        if (file.variants && file.variants.length) {
+            variantsHTML = `<div class="file-variants"><span>Variantes :</span>`;
+            file.variants.forEach(variant => {
+                variantsHTML += `
+                    <button class="variant-btn" data-fileid="${variant.file_id}" title="Copier le file_id">
+                        ${variant.label}
+                    </button>
+                `;
+            });
+            variantsHTML += `</div>`;
+        }
+
+        // Pour les fichiers simples (PDF, ZIP, etc.)
+        let actionsHTML = "";
+        if (file.file_id && !file.variants) {
+            actionsHTML = `
+                <div class="file-actions">
+                    <button class="variant-btn" data-fileid="${file.file_id}" title="Copier le file_id">
+                        Copier file_id
+                    </button>
+                </div>
+            `;
+        }
+
+        // Affichage de la taille et de la date
+        let meta = [];
+        if (file.size) meta.push(formatSize(file.size));
+        if (file.date) meta.push(formatDate(file.date));
+        let metaHTML = meta.length ? `<div class="file-meta">${meta.join(" · ")}</div>` : "";
+
+        // Nom du fichier (caption ou nom)
+        let fname = file.name || "Fichier Telegram";
+
+        return `
+        <div class="telegram-file-tile">
+            ${preview}
+            <div class="file-info">
+                <div class="file-name">${escapeHTML(fname)}</div>
+                ${metaHTML}
+            </div>
+            ${variantsHTML}
+            ${actionsHTML}
+        </div>`;
+    }
+
+    // Utilitaires
+    function formatSize(bytes) {
+        if (!bytes) return '';
+        const sizes = ['octets', 'Ko', 'Mo', 'Go'];
+        if (bytes === 0) return '0 octets';
+        const i = Math.floor(Math.log(bytes) / Math.log(1024));
+        return (bytes / Math.pow(1024, i)).toFixed(1) + ' ' + sizes[i];
+    }
+    function formatDate(ts) {
+        if (!ts) return '';
+        const d = new Date(ts * 1000);
+        return d.toLocaleDateString();
+    }
+    function escapeHTML(text) {
+        return (text || '').replace(/[&<>"'`=\/]/g, s => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '/': '&#x2F;', '`': '&#x60;', '=': '&#x3D;'
+        }[s]));
+    }
+
+    // Affichage des fichiers (filtrés)
+    function displayFiles(files) {
+        grid.innerHTML = "";
+        if (!files.length) {
+            noFilesMsg.style.display = "";
+            return;
+        }
+        noFilesMsg.style.display = "none";
+        grid.innerHTML = files.map(createFileTile).join("");
+    }
+
+    // Rafraîchir la liste depuis l'API
+    function fetchFiles() {
+        refreshBtn.disabled = true;
+        refreshBtn.textContent = "Chargement...";
+        fetch('/admin/api/telegram-files')
+            .then(resp => resp.json())
+            .then(data => {
+                if (data.error) {
+                    grid.innerHTML = `<div class="no-files-message">Erreur : ${escapeHTML(data.error)}</div>`;
+                    return;
+                }
+                allFiles = data;
+                displayFiles(filterFiles(allFiles, searchInput.value));
+            })
+            .catch(err => {
+                grid.innerHTML = `<div class="no-files-message">Erreur lors du chargement.</div>`;
+            })
+            .finally(() => {
+                refreshBtn.disabled = false;
+                refreshBtn.textContent = "Rafraîchir";
+            });
+    }
+
+    // Recherche instantanée
+    function filterFiles(files, query) {
+        query = (query || "").toLowerCase();
+        if (!query) return files;
+        return files.filter(file =>
+            (file.name && file.name.toLowerCase().includes(query))
+            || (file.type && file.type.toLowerCase().includes(query))
+        );
+    }
+    searchInput.addEventListener("input", () => {
+        displayFiles(filterFiles(allFiles, searchInput.value));
+    });
+
+    // Rafraîchissement manuel
+    refreshBtn.addEventListener("click", fetchFiles);
+
+    /*//Reset Manuel
+    resetBtn.addEventListener("click", function() {
+        // Appel en POST la route Flask
+        fetch('/admin/api/telegram-reset', { method: "POST" })
+            .then(resp => resp.json())
+            .then(data => {
+                // Optionnel : afficher une notification, vider la liste, etc.
+                allFiles = [];
+                grid.innerHTML = "";
+                noFilesMsg.style.display = "";
+                // Optionnel : Recharger la liste automatiquement après reset
+                // fetchFiles();
+                alert("Reset effectué. La liste est vide !");
+            })
+            .catch(() => {
+                alert("Erreur lors du reset !");
+            });
+    });*/
+    // Copier le file_id au clic sur un bouton
+    grid.addEventListener("click", function (e) {
+        if (e.target.classList.contains("variant-btn")) {
+            const fileId = e.target.dataset.fileid;
+            if (fileId) {
+                navigator.clipboard.writeText(fileId);
+                // On mémorise le texte original du bouton
+                const originalText = e.target.textContent;
+                e.target.textContent = "Copié !";
+                setTimeout(() => {
+                    e.target.textContent = originalText;
+                }, 1200);
+            }
+        }
+    });
+
+    // Premier chargement
+    fetchFiles();
+});
+</script>
+{% endblock %}

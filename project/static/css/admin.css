@@ -1,0 +1,1884 @@
+/* Admin-CSS */
+/*---MODALE-GENERALE----*/
+
+button{
+    font-family: 'Google Sans', 'Roboto', Arial, sans-serif;
+}
+
+.confirmModal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.8); /* Sombre, semi-transparent */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s ease, visibility 0.3s ease;
+    z-index: 1000;
+    font-family: 'Google Sans', 'Roboto', Arial, sans-serif;
+}
+
+.confirmModal.visible {
+    opacity: 1;
+    visibility: visible;
+}
+
+.confirmModal-content {
+    background-color: var(--dark-bg); /* Fond sombre */
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: var(--neon); /* Effet néon */
+    color: var(--text-invert); /* Texte clair */
+    text-align: center;
+    width: 400px;
+    max-width: 90%;
+    transition: box-shadow 0.3s ease;
+}
+
+.confirmModal-content p {
+    font-size: 18px;
+    margin-bottom: 20px;
+    line-height: 1.6;
+}
+
+.confirmModal-buttons {
+    display: flex;
+    justify-content: space-between;
+    gap: 15px;
+}
+
+.confirmModal-button {
+    padding: 12px 20px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: bold;
+    text-transform: uppercase;
+    transition: all 0.3s ease;
+    box-shadow: var(--neon); /* Effet néon par défaut */
+}
+
+.confirmModal-button-yes {
+    background-color: var(--primary-dark); /* Couleur "Oui" */
+    color: var(--text-invert);
+    box-shadow: var(--neon);
+}
+
+.confirmModal-button-yes:hover {
+    background-color: var(--primary);
+    box-shadow: var(--neon-hover);
+}
+
+.confirmModal-button-no {
+    background-color: var(--red-dark); /* Couleur "Non" */
+    color: var(--text-invert);
+    box-shadow: var(--neon-red);
+}
+
+.confirmModal-button-no:hover {
+    background-color: var(--red);
+    box-shadow: var(--neon-red-hover);
+}
+
+/* Admin Login Page */
+.login-page {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 80vh;
+    padding: 1rem;
+}
+
+.login-card {
+    background: var(--contact-card-bg);
+    padding: 2rem;
+    border-radius: 1.5rem;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+    width: 100%;
+    max-width: 400px;
+    text-align: center; /* Centrer les éléments */
+}
+
+.login-card h1 {
+    text-align: center;
+    color: var(--primary-dark);
+    font-size: 1.8rem;
+    margin-bottom: 1.5rem;
+}
+
+.login-card label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: bold;
+    color: var(--text);
+    text-align: left; /* Garde le label à gauche */
+}
+
+.login-card input {
+    width: 95%;
+    padding: 0.8rem;
+    margin-bottom: 1rem;
+    border: 1px solid var(--contact-input-border);
+    border-radius: 0.5rem;
+    background: var(--contact-input-bg);
+    color: var(--contact-text);
+    font-family: 'Google Sans', 'Roboto', Arial, sans-serif; /* Police principale */
+    font-size: 1rem; /* Légèrement plus grand */
+    text-align: center; /* Centrer le texte saisi */
+}
+
+.login-card input:focus {
+    border-color: var(--primary); /* Couleur d'accentuation au focus */
+}
+
+.login-card button.cta {
+    background: var(--primary-dark);
+    color: white;
+    padding: 0.8rem 2rem; /* Agrandir le bouton horizontalement */
+    border: none;
+    border-radius: 0.5rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.3s;
+    margin: 0 auto; /* Centrer le bouton */
+    display: block; /* Nécessaire pour centrer */
+}
+
+.login-card button.cta:hover {
+    background: #1976d299;
+}
+
+/* Admin Dashboard */
+
+.-h1 h1{
+    text-align: center;
+    color: var(--primary-dark);
+    margin-bottom: 1rem;
+}
+
+#retour{
+    margin-top: 1.1em;
+}
+
+.dashboard {
+    padding: 2rem;
+}
+
+.dashboard h1 {
+    text-align: center;
+    color: var(--primary-dark);
+    margin-bottom: 2rem;
+}
+
+.admin-nav {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.admin-nav a {
+    color: var(--primary);
+    text-decoration: none;
+    font-weight: bold;
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--primary);
+    border-radius: 0.5rem;
+    transition: background 0.3s, color 0.3s;
+}
+
+.admin-nav a:hover {
+    background: var(--primary);
+    color: white;
+}
+
+.dashboard-sections {
+    display: grid;
+    gap: 1.5rem;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+.dashboard-sections section {
+    background: var(--contact-card-bg);
+    padding: 1.5rem;
+    border-radius: 1rem;
+}
+
+.dashboard-sections section h2 {
+    font-size: 1.5rem;
+    color: var(--primary-dark);
+    margin-bottom: 1rem;
+}
+
+.dashboard-sections section p {
+    color: var(--text);
+    font-size: 1rem;
+}
+
+
+
+
+/* Paramètres du Site */
+
+/* Lien pour les tuiles (Paramètres) */
+.tile-link {
+    text-decoration: none; /* Supprimez la décoration du lien */
+    display: block; /* Permet au lien de contenir toute la tuile */
+    box-shadow: 0 2px 18px #0001;
+    transition: box-shadow 0.2s, transform 0.17s;
+    border: 1.5px solid var(--contact-border, #e4e8f0);
+    border-radius: 1.5rem;
+}
+
+.tile-link section {
+    background: var(--contact-card-bg);
+    padding: 1.5rem;
+    border-radius: 1.5rem;
+    text-align: center; /* Centre le contenu */
+    color: var(--primary-dark);
+
+}
+
+.tile-link:hover, .tile-link:focus {
+    box-shadow: 0 4px 22px -3px var(--primary-dark, #1976d2), 0 0 0 2px #fff3, 0 2px 24px #1976d2aa;
+    transform: translateY(-4px) scale(1.012);
+    text-decoration: none;
+}
+
+.tile-link section h2 {
+    font-size: 1.5rem;
+    color: var(--primary-dark);
+    margin-bottom: 0.5rem;
+}
+
+.tile-link section p {
+    color: var(--text);
+    font-size: 1rem;
+}
+
+.tile-link:hover section {
+    transform: translateY(-5px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+}
+
+/* Page des paramètres */
+.settings-page {
+    padding: 2rem;
+}
+
+.settings-page h1 {
+    text-align: center;
+    color: var(--primary-dark);
+    margin-bottom: 2rem;
+}
+
+/* Tuiles des sections des paramètres *//*
+
+.tiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+    font-family: 'Google Sans', 'Roboto', Arial, sans-serif;
+}
+
+.tile {
+    background: var(--contact-card-bg);
+    padding: 1.5rem;
+    border-radius: 1rem;
+    text-align: center;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    transition: transform 0.3s, box-shadow 0.3s;
+    cursor: pointer;
+    text-decoration: none;
+    color: var(--primary-dark);
+}
+
+.tile h2 {
+    font-size: 1.5rem;
+    color: var(--primary-dark);
+    margin-bottom: 0.5rem;
+}
+
+.tile p {
+    color: var(--text);
+    font-size: 1rem;
+}
+
+.tile:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+}
+
+*/
+
+/* Section pour les utilisateurs et rôles */
+.users-page {
+    padding: 2rem;
+}
+
+.users-page h1 {
+    text-align: center;
+    color: White;
+    margin-bottom: 2rem;
+}
+
+.users-page h2 {
+    color: var(--primary-dark);
+    text-align: center;
+    font-size: 1.3rem;
+    margin-bottom: 1rem;
+}
+
+/* Tableau des utilisateurs */
+.users-page table {
+    border-collapse: collapse;
+    margin-bottom: 2rem;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    font-family: 'Google Sans', 'Roboto', Arial, sans-serif;
+    width: 100%;
+    overflow-x: auto;
+}
+
+.users-page table th,
+.users-page table td {
+    padding: 1rem;
+    text-align: center;
+    border: 1px solid var(--contact-input-border);
+    white-space: nowrap; /* Éviter les sauts de ligne dans les cellules */
+}
+
+.users-page table th {
+    background: var(--primary-dark);
+    color: white;
+    font-weight: bold;
+}
+
+.users-page table td {
+    background: var(--contact-card-bg);
+    color: var(--text);
+}
+
+
+.users-page table select {
+    width: 80%;
+    padding: 0.8rem;
+    border: 1px solid var(--contact-input-border);
+    border-radius: 0.5rem;
+    background: var(--contact-input-bg);
+    color: var(--contact-text);
+    font-family: 'Google Sans', 'Roboto', Arial, sans-serif;
+    font-size: 1rem;
+}
+
+/* Formulaire pour ajouter / modifier un utilisateur */
+.form-user{
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    background: var(--contact-card-bg);
+    padding: 1.5rem;
+    border-radius: 1rem;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    max-width: 500px;
+    width:auto;
+    margin: 0 auto;
+}
+
+.form-user label {
+    font-weight: bold;
+    color: var(--text);
+}
+
+.form-user input {
+    width: 95%;
+    padding: 0.8rem;
+    border: 1px solid var(--contact-input-border);
+    border-radius: 0.5rem;
+    background: var(--contact-input-bg);
+    color: var(--contact-text);
+    font-family: 'Google Sans', 'Roboto', Arial, sans-serif;
+    font-size: 1rem;
+}
+.form-user select {
+    width: 100%;
+    padding: 0.8rem;
+    border: 1px solid var(--contact-input-border);
+    border-radius: 0.5rem;
+    background: var(--contact-input-bg);
+    color: var(--contact-text);
+    font-family: 'Google Sans', 'Roboto', Arial, sans-serif;
+    font-size: 1rem;
+}
+
+.form-user input:focus,
+.form-user select:focus {
+    border-color: var(--primary);
+}
+
+button.cta {
+    background: var(--primary-dark);
+    color: white;
+    padding: 0.8rem;
+    border: none;
+    border-radius: 0.5rem;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background 0.3s;
+    font-family: 'Google Sans', 'Roboto', Arial, sans-serif;
+    font-size:1em;
+}
+
+.form-user button:hover {
+    background: #1976d299;
+}
+
+/*----LOGS PAGE-----*/
+
+.logs-page {
+    padding: 2rem;
+}
+
+.logs-page table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1rem;
+}
+
+.logs-page table th,
+.logs-page table td {
+    border: 1px solid #ddd;
+    padding: 0.5rem;
+    text-align: center;
+}
+
+.logs-page table th {
+    background-color: var(--primary-dark);
+    font-weight: bold;
+}
+
+.logs-page .export-btn {
+    font-family: 'Google Sans', 'Roboto', Arial, sans-serif;
+    background-color: var(--primary);
+    color: white;
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 0.25rem;
+    cursor: pointer;
+}
+
+.logs-page .export-btn:hover {
+    background-color: var(--primary-dark);
+}
+
+/*--Tabs----*/
+
+.tabs{
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.tabs button{
+    background: none;
+    color: var(--primary);
+    text-decoration: none;
+    font-weight: bold;
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--primary);
+    border-radius: 0.5rem;
+    transition: background 0.3s, color 0.3s;
+}
+
+.tabs button:hover{
+    background: var(--primary);
+    color: white;
+    border: 1px solid var(--primary-m);
+}
+
+/*-----SUITE---MESSAGES----*/
+
+/* Palette de couleurs */
+:root {
+    --primary-m: #007bff;
+    --secondary-m: #f4f4f4;
+    --dark-m: #333;
+    --light-m: #f9f9f9;
+    --border-m: #ddd;
+    --hover-m: #4fc3f7;
+    --unread-bg-m:#17264a;
+}
+
+/* Conteneur principal */
+.messenger {
+    margin-top: 2em;
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    height: 75vh; /* Remplit toute la fenêtre */
+    width: 99.6%;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0.1); /* Fond transparent */
+    backdrop-filter: blur(10px); /* Effet flou */
+    border-radius: 20px;
+    border: 2px solid white;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+
+}
+
+/* Sidebar */
+.messenger-sidebar {
+    display: flex;
+    flex-direction: column;
+    background: rgba(23, 38, 74, 0.2); /* Fond transparent */
+    backdrop-filter: blur(10px); /* Effet flou */
+    padding: 15px;
+    overflow-y: auto;
+}
+
+.messenger-sidebar h2 {
+    font-size: 1.5rem;
+    margin-bottom: 15px;
+    color: var(--dark);
+    text-align: center;
+}
+
+.messenger-sidebar .tabs {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.messenger-sidebar .tabs button {
+    flex: 1;
+    margin: 0 5px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: background 0.3s, color 0.3s;
+    background: none;
+    color: var(--primary);
+    text-decoration: none;
+    font-weight: bold;
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--primary);
+    border-radius: 0.5rem;
+    transition: background 0.3s, color 0.3s;
+}
+
+.messenger-sidebar .tabs button:hover,
+.messenger-sidebar .tabs button.active {
+    background: var(--primary-m);
+    border: 1px solid var(--primary-m);
+    color: white;
+}
+
+.messenger-sidebar input#searchInput {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 15px;
+    border: 1px solid var(--border-m);
+    border-radius: 5px;
+    font-size: 0.9rem;
+    box-sizing: border-box;
+}
+
+/* Liste des messages */
+#messageList {
+list-style: none;
+padding: 0;
+margin: 0;
+height: calc(100vh - 200px); /* Ajuster pour éviter le débordement */
+border-radius: 10px;
+overflow-y: auto;
+}
+
+#messageList li {
+border-bottom: 1px solid var(--border-m);
+padding: 15px;
+cursor: pointer;
+transition: background 0.3s, color 0.3s;
+}
+
+#messageList li.unread {
+background: var(--unread-bg-m);
+}
+
+#messageList li.read {
+background: #0B6881;;
+}
+
+#messageList li:hover {
+background: var(--hover-m);
+color: white;
+}
+
+#messageList li div {
+display: flex;
+flex-direction: column;
+}
+
+#messageList li div strong {
+font-size: 1rem;
+margin-bottom: 5px;
+color:white;
+}
+
+#messageList li div p {
+font-size: 0.9rem;
+color: white;
+white-space: nowrap;
+overflow: hidden;
+text-overflow: ellipsis;
+}
+
+#messageList li div small {
+font-size: 0.8rem;
+color: #999;
+margin-top: 5px;
+}
+
+/* Pagination */
+#pagination {
+display: flex;
+justify-content: center;
+margin-top: 10px;
+}
+
+#pagination button {
+margin: 0 5px;
+padding: 5px 10px;
+border: 1px solid var(--border-m);
+border-radius: 5px;
+background: none;
+cursor: pointer;
+font-size: 0.9rem;
+transition: background 0.3s, color 0.3s;
+}
+
+#pagination button.active {
+background: var(--primary);
+color: white;
+font-weight: bold;
+}
+
+#pagination button:hover {
+background: var(--hover-m);
+border: 1px solid var(--primary-m);
+color: white;
+}
+
+/* Contenu principal */
+.messenger-main {
+    display: flex;
+    flex-direction: column;
+    padding: 16px;
+    overflow-y: auto;
+}
+
+/* tooltip settings 👇 */
+
+.copy {
+    /* button */
+    --button-bg: #353434;
+    --button-hover-bg: #464646;
+    --button-text-color: #CCCCCC;
+    --button-hover-text-color: #8bb9fe;
+    --button-border-radius: 10px;
+    --button-diameter: 25px;
+    --button-outline-width: 1px;
+    --button-outline-color: rgb(141, 141, 141);
+    /* tooltip */
+    --tooltip-bg: #f4f3f3;
+    --toolptip-border-radius: 4px;
+    --tooltip-font-family: Menlo, Roboto Mono, monospace;
+    /* 👆 this field should not be empty */
+    --tooltip-font-size: 12px;
+    /* 👆 this field should not be empty */
+    --tootip-text-color: rgb(50, 50, 50);
+    --tooltip-padding-x: 7px;
+    --tooltip-padding-y: 7px;
+    --tooltip-offset: 8px;
+    --tooltip-transition-duration: 0.3s;
+    /* 👆 if you need a transition,
+     * just remove the comment,
+     * but I didn't like the transition :| */
+}
+
+.copy {
+    box-sizing: border-box;
+    width: var(--button-diameter);
+    height: var(--button-diameter);
+    border-radius: var(--button-border-radius);
+    background-color: var(--button-bg);
+    color: var(--button-text-color);
+    border: none;
+    cursor: pointer;
+    position: relative;
+    top: 7px;
+    outline: none;
+}
+
+.tooltip {
+    position: relative;
+    opacity: 0;
+    visibility: 0;
+    top: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    white-space: nowrap;
+    font: var(--tooltip-font-size) var(--tooltip-font-family);
+    color: var(--tootip-text-color);
+    background: var(--tooltip-bg);
+    padding: var(--tooltip-padding-y) var(--tooltip-padding-x);
+    border-radius: var(--toolptip-border-radius);
+    pointer-events: none;
+    transition: all var(--tooltip-transition-duration) cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+.tooltip::before {
+    content: attr(data-text-initial);
+}
+
+.tooltip::after {
+    content: "";
+    position: relative;
+    bottom: calc(var(--tooltip-padding-y) / 2 * -1);
+    width: var(--tooltip-padding-y);
+    height: var(--tooltip-padding-y);
+    background: inherit;
+    left: 50%;
+    transform: translateX(-50%) rotate(45deg);
+    z-index: -999;
+    pointer-events: none;
+}
+
+.copy svg {
+    position: absolute;
+    height:15px;
+    width:15px;
+    top: 50%;
+    left: 49%;
+    transform: translate(-50%, -50%);
+}
+
+.checkmark {
+    display: none;
+}
+
+/* actions */
+
+.copy:hover .tooltip,
+.copy:focus:not(:focus-visible) .tooltip {
+    opacity: 1;
+    visibility: visible;
+    top: calc((100% + var(--tooltip-offset)) * -1);
+}
+
+.copy:focus:not(:focus-visible) .tooltip::before {
+    content: attr(data-text-end);
+}
+
+.copy:focus:not(:focus-visible) .clipboard {
+    display: none;
+}
+
+.copy:focus:not(:focus-visible) .checkmark {
+    display: block;
+}
+
+.copy:hover,
+.copy:focus {
+    background-color: var(--button-hover-bg);
+}
+
+.copy:active {
+    outline: var(--button-outline-width) solid var(--button-outline-color);
+}
+
+.copy:hover svg {
+    color: var(--button-hover-text-color);
+}
+
+#conversationDetails {
+display: flex;
+flex-direction: column;
+justify-content: space-between;
+height: 100%; /* Remplit tout l'espace disponible */
+}
+
+#conversationDetails h2 {
+display:flex;
+align-content:center;
+justify-content:center;
+align-items:center;
+}
+
+#messageContent {
+flex-grow: 1;
+overflow-y: auto;
+padding: 15px;
+background: rgba(255, 255, 255, 0.1); /* Fond transparent */
+backdrop-filter: blur(10px); /* Effet flou */
+border: 1px solid var(--border-m);
+border-radius: 5px;
+margin-bottom: 15px;
+word-wrap: break-word; /* Empêche le débordement horizontal */
+}
+
+#messageContent h3 {
+font-size: 1.2rem;
+margin-bottom: 10px;
+color: var(--dark-m);
+}
+
+#messageContent p {
+font-size: 1rem;
+line-height: 1.5;
+color: var(--light-m);
+}
+
+#messageContent small {
+font-size: 0.9rem;
+color: #999;
+display: block;
+margin-top: 20px;
+}
+
+/* Boutons d'action */
+.actions {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.actions button {
+    font-family: 'Google Sans', 'Roboto', Arial, sans-serif;
+    flex: 1;
+    background: none;
+    color: var(--primary);
+    text-decoration: none;
+    font-weight: bold;
+    padding: 0.5rem 1rem;
+    border: 1px solid var(--primary);
+    border-radius: 0.5rem;
+    transition: background 0.3s, color 0.3s;
+}
+
+.actions button:hover {
+    background: var(--primary-m);
+    border: 1px solid var(--primary-m);
+    color: white;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .messenger {
+        grid-template-columns: 1fr;
+        height: auto; /* Autoriser le contenu à s'adapter à l'écran */
+    }
+
+    .messenger-sidebar {
+        border-right: none;
+        border-bottom: 1px solid var(--border-m);
+    }
+
+    #messageList {
+    height: auto; /* Adapter la hauteur dynamique */
+    }
+
+    .messenger-main {
+        padding: 10px;
+    }
+
+    #conversationDetails {
+    height: auto; /* Ajuster la hauteur pour mobile */
+    }
+}
+
+
+/*-----SUITE---COMMENTAIRES----*/
+
+/* Palette de couleurs */
+:root {
+    --primary-c: #007bff;
+    --secondary-c: #f4f4f4;
+    --dark-c: #333;
+    --light-c: #f9f9f9;
+    --border-c: #ddd;
+    --hover-c: #4fc3f7;
+    --unread-bg-c:#17264a;
+}
+/* Liste des commentaires */
+#commentList {
+list-style: none;
+padding: 0;
+margin: 0;
+height: calc(100vh - 200px); /* Ajuster pour éviter le débordement */
+border-radius: 10px;
+overflow-y: auto;
+}
+
+#commentList li {
+border-bottom: 1px solid var(--border-c);
+padding: 15px;
+cursor: pointer;
+transition: background 0.3s, color 0.3s;
+}
+
+#commentList li.unread {
+background: var(--unread-bg-c);
+}
+
+#commentList li.read {
+background: #0B6881;
+}
+
+#commentList li:hover {
+background: var(--hover-c);
+color: white;
+}
+
+#commentList li div {
+display: flex;
+flex-direction: column;
+}
+
+#commentList li div strong {
+font-size: 1rem;
+margin-bottom: 5px;
+color: white;
+}
+
+#commentList li div p {
+font-size: 0.9rem;
+color: white;
+white-space: nowrap;
+overflow: hidden;
+text-overflow: ellipsis;
+}
+
+#commentList li div small {
+font-size: 0.8rem;
+color: #999;
+margin-top: 5px;
+}
+
+/* Contenu principal */
+.messenger-main {
+    display: flex;
+    flex-direction: column;
+    padding: 16px;
+    overflow-y: auto;
+}
+
+#commentDetails {
+display: flex;
+flex-direction: column;
+justify-content: space-between;
+height: 100%; /* Remplit tout l'espace disponible */
+}
+
+#commentDetails h2 {
+display: flex;
+align-content: center;
+justify-content: center;
+align-items: center;
+}
+
+#commentContent {
+flex-grow: 1;
+overflow-y: auto;
+padding: 15px;
+background: rgba(255, 255, 255, 0.1); /* Fond transparent */
+backdrop-filter: blur(10px); /* Effet flou */
+border: 1px solid var(--border-c);
+border-radius: 5px;
+margin-bottom: 15px;
+word-wrap: break-word; /* Empêche le débordement horizontal */
+}
+
+#commentContent h3 {
+font-size: 1.2rem;
+margin-bottom: 10px;
+color: var(--dark-c);
+}
+
+#commentContent p {
+font-size: 1rem;
+line-height: 1.5;
+color: var(--light-c);
+}
+
+#commentContent small {
+font-size: 0.9rem;
+color: #999;
+display: block;
+margin-top: 20px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .messenger {
+        grid-template-columns: 1fr;
+        height: auto; /* Autoriser le contenu à s'adapter à l'écran */
+    }
+
+    .messenger-sidebar {
+        border-right: none;
+        border-bottom: 1px solid var(--border-c);
+    }
+
+    #commentList {
+    height: auto; /* Adapter la hauteur dynamique */
+    }
+
+    .messenger-main {
+        padding: 10px;
+    }
+
+    #commentDetails {
+    height: auto; /* Ajuster la hauteur pour mobile */
+    }
+}
+
+
+/*--PRODUITS---*/
+
+.products-dashboard {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    padding: 20px;
+    text-align: center;
+}
+
+/*
+
+.products-list, .product-form {
+    background: #fff;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.products-list ul {
+    list-style: none;
+    padding: 0;
+}
+
+.products-list li {
+    margin-bottom: 10px;
+    padding: 10px;
+    border-bottom: 1px solid #ddd;
+}
+
+.product-form label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+}
+
+.product-form input, .product-form textarea {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 15px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+}
+
+.product-form button {
+    background: #007bff;
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.product-form button:hover {
+    background: #0056b3;
+}
+
+
+.products-dashboard h1 {
+    font-size: 2rem;
+    margin-bottom: 20px;
+    color: #333;
+}
+
+.tiles {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+}
+
+.tile {
+    background: #f9f9f9;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    padding: 20px;
+    width: 300px;
+    text-align: center;
+    cursor: pointer;
+    transition: transform 0.3s, box-shadow 0.3s;
+}
+
+.tile:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.tile h2 {
+    font-size: 1.5rem;
+    margin-bottom: 10px;
+    color: #007bff;
+}
+
+.tile p {
+    font-size: 1rem;
+    color: #555;
+}*/
+
+/*-------PRODUCT---MANAGEMENT------*/
+.products-manage {
+    padding: 20px;
+    text-align: center;
+}
+
+.products-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+    margin-top: 20px;
+
+    /* Centrer les éléments horizontalement */
+    justify-content: center;
+
+    /* Centrer les éléments verticalement si nécessaire */
+    align-content: center;
+}
+
+.product-card {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: transform 0.3s, box-shadow 0.3s;
+}
+
+
+.product-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 6px 12px rgba(0, 0, 0, 0.2);
+}
+
+.product-card h2 {
+    font-size: 1.5rem;
+    margin-bottom: 10px;
+    color: #007bff;
+}
+
+.product-card p {
+    font-size: 1rem;
+    color: #fff;
+    margin-bottom: 10px;
+}
+
+.product-card .actions {
+    display: flex;
+    justify-content: space-around;
+    gap: 10px;
+}
+
+.product-card .actions button {
+    padding: 10px 15px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.product-card .actions button.edit {
+    background: #007bff;
+    color: white;
+}
+
+.product-card .actions button.edit:hover {
+    background: #0056b3;
+}
+
+.product-card .actions button.delete {
+    background: #e74c3c;
+    color: white;
+}
+
+.product-card .actions button.delete:hover {
+    background: #c0392b;
+}
+
+.product-card-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.edit-button, .delete-button {
+    padding: 8px 12px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.edit-button {
+    background-color: #007bff;
+    color: white;
+    transition: background-color 0.3s;
+}
+
+.edit-button:hover {
+    background-color: #0056b3;
+}
+
+.delete-button {
+    background-color: #dc3545;
+    color: white;
+    transition: background-color 0.3s;
+}
+
+.delete-button:hover {
+    background-color: #a71d2a;
+}
+
+/* Modale personnalisée */
+/* Conteneur global des modales */
+.custom-modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8); /* Fond sombre semi-transparent */
+    overflow: auto;
+    animation: fadeIn 0.2s;
+}
+
+/* Contenu de la modale */
+.custom-modal-content {
+    background: var(--dark-bg); /* Fond sombre */
+    margin: 5% auto;
+    padding: 30px;
+    border-radius: 12px;
+    width: 60%;
+    max-width: 800px;
+    box-shadow: var(--neon); /* Effet néon */
+    animation: slideIn 0.2s ease-out;
+    color: var(--text); /* Texte clair */
+    font-family: 'Google Sans', 'Roboto', Arial, sans-serif;
+}
+
+/* Titre de la modale */
+.custom-modal-content h2 {
+    margin-top: 0;
+    font-size: 2rem;
+    color: var(--text);
+    text-shadow: var(--neon-hover);
+    text-align: center;
+}
+
+/* Champs de formulaire */
+.custom-modal-content label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: bold;
+    color: var(--text);
+}
+
+.custom-modal-content input,
+.custom-modal-content select,
+.custom-modal-content textarea {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 15px;
+    border: 2px solid var(--input-border);
+    border-radius: 8px;
+    font-size: 1rem;
+    background-color: var(--input-bg);
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.custom-modal-content input:focus,
+.custom-modal-content textarea:focus,
+.custom-modal-content select:focus {
+    border-color: var(--input-focus);
+    box-shadow: var(--neon-hover);
+}
+
+/* Boutons dans la modale */
+.custom-modal-content button {
+    display: inline-block;
+    background: var(--primary-dark);
+    color: var(--text);
+    border: none;
+    padding: 12px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: bold;
+    transition: background 0.3s, box-shadow 0.3s ease;
+    margin-right: 10px; /* Espacement entre les boutons */
+    box-shadow: var(--neon); /* Effet néon */
+}
+
+.custom-modal-content button:hover {
+    background: var(--primary);
+    box-shadow: var(--neon-hover);
+}
+
+.custom-modal-content button.cancel {
+    background: var(--red-dark);
+}
+
+.custom-modal-content button.cancel:hover {
+    background: var(--red);
+    box-shadow: var(--neon-hover);
+}
+
+/* Images (par exemple, pour les produits) */
+#productImagesContainer img {
+object-fit:fill;
+width: 100px;
+margin-right: 10px;
+border-radius: 5px;
+border: 2px solid var(--input-border);
+transition: border-color 0.3s ease, transform 0.3s ease;
+
+}
+
+#productImagesContainer img:hover {
+border-color: var(--input-focus);
+transform: scale(1.1);
+}
+
+/* Bouton de fermeture */
+.custom-modal-close {
+    float: right;
+    font-size: 1.5rem;
+    font-weight: bold;
+    cursor: pointer;
+    color: var(--text);
+    transition: color 0.3s ease, transform 0.3s ease;
+}
+
+.custom-modal-close:hover {
+    color: var(--primary);
+    transform: scale(1.2);
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateY(-20px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+
+/*---TELEGRAM-FILES----*/
+
+/* Toolbar */
+.file-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    gap: 1rem;
+}
+
+.file-search {
+    flex: 1;
+    background: var(--input-bg, #222);
+    color: var(--text, #fff);
+    border: 1px solid var(--border, #333);
+    padding: 0.65em 1em;
+    font-size: 1.05em;
+    transition: border 0.2s;
+}
+.file-search:focus {
+    border-color: var(--accent, #6ef1ff);
+    outline: none;
+}
+
+.file-refresh-btn {
+    background: var(--accent, #6ef1ff);
+    color: #111;
+    border: none;
+    border-radius: 6px;
+    padding: 0.65em 1.2em;
+    font-weight: 600;
+    font-family: inherit;
+    font-size: 1em;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+}
+.file-refresh-btn:hover {
+    background: var(--primary, #2d8fff);
+    color: #fff;
+}
+
+/* Grid des tuiles fichiers */
+.telegram-files-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 2rem;
+    width: 100%;
+    margin-top: 2rem;
+    margin-bottom: 2rem;
+}
+
+/* Tuile fichier */
+.telegram-file-tile {
+    background: var(--tile-bg, #191f29);
+    border-radius: 12px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.13);
+    padding: 1.3em 1.2em 1em 1.2em;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1.1em;
+    position: relative;
+    transition: box-shadow 0.2s, transform 0.13s;
+}
+.telegram-file-tile:hover {
+    box-shadow: 0 6px 32px rgba(80,200,255,0.13);
+    transform: translateY(-2px) scale(1.015);
+    z-index: 2;
+}
+
+.file-type-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 0.5em;
+    font-size: 2em;
+    /* Placeholder, à remplacer par des SVG */
+}
+
+/* Exemples d’icônes par type */
+.file-type-image { background: #25384a; color: #6ef1ff; }
+.file-type-pdf { background: #341d24; color: #ff6e6e; }
+.file-type-zip { background: #2e263d; color: #d9b6ff; }
+.file-type-doc { background: #253a2e; color: #a6ffb8; }
+.file-type-other { background: #333; color: #eee; }
+
+.file-info {
+    margin-bottom: 0.3em;
+}
+.file-name {
+    font-weight: 600;
+    font-size: 1.13em;
+    color: var(--text, #fff);
+    word-break: break-all;
+}
+.file-meta {
+    font-size: 0.97em;
+    color: #b3b8c7;
+}
+
+/* Variantes d’image ou actions */
+.file-variants,
+.file-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4em;
+    align-items: center;
+}
+.variant-group span {
+    font-size: 0.94em;
+    color: #b3b8c7;
+    margin-right: 0.5em;
+}
+.variant-btn {
+    background: var(--accent, #6ef1ff);
+    color: #222;
+    border: none;
+    border-radius: 6px;
+    padding: 0.4em 0.9em;
+    font-size: 0.97em;
+    font-weight: 500;
+    cursor: pointer;
+    margin-top: 0.2em;
+    margin-bottom: 0.2em;
+    transition: background 0.18s, color 0.18s;
+}
+.variant-btn:hover, .variant-btn:focus {
+    background: var(--primary, #2d8fff);
+    color: #fff;
+}
+
+.no-files-message {
+    text-align: center;
+    color: #888;
+    font-size: 1.17em;
+    margin-top: 4em;
+}
+
+/* Responsive toolbar pour recherche et bouton */
+.file-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+}
+
+.file-search {
+    flex: 1 1 200px;
+    min-width: 0;
+    background: var(--input-bg, #222);
+    color: var(--text, #fff);
+    border: 1px solid var(--border, #333);
+    border-radius: 12px;
+    padding: 0.65em 1em;
+    font-size: 1.05em;
+    transition: border 0.2s;
+    margin-bottom: 0;
+}
+
+.file-refresh-btn {
+    background: var(--accent, #6ef1ff);
+    color: #111;
+    border: none;
+    border-radius: 6px;
+    padding: 0.65em 1.2em;
+    font-weight: 600;
+    font-family: inherit;
+    font-size: 1em;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+    min-width: 120px;
+    margin-left: 0.7em;
+    margin-top: 0;
+}
+
+/* Adaptation mobile */
+@media (max-width: 720px) {
+    .file-toolbar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.6rem;
+    }
+    .file-search {
+        width: 100%;
+        margin-bottom: 0.7em;
+    }
+    .file-refresh-btn {
+        width: 100%;
+        margin-left: 0;
+    }
+}
+
+@media (max-width: 480px) {
+    .file-toolbar {
+        gap: 0.3rem;
+    }
+    .file-refresh-btn,
+    .file-search {
+        font-size: 1em;
+        padding: 0.55em 0.6em;
+    }
+}
+
+/*---PRODUCT---ADD---*/
+
+.products-add {
+    max-width: 800px;
+    margin: 50px auto;
+    padding: 30px;
+    background-color: var(--light-bg);
+    border-radius: 12px;
+    box-shadow: var(--neon);
+    animation: fadeIn 0.2s ease-in-out;
+    font-family: 'Google Sans', 'Roboto', Arial, sans-serif;
+}
+
+.products-add h1 {
+    text-align: center;
+    color: var(--text);
+    text-shadow: var(--neon-hover);
+    font-size: 2rem;
+    margin-bottom: 20px;
+}
+
+.admin-nav a {
+    color: var(--primary);
+    text-decoration: none;
+    font-weight: bold;
+    display: inline-block;
+    margin-bottom: 20px;
+    transition: color 0.3s ease;
+}
+
+.admin-nav a:hover {
+    color: var(--text);
+    text-shadow: var(--neon-hover);
+}
+
+/* Formulaire */
+.product-form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.product-form label {
+    font-size: 16px;
+    color: var(--text);
+    margin-bottom: 5px;
+}
+
+.product-form input,
+.product-form textarea,
+.product-form select {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 15px;
+    border: 2px solid var(--input-border);
+    border-radius: 8px;
+    font-size: 1rem;
+    background-color: var(--input-bg);
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.product-form input:focus,
+.product-form textarea:focus,
+.product-form select:focus {
+    border-color: var(--input-focus);
+    box-shadow: var(--neon-hover);
+}
+
+/* Zone d'édition enrichie */
+#productDescriptionEditor {
+border: 2px solid var(--input-border);
+border-radius: 8px;
+background-color: var(--input-bg);
+color: var(--text);
+padding: 10px;
+min-height: 150px;
+font-size: 1rem;
+outline: none;
+transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+#productDescriptionEditor:focus {
+border-color: var(--input-focus);
+box-shadow: var(--neon-hover);
+}
+
+/* Conteneur des badges et FAQ */
+#productBadgesContainer,
+#productFaqContainer {
+margin-top: 10px;
+padding: 10px;
+background-color: var(--input-bg);
+border-radius: 8px;
+border: 2px solid var(--input-border);
+}
+
+#productBadgesContainer div,
+#productFaqContainer div {
+margin-bottom: 15px;
+}
+
+#productBadgesContainer input,
+#productFaqContainer input,
+#productFaqContainer textarea {
+margin-bottom: 10px;
+}
+
+/* Boutons */
+.product-form button {
+    display: inline-block;
+    background: var(--primary-dark);
+    color: var(--text);
+    border: none;
+    padding: 12px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: bold;
+    transition: background 0.3s, box-shadow 0.3s ease;
+    box-shadow: var(--neon);
+}
+
+.product-form button:hover {
+    background: var(--primary);
+    box-shadow: var(--neon-hover);
+}
+
+#addBadgeButton,
+#addFaqButton {
+background-color: var(--primary-dark);
+color: var(--text);
+font-size: 14px;
+margin-top: 10px;
+}
+
+#addBadgeButton:hover,
+#addFaqButton:hover {
+background-color: var(--primary);
+box-shadow: var(--neon-hover);
+}
+
+button[type="submit"] {
+    background-color: var(--primary-dark);
+}
+
+button[type="submit"]:hover {
+    background-color: var(--primary);
+}
+
+button.cancel {
+    background-color: var(--red-dark);
+    color: var(--text);
+}
+
+button.cancel:hover {
+    background-color: var(--red);
+    box-shadow: var(--neon-hover);
+}
+
+/* Masquer le champ input natif */
+.file-input-hidden {
+    opacity: 0;
+    position: absolute;
+    z-index: -1;
+}
+
+/* Conteneur pour le bouton personnalisé */
+.custom-file-upload-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+/* Bouton personnalisé */
+#customFileUploadButton {
+background-color: var(--primary-dark);
+color: var(--text);
+border: none;
+padding: 10px 20px;
+border-radius: 5px;
+cursor: pointer;
+font-size: 16px;
+transition: all 0.3s ease-in-out;
+}
+
+#customFileUploadButton:hover {
+background-color: var(--primary);
+box-shadow: var(--neon-hover);
+}
+
+/* Texte pour indiquer l'état de sélection des fichiers */
+#fileUploadStatus {
+font-size: 14px;
+color: var(--text);
+}
+
+/* Conteneur des images prévisualisées */
+.images-preview-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px; /* Espacement entre les images */
+}
+
+/* Conteneur pour chaque image */
+.image-wrapper {
+    position: relative;
+    width: 100px;
+    height: 100px;
+    overflow: hidden;
+    border: 2px solid #444;
+    border-radius: 8px;
+}
+
+/* Style de l'image */
+.preview-image {
+    width: 100%;
+    height: 100%;
+    border-radius: 8px;
+}
+
+/* Bouton de suppression (croix) */
+.remove-image {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    width: 20px;
+    height: 20px;
+    line-height: 20px;
+    text-align: center;
+    font-size: 18px;
+    font-weight: bold;
+    color: #fff;
+     background-color: var(--primary-dark);
+    border-radius: 50%;
+    cursor: pointer;
+    transition: all 0.3s ease-in-out;
+}
+
+/* Effet néon pour la croix */
+.remove-image:hover {
+    background-color: var(--primary);
+    box-shadow: var(--neon-hover);
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

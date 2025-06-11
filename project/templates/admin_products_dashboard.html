@@ -1,0 +1,36 @@
+{% extends "admin_base.html" %}
+
+{% block admin_title %}
+    Gestion des Produits
+{% endblock %}
+
+{% block admin_content %}
+<div class="dashboard">
+    <h1>Gestion des Produits</h1>
+        <nav class="admin-nav ">
+            <a href="{{ url_for('admin_dashboard') }}">Retour</a>
+        </nav>
+    <div class="dashboard-sections">
+        <!-- Tuile 1 : Gestion des produits existants -->
+        <a href="{{ url_for('admin_products_manage') }}" class="tile-link">
+            <section>
+                <h2>Gérer les Produits</h2>
+                <p>Modifier les produits existants, badges, FAQ, descriptions, etc.</p>
+            </section>
+        </a>
+        <!-- Tuile 2 : Ajouter un produit -->
+        <a href="{{ url_for('admin_products_add') }}" class="tile-link">
+            <section>
+                <h2>Ajouter un Produit</h2>
+                <p>Ajoutez de nouveaux produits avec les options disponibles.</p>
+            </section>
+        </a>
+        <a href="{{ url_for('admin_telegram_files') }}" class="tile-link">
+            <section>
+                <h2>Gestion des fichiers Telegram</h2>
+                <p>Visualisation des fichiers telegram, copie des File_ids, etc </p>
+            </section>
+        </a>
+    </div>
+</div>
+{% endblock %}

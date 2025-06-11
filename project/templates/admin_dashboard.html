@@ -1,0 +1,43 @@
+{% extends "admin_base.html" %}
+
+{% block admin_title %}
+    Tableau de Bord Admin
+{% endblock %}
+
+{% block admin_content %}
+<div class="dashboard">
+    <h1>Bienvenue {{ session['username'] }} !</h1>
+    <nav class="admin-nav">
+        <a href="{{ url_for('admin_logout') }}">Déconnexion</a>
+        {% if session.get('role') == 'super_admin' %}
+        <a href="{{ url_for('admin_settings') }}">Paramètres</a>
+        {% endif %}
+    </nav>
+    <div class="dashboard-sections">
+        <a href="{{ url_for('admin_products_page') }}" class="tile-link">
+            <section>
+                <h2>Produits</h2>
+                <p>Gérez vos produits affichés sur le site ici.</p>
+            </section>
+        </a>
+        <a href="{{ url_for('admin_payments') }}" class="tile-link">
+            <section>
+                <h2>Paiements</h2>
+                <p>Consultez les paiements en attente et approuvés.</p>
+            </section>
+        </a>
+        <a href="{{ url_for('admin_payments') }}" class="tile-link">
+            <section>
+                <h2>Statistiques</h2>
+                <p>Gbé! Comptes en banques Gbé! Dans la cabine possédé!</p>
+            </section>
+        </a>
+        <a href="{{ url_for('admin_comments_page') }}" class="tile-link">
+        <section>
+            <h2>Commentaires</h2>
+            <p>Gérez et modérez les commentaires utilisateurs.</p>
+        </section>
+        </a>
+    </div>
+</div>
+{% endblock %}
