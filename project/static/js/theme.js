@@ -545,12 +545,12 @@ window.initProductPage = function () {
                 <label>
                 Nom complet :
                 <input type="text" id="payment-nom-client" placeholder="Votre nom complet" required>
-                <span class="error-message" id="error-nom-client" aria-live="polite"></span>
+                <span class="error-message" id="error-client" aria-live="polite"></span>
                 </label>
                 <label>
-                Numéro Mobile Money (optionnel) :
+                Numéro Mobile Money:
                 <input type="tel" id="payment-numero-send" placeholder="Numéro Mobile Money">
-                <span class="error-message" id="error-numero-send" aria-live="polite"></span>
+                <span class="error-message" id="error-client" aria-live="polite"></span>
                 </label>
                 <div class="customModal-buttons">
                 <button class="customModal-yes">Valider</button>
@@ -570,9 +570,9 @@ window.initProductPage = function () {
                     const numero = modal.querySelector('#payment-numero-send').value.trim();
 
                     let hasError = false;
-                    const errorNomClient = modal.querySelector('#error-nom-client');
-                    if (!nom) {
-                        showNotification("Merci de saisir votre nom", "error");
+                    const errorNomClient = modal.querySelector('#error-client');
+                    if (!nom || !numero){
+                        showNotification("Merci de remplir tous les champs", "error");
                         modal.querySelector('#payment-nom-client').focus();
                         hasError = true;
                     } else {
@@ -618,7 +618,7 @@ window.initProductPage = function () {
                                  article: getArticleObject(cart),
                                  // ICI ON AJOUTE LA LISTE DES PRODUITS DANS personal_Info
                                  personal_Info: [{
-                                     userId: 1, // À remplacer si tu as un vrai identifiant utilisateur
+                                     userId: nom_client, // À remplacer si tu as un vrai identifiant utilisateur
                                      orderId: Date.now(),
                                  products: cart.map(item => item.name) // <-- LISTE DES PRODUITS ACHETÉS
                                  }],
