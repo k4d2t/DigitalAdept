@@ -6,8 +6,8 @@
             "role": "super_admin"
         },
         {
-            "username": "Richard",
-            "password": "$2b$12$jT9sao7eNvMRcCM.4k7ohebHSuHEgNv8r3rm8tcTdW6joW35qDx.K",
+            "username": "SecondAccount",
+            "password": "$2b$12$DgA1bPCMa/DgalnXQEdYYu66tmF8Cpb.0devjGp2gKMaV/4bAAQ1i",
             "role": "admin"
         }
     ],
