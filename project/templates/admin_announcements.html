@@ -33,6 +33,10 @@
         <input type="checkbox" id="announcementActive">
         <b>Active</b>
       </label>
+      <label for="announcementBtnLabel"><b>Texte du bouton (optionnel) :</b></label>
+      <input type="text" id="announcementBtnLabel" placeholder="OK, Découvrir l’offre, etc." style="padding:0.5em;border-radius:7px;">
+      <label for="announcementBtnUrl"><b>Lien du bouton (optionnel) :</b></label>
+      <input type="url" id="announcementBtnUrl" placeholder="https://votre-lien.com/" style="padding:0.5em;border-radius:7px;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-top:15px;">
         <button type="submit" class="btn cta" style="min-width:130px;">Enregistrer</button>
         <button type="button" class="btn" id="cancelEdit" style="margin-left:10px;">Annuler</button>
@@ -43,7 +47,64 @@
 </div>
 
 <script>
+// --- MOCKAPI_URL ---
 const MOCKAPI_URL = "https://6840a10f5b39a8039a58afb0.mockapi.io/api/externalapi/annoucements";
+
+// --------- CONFIRM MODAL REUTILISABLE -----------
+/*function ConfirmModal(message, yesButtonLabel, noButtonLabel, onYes, onNo) {
+    // Nettoie ancienne instance
+    document.querySelectorAll('.confirmModal.admin').forEach(e => e.remove());
+
+    const modal = document.createElement('div');
+    modal.className = 'confirmModal admin';
+    const modalContent = document.createElement('div');
+    modalContent.className = 'confirmModal-content';
+    const modalMessage = document.createElement('p');
+    modalMessage.textContent = message;
+    const buttonsContainer = document.createElement('div');
+    buttonsContainer.className = 'confirmModal-buttons';
+
+    // Bouton Oui
+    const yesButton = document.createElement('button');
+    yesButton.textContent = yesButtonLabel;
+    yesButton.className = 'confirmModal-button confirmModal-button-yes';
+    yesButton.addEventListener('click', () => {
+        if (typeof onYes === 'function') onYes();
+        closeModal(modal);
+    });
+
+    // Bouton Non
+    const noButton = document.createElement('button');
+    noButton.textContent = noButtonLabel;
+    noButton.className = 'confirmModal-button confirmModal-button-no';
+    noButton.addEventListener('click', () => {
+        if (typeof onNo === 'function') onNo();
+        closeModal(modal);
+    });
+
+    // Ajouter les boutons au conteneur
+    buttonsContainer.appendChild(yesButton);
+    buttonsContainer.appendChild(noButton);
+
+    // Ajouter les éléments au contenu de la modale
+    modalContent.appendChild(modalMessage);
+    modalContent.appendChild(buttonsContainer);
+
+    // Ajouter le contenu à la modale
+    modal.appendChild(modalContent);
+
+    // Ajouter la modale au corps du document
+    document.body.appendChild(modal);
+
+    // Afficher la modale
+    setTimeout(() => modal.classList.add('visible'), 10);
+
+    // Fonction pour fermer la modale
+    function closeModal(modalElement) {
+        modalElement.classList.remove('visible');
+        setTimeout(() => modalElement.remove(), 300);
+    }
+}*/
 
 document.addEventListener("DOMContentLoaded", () => {
   const announcementsGrid = document.getElementById("announcementsGrid");
@@ -58,6 +119,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const cancelEdit = document.getElementById("cancelEdit");
   const deleteBtn = document.getElementById("deleteAnnouncementBtn");
   const videoInput = document.getElementById("announcementVideo");
+  const btnLabelInput = document.getElementById("announcementBtnLabel");
+  const btnUrlInput = document.getElementById("announcementBtnUrl");
 
   fetchAnnouncements();
 
@@ -136,6 +199,9 @@ document.addEventListener("DOMContentLoaded", () => {
       contentInput.value = announcement.content || "";
       typeInput.value = announcement.type || "info";
       activeInput.checked = !!announcement.active;
+      videoInput.value = announcement.video_url || "";
+      btnLabelInput.value = announcement.btn_label || "";
+      btnUrlInput.value = announcement.btn_url || "";
       deleteBtn.style.display = "inline-block";
     } else {
       modalTitle.textContent = "Nouvelle annonce";
@@ -143,6 +209,9 @@ document.addEventListener("DOMContentLoaded", () => {
       contentInput.value = "";
       typeInput.value = "info";
       activeInput.checked = true;
+      videoInput.value = "";
+      btnLabelInput.value = "";
+      btnUrlInput.value = "";
       deleteBtn.style.display = "none";
     }
     modal.style.display = "flex";
@@ -151,7 +220,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function closeAnnouncementModal() {
     modal.classList.remove('visible');
-    setTimeout(()=>{ modal.style.display = "none"; }, 300);
+    setTimeout(()=>modal.style.display = "none", 300);
     form.reset();
   }
 
@@ -163,10 +232,14 @@ document.addEventListener("DOMContentLoaded", () => {
   closeModal.onclick = closeAnnouncementModal;
   cancelEdit.onclick = (e) => { e.preventDefault(); closeAnnouncementModal(); };
 
+  // Utilisation de la modale confirm réutilisable pour la suppression
   deleteBtn.onclick = () => {
-    if(confirm("Supprimer définitivement cette annonce ?")) {
-      deleteAnnouncement(idInput.value);
-    }
+    ConfirmModal(
+      "Supprimer définitivement cette annonce ?",
+      "Oui", "Non",
+      () => { deleteAnnouncement(idInput.value); },
+      () => {} // rien à faire si non
+    );
   };
 
   function saveAnnouncement() {
@@ -174,7 +247,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const data = {
       content: contentInput.value.trim(),
       type: typeInput.value,
-      active: activeInput.checked
+      active: activeInput.checked,
+      video_url: videoInput.value.trim(),
+      btn_label: btnLabelInput.value.trim(),
+      btn_url: btnUrlInput.value.trim()
     };
     if(!data.content) {
       showNotification("Le contenu est obligatoire !", "error");
@@ -231,21 +307,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }).catch(()=>{
       showNotification("Erreur lors de la suppression", "error");
     });
-  }
-
-
-  // ...
-  const data = {
-    content: contentInput.value.trim(),
-    type: typeInput.value,
-    active: activeInput.checked,
-    video_url: videoInput.value.trim()
-  };
-    // ...
-  if(announcement) {
-    videoInput.value = announcement.video_url || "";
-  } else {
-    videoInput.value = "";
   }
 });
 </script>
