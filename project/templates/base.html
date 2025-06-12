@@ -14,6 +14,165 @@
   <script src="{{ url_for('static', filename='js/svgwaves.js') }}"></script>
 <body>
   <div id="svg-bg"></div>
+    <!-- BANDEAU ANNONCE -->
+  <div id="site-announcement-banner" style="display:none;"></div>
+  <!-- MODALE ANNONCE -->
+  <div id="site-announcement-modal" class="confirmModal" style="z-index:2000;display:none;">
+    <div class="confirmModal-content" style="width:95vw;max-width:420px;">
+      <div id="site-announcement-video" style="display:none;margin-bottom:1em;text-align:center;"></div>
+      <p id="site-announcement-message" style="font-size:1.1em;"></p>
+      <div class="confirmModal-buttons" style="margin-top:2em;">
+        <button class="confirmModal-button confirmModal-button-yes" id="close-announcement-modal" style="width:100%;">OK</button>
+      </div>
+    </div>
+  </div>
+  <script>
+const ANNOUNCEMENT_API = "https://6840a10f5b39a8039a58afb0.mockapi.io/api/externalapi/annoucements?active=true";
+
+// --- UTILS VIDEO ---
+function extractYouTubeID(url) {
+  const regExp = /(?:youtube\.com\/.*v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+  const match = url.match(regExp);
+  return match ? match[1] : null;
+}
+function getVideoThumbnail(url) {
+  const ytID = extractYouTubeID(url);
+  if (ytID) return `https://img.youtube.com/vi/${ytID}/hqdefault.jpg`;
+  return null;
+}
+function getVideoEmbed(url) {
+  const ytID = extractYouTubeID(url);
+  if (ytID) return `<iframe width="340" height="200" src="https://www.youtube.com/embed/${ytID}" frameborder="0" allowfullscreen></iframe>`;
+  return null;
+}
+
+// --- SIGNATURE DE L'ANNONCE ---
+function getAnnouncementSignature(ann) {
+  // Utilise l'id si présent, sinon hash du contenu, type, video_url
+  if(ann.id) return String(ann.id);
+  return btoa(unescape(encodeURIComponent(
+    (ann.content||"") + "|" + (ann.type||"") + "|" + (ann.video_url||"")
+  )));
+}
+
+// --- MODALE ---
+function showAnnouncementModal(content, type, video_url, signature) {
+  const modal = document.getElementById("site-announcement-modal");
+  const msg = document.getElementById("site-announcement-message");
+  const vid = document.getElementById("site-announcement-video");
+
+  msg.innerHTML = content;
+  msg.style.color = announcementTextColor(type);
+
+  // Vidéo preview
+  if(video_url && (getVideoEmbed(video_url) || getVideoThumbnail(video_url))) {
+    vid.innerHTML = getVideoEmbed(video_url) || `<img src="${getVideoThumbnail(video_url)}" style="max-width:100%;border-radius:12px;">`;
+    vid.style.display = "block";
+  } else {
+    vid.style.display = "none";
+    vid.innerHTML = "";
+  }
+  modal.style.display = "flex";
+  setTimeout(()=>modal.classList.add('visible'),10);
+
+  // Fermeture modale
+  function closeModal() {
+    modal.classList.remove('visible');
+    setTimeout(()=>{ modal.style.display = "none"; }, 300);
+    showAnnouncementBanner(content, type, video_url);
+    // On stocke la signature pour ne plus l'afficher tant que pas de nouvelle annonce
+    sessionStorage.setItem('announcementSeenSignature', signature);
+  }
+  // croix ou bouton OK
+  const closeX = document.getElementById("close-announcement-modal");
+  if(closeX) closeX.onclick = closeModal;
+  const btn = document.getElementById("close-announcement-modal-btn");
+  if(btn) btn.onclick = closeModal;
+}
+
+// --- BANDEAU ---
+function showAnnouncementBanner(content, type, video_url) {
+  const banner = document.getElementById("site-announcement-banner");
+  let videoThumb = video_url && getVideoThumbnail(video_url) ? `<img src="${getVideoThumbnail(video_url)}" alt="Vidéo annonce" style="height:34px;border-radius:6px;margin-right:8px;vertical-align:middle;">` : "";
+  banner.innerHTML = `
+    <div class="announcement-banner-marquee">
+      <span class="announcement-banner-emoji">${type === "promo" ? "🔥" : type === "alerte" ? "⚠️" : "ℹ️"}</span>
+      ${videoThumb}
+      <span class="announcement-banner-content">${content}</span>
+    </div>
+  `;
+  banner.style.display = "block";
+  banner.style.background = announcementColor(type);
+  banner.style.color = announcementTextColor(type);
+  banner.style.fontWeight = "bold";
+  banner.style.fontSize = "1.08em";
+  banner.style.width = "100vw";
+  banner.style.padding = "8px 0";
+  banner.style.position = "fixed";
+  banner.style.top = "0";
+  banner.style.left = "0";
+  banner.style.zIndex = "1500";
+  // Animation défilante
+  let marquee = banner.querySelector('.announcement-banner-content');
+  if (marquee) {
+    marquee.style.display = "inline-block";
+    marquee.style.whiteSpace = "nowrap";
+    marquee.style.animation = "announcement-marquee 18s linear infinite";
+    marquee.style.paddingLeft = "2.5em";
+  }
+}
+function announcementColor(type) {
+  if(type === "promo") return "#fff1cc";
+  if(type === "alerte") return "#ffe6e6";
+  return "#e3f6ff";
+}
+function announcementTextColor(type) {
+  if(type === "promo") return "#b87400";
+  if(type === "alerte") return "#b01a1a";
+  return "#1976d2";
+}
+const style = document.createElement("style");
+style.innerHTML = `
+@keyframes announcement-marquee {
+  0%   { transform: translateX(100vw);}
+  100% { transform: translateX(-100vw);}
+}
+.announcement-banner-marquee {
+  display: flex; align-items: center; gap: 1em; width:100vw; overflow:hidden;
+}
+.announcement-banner-emoji { font-size:1.2em; margin-right:0.7em;}
+`;
+document.head.appendChild(style);
+
+// --- INIT ---
+window.addEventListener("DOMContentLoaded", ()=>{
+  fetch(ANNOUNCEMENT_API)
+    .then(r=>r.json())
+    .then(data=>{
+      if(Array.isArray(data) && data.length && data[0].content) {
+        const ann = data[0];
+        const signature = getAnnouncementSignature(ann);
+        const seenSignature = sessionStorage.getItem('announcementSeenSignature');
+        if(seenSignature !== signature) {
+          showAnnouncementModal(ann.content, ann.type || "info", ann.video_url, signature);
+        } else {
+          showAnnouncementBanner(ann.content, ann.type || "info", ann.video_url);
+        }
+      }
+    });
+  const banner = document.getElementById("site-announcement-banner");
+  const navbar = document.querySelector(".navbar");
+  function adjustNavbar() {
+    if(banner && banner.style.display === "block" && navbar) {
+      navbar.style.marginTop = banner.offsetHeight+"px";
+    } else if(navbar) {
+      navbar.style.marginTop = "";
+    }
+  }
+  new MutationObserver(adjustNavbar).observe(banner, {attributes:true,childList:true});
+  window.addEventListener("resize", adjustNavbar);
+});
+</script>
   <nav class="navbar">
     <button class="burger" id="burger" aria-label="Menu">
       <span></span><span></span><span></span>
