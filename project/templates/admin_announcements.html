@@ -1,0 +1,252 @@
+{% extends "admin_base.html" %}
+{% block admin_title %}Gestion des annonces{% endblock %}
+
+{% block admin_content %}
+<div class="dashboard">
+    <h1>Annonces du site</h1>
+    <nav class="admin-nav">
+        <a href="{{ url_for('admin_dashboard') }}">Retour au dashboard</a>
+    </nav>
+    <div class="tiles" id="announcementsGrid" style="margin-top:2em;">
+        <!-- Tuiles générées dynamiquement -->
+    </div>
+</div>
+
+<!-- Modale d'édition/création d'annonce -->
+<div id="announcementModal" class="custom-modal" style="display:none;">
+  <div class="custom-modal-content">
+    <span class="custom-modal-close" id="closeAnnouncementModal">&times;</span>
+    <h2 id="modalTitle" style="text-align:center;margin-bottom:1em;">Éditer l'annonce</h2>
+    <form id="announcementForm" style="display:flex;flex-direction:column;gap:1em;">
+      <input type="hidden" id="announcementId">
+      <label for="announcementContent"><b>Texte de l'annonce :</b></label>
+      <textarea id="announcementContent" rows="4" required style="resize:vertical;"></textarea>
+      <label for="announcementVideo"><b>Lien vidéo (YouTube, optionnel) :</b></label>
+      <input type="url" id="announcementVideo" placeholder="https://youtu.be/xyz..." style="padding:0.5em;border-radius:7px;">
+      <label for="announcementType"><b>Type :</b></label>
+      <select id="announcementType">
+        <option value="info">Info</option>
+        <option value="alerte">Alerte</option>
+        <option value="promo">Promo</option>
+      </select>
+      <label style="margin-top:10px;">
+        <input type="checkbox" id="announcementActive">
+        <b>Active</b>
+      </label>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:15px;">
+        <button type="submit" class="btn cta" style="min-width:130px;">Enregistrer</button>
+        <button type="button" class="btn" id="cancelEdit" style="margin-left:10px;">Annuler</button>
+        <button type="button" class="btn" id="deleteAnnouncementBtn" style="margin-left:auto;color:#d34f4f;display:none;background:none;border:1px solid #d34f4f;">Supprimer</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+const MOCKAPI_URL = "https://6840a10f5b39a8039a58afb0.mockapi.io/api/externalapi/annoucements";
+
+document.addEventListener("DOMContentLoaded", () => {
+  const announcementsGrid = document.getElementById("announcementsGrid");
+  const modal = document.getElementById("announcementModal");
+  const closeModal = document.getElementById("closeAnnouncementModal");
+  const form = document.getElementById("announcementForm");
+  const modalTitle = document.getElementById("modalTitle");
+  const contentInput = document.getElementById("announcementContent");
+  const typeInput = document.getElementById("announcementType");
+  const activeInput = document.getElementById("announcementActive");
+  const idInput = document.getElementById("announcementId");
+  const cancelEdit = document.getElementById("cancelEdit");
+  const deleteBtn = document.getElementById("deleteAnnouncementBtn");
+  const videoInput = document.getElementById("announcementVideo");
+
+  fetchAnnouncements();
+
+  // --------- TU1LE AJOUT toujours en premier ---------
+  function renderAddTile() {
+    const addTile = document.createElement("a");
+    addTile.className = "tile-link";
+    addTile.style.maxWidth = "320px";
+    addTile.style.minWidth = "260px";
+    addTile.innerHTML = `
+      <section>
+        <h2>+ Nouvelle annonce</h2>
+        <p>Créer une nouvelle annonce à afficher sur le site.</p>
+      </section>
+    `;
+    addTile.onclick = (ev) => { ev.preventDefault(); openModal(); };
+    return addTile;
+  }
+
+  // --------- TU1LE "aucune annonce" ---------
+  function renderNoAnnouncementTile() {
+    const noTile = document.createElement("div");
+    noTile.className = "tile-link";
+    noTile.style.maxWidth = "320px";
+    noTile.style.minWidth = "260px";
+    noTile.innerHTML = `
+      <section>
+        <h2 style="color:#888;">Aucune annonce</h2>
+        <p>Il n'y a actuellement aucune annonce enregistrée.</p>
+      </section>
+    `;
+    return noTile;
+  }
+
+  // ----------- Fonctions CRUD ---------------
+
+  function fetchAnnouncements() {
+    fetch(MOCKAPI_URL)
+      .then(res => res.json())
+      .then(data => displayAnnouncements(data))
+      .catch(() => {
+        announcementsGrid.innerHTML = "";
+        announcementsGrid.appendChild(renderAddTile());
+        announcementsGrid.appendChild(renderNoAnnouncementTile());
+      });
+  }
+
+  function displayAnnouncements(list) {
+    announcementsGrid.innerHTML = "";
+    announcementsGrid.appendChild(renderAddTile());
+    if(!Array.isArray(list) || list.length === 0) {
+      announcementsGrid.appendChild(renderNoAnnouncementTile());
+      return;
+    }
+    list.forEach(ann => {
+      const tile = document.createElement("a");
+      tile.className = "tile-link";
+      tile.style.maxWidth = "320px";
+      tile.style.minWidth = "260px";
+      tile.innerHTML = `
+        <section style="border-left:6px solid ${ann.active ? '#0a0':'#bbb'};">
+          <h2 style="margin-bottom:0.5em;">${ann.type === 'promo' ? '🔥 ' : ann.type === 'alerte' ? '⚠️ ' : 'ℹ️ '}${ann.type || 'info'}</h2>
+          <p style="margin-bottom:1em;">${ann.content?.slice(0, 80) || ""}${ann.content && ann.content.length > 80 ? "..." : ""}</p>
+          <span style="font-size:0.95em;padding:4px 10px;border-radius: 7px;${ann.active?'background:#e8ffe8;color:#0a0;':'background:#eee;color:#aaa;'}">${ann.active?'Active':'Inactive'}</span>
+        </section>
+      `;
+      tile.onclick = (ev) => { ev.preventDefault(); openModal(ann); };
+      announcementsGrid.appendChild(tile);
+    });
+  }
+
+  function openModal(announcement = null) {
+    if(announcement) {
+      modalTitle.textContent = "Éditer l'annonce";
+      idInput.value = announcement.id;
+      contentInput.value = announcement.content || "";
+      typeInput.value = announcement.type || "info";
+      activeInput.checked = !!announcement.active;
+      deleteBtn.style.display = "inline-block";
+    } else {
+      modalTitle.textContent = "Nouvelle annonce";
+      idInput.value = "";
+      contentInput.value = "";
+      typeInput.value = "info";
+      activeInput.checked = true;
+      deleteBtn.style.display = "none";
+    }
+    modal.style.display = "flex";
+    setTimeout(()=>modal.classList.add('visible'),10);
+  }
+
+  function closeAnnouncementModal() {
+    modal.classList.remove('visible');
+    setTimeout(()=>{ modal.style.display = "none"; }, 300);
+    form.reset();
+  }
+
+  form.onsubmit = (e) => {
+    e.preventDefault();
+    saveAnnouncement();
+  };
+
+  closeModal.onclick = closeAnnouncementModal;
+  cancelEdit.onclick = (e) => { e.preventDefault(); closeAnnouncementModal(); };
+
+  deleteBtn.onclick = () => {
+    if(confirm("Supprimer définitivement cette annonce ?")) {
+      deleteAnnouncement(idInput.value);
+    }
+  };
+
+  function saveAnnouncement() {
+    const id = idInput.value;
+    const data = {
+      content: contentInput.value.trim(),
+      type: typeInput.value,
+      active: activeInput.checked
+    };
+    if(!data.content) {
+      showNotification("Le contenu est obligatoire !", "error");
+      return;
+    }
+    if(id) {
+      // Update
+      fetch(`${MOCKAPI_URL}/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data)
+      }).then(res => {
+        if(res.ok) {
+          showNotification("Annonce modifiée avec succès", "success");
+          fetchAnnouncements();
+          closeAnnouncementModal();
+        } else {
+          showNotification("Erreur lors de la modification", "error");
+        }
+      }).catch(()=>{
+        showNotification("Erreur lors de la modification", "error");
+      });
+    } else {
+      // Create
+      fetch(MOCKAPI_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data)
+      }).then(res => {
+        if(res.ok) {
+          showNotification("Annonce ajoutée avec succès", "success");
+          fetchAnnouncements();
+          closeAnnouncementModal();
+        } else {
+          showNotification("Erreur lors de l'ajout", "error");
+        }
+      }).catch(()=>{
+        showNotification("Erreur lors de l'ajout", "error");
+      });
+    }
+  }
+
+  function deleteAnnouncement(id) {
+    fetch(`${MOCKAPI_URL}/${id}`, {
+      method: "DELETE"
+    }).then((res) => {
+      if(res.ok) {
+        showNotification("Annonce supprimée avec succès", "success");
+        fetchAnnouncements();
+        closeAnnouncementModal();
+      } else {
+        showNotification("Erreur lors de la suppression", "error");
+      }
+    }).catch(()=>{
+      showNotification("Erreur lors de la suppression", "error");
+    });
+  }
+
+
+  // ...
+  const data = {
+    content: contentInput.value.trim(),
+    type: typeInput.value,
+    active: activeInput.checked,
+    video_url: videoInput.value.trim()
+  };
+    // ...
+  if(announcement) {
+    videoInput.value = announcement.video_url || "";
+  } else {
+    videoInput.value = "";
+  }
+});
+</script>
+{% endblock %}
