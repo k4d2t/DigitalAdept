@@ -20,7 +20,7 @@
     // ---- Vider le Panier au Chargement de la Page ----
     document.addEventListener("DOMContentLoaded", function () {
         const currentPath = window.location.pathname;
-        if (currentPath.startsWith("/download/")) {
+        if (currentPath.startsWith("/callback?")) {
             localStorage.removeItem("cart");
             cart = [];
         }
@@ -53,7 +53,7 @@
 
         for (const product of products) {
             // 1. On récupère un tableau de file_ids (si string ou undefined, on le convertit en array)
-            let fileIds = product.resource_file_id;
+            let fileIds = product.file_id || product.resource_file_id;
             if (!fileIds) fileIds = [];
             if (typeof fileIds === "string") {
                 try { fileIds = JSON.parse(fileIds); } catch { fileIds = [fileIds]; }
@@ -74,7 +74,7 @@
                 if (!link) return;
                 linksHtml += `
                     <div class="resource-file-download">
-                        <label>Lien ${links.length > 1 ? idx + 1 : ""}</label>
+                        <label>Part ${links.length > 1 ? idx + 1 : ""}</label>
                         <input type="text" class="download-link" value="${link}" readonly />
                         <div class="modal-buttons">
                             <button class="btn btn-primary" onclick="handleDownload('${link}')">Télécharger</button>
