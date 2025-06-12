@@ -303,7 +303,19 @@ document.addEventListener("DOMContentLoaded", () => {
                 document.getElementById("productStock").value = product.stock;
                 document.getElementById("productSku").value = product.sku || "";
                 document.getElementById("productCategory").value = product.category;
-                renderResourceFileIdInputs(Array.isArray(product.resource_file_id) ? product.resource_file_id : [product.resource_file_id || ""]);
+                let fileIds = product.resource_file_id;
+                // Si c'est une string JSON, on la parse
+                if (typeof fileIds === "string") {
+                    try {
+                        fileIds = JSON.parse(fileIds);
+                    } catch {
+                        fileIds = [fileIds];
+                    }
+                }
+                if (!Array.isArray(fileIds)) fileIds = [fileIds];
+                // Si tableau vide, on ajoute une entrée vide pour toujours afficher un champ
+                if (fileIds.length === 0) fileIds = [""];
+                renderResourceFileIdInputs(fileIds);
 
 
                 badgesContainer.innerHTML = "";
