@@ -475,19 +475,41 @@ def callback():
 
     # Si pas de token, impossible de savoir quoi donner
     if not token:
+        print("DEBUG CALLBACK:", {
+        "token": token,
+        "produits envoyés": user_products if 'user_products' in locals() else [],
+        "message": message if 'message' in locals() else None
+        })
+        print("product_names:", product_names)
+        print("user_products:", user_products)
         return render_template("download.html", products=[], message="Erreur, paiement introuvable")
 
     # Appelle MoneyFusion pour vérifier le paiement
     try:
         r = requests.get(f"https://www.pay.moneyfusion.net/paiementNotif/{token}")
         res = r.json()
+        print("Réponse MoneyFusion callback:", res)
         if not res.get("statut") or "data" not in res:
+            print("DEBUG CALLBACK:", {
+            "token": token,
+            "produits envoyés": user_products if 'user_products' in locals() else [],
+            "message": message if 'message' in locals() else None
+            })
+            print("product_names:", product_names)
+            print("user_products:", user_products)
             return render_template("download.html", products=[], message="Erreur, paiement introuvable")
 
         data = res["data"]
 
         # On vérifie si le paiement est bien complété
         if data.get("statut") != "paid":
+            print("DEBUG CALLBACK:", {
+            "token": token,
+            "produits envoyés": user_products if 'user_products' in locals() else [],
+            "message": message if 'message' in locals() else None
+            })
+            print("product_names:", product_names)
+            print("user_products:", user_products)
             return render_template("download.html", products=[], message="Paiement non validé. Contactez le support.")
 
         # On récupère les noms des produits achetés depuis le paiement (dans "article" ou similaire)
@@ -523,12 +545,36 @@ def callback():
             ]
 
         if not user_products:
+            print("DEBUG CALLBACK:", {
+            "token": token,
+            "produits envoyés": user_products if 'user_products' in locals() else [],
+            "message": message if 'message' in locals() else None
+            })
+
+            print("product_names:", product_names)
+            print("user_products:", user_products)
             return render_template("download.html", products=[], message="Erreur, Veuillez nous contacter")
 
         # Affiche la page de téléchargement avec les bons produits
+        print("DEBUG CALLBACK:", {
+        "token": token,
+        "produits envoyés": user_products if 'user_products' in locals() else [],
+        "message": message if 'message' in locals() else None
+        })
+
+        print("product_names:", product_names)
+        print("user_products:", user_products)
         return render_template("download.html", products=user_products, message=None)
 
     except Exception as e:
+        print("DEBUG CALLBACK:", {
+        "token": token,
+        "produits envoyés": user_products if 'user_products' in locals() else [],
+        "message": message if 'message' in locals() else None
+        })
+
+        print("product_names:", product_names)
+        print("user_products:", user_products)
         return render_template("download.html", products=[], message="Erreur technique, contactez le support.")
 
 
@@ -1254,19 +1300,18 @@ def delete_product(product_id):
 """
 FIN PRODUIT
 """
-@app.route('/admin/payments')
-def admin_payments():
+@app.route('/admin/announcements', methods=['GET'])
+def admin_announcements():
     """
-    Page pour gérer les paiements (accessible uniquement aux administrateurs).
+    Page de gestion des annonces dans l'admin dashboard.
     """
     if not session.get('admin_logged_in'):
         flash("Veuillez vous connecter pour accéder à cette page.", "error")
         return redirect(url_for('admin_login'))
 
-    # Charger les données des paiements (à implémenter)
-    payments = []  # Remplacez par la logique pour charger les paiements
-    log_action("view_payments", {"username": session.get('username')})
-    return render_template('admin_payments.html', payments=payments)
+    log_action("view_announcements_page", {"username": session.get('username')})
+
+    return render_template('admin_announcements.html')
 
 ''''
 @app.route('/admin/messages')
