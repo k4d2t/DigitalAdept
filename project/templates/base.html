@@ -10,6 +10,76 @@
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Google+Sans:wght@500;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
   <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}">
+  <style>
+    /* === VIDEO NEON ANNOUNCEMENT MODAL === */
+    .video-neon {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin: 1.4em 0 1.2em 0;
+      border-radius: 18px;
+      box-shadow: var(--neon, 0 0 12px #4fd8ff, 0 0 32px #1976d2);
+      padding: 0.3em;
+      background: linear-gradient(120deg, #2b71d4 40%, #4fd8ff 90%);
+      max-width: 98vw;
+      animation: neon-fade 1.2s;
+    }
+    .video-neon iframe {
+      border-radius: 18px;
+      box-shadow: var(--neon, 0 0 12px #4fd8ff, 0 0 32px #1976d2);
+      width: 100%;
+      max-width: 620px;
+      min-width: 230px;
+      min-height: 160px;
+      aspect-ratio: 16/9;
+      background: #000;
+      border: none;
+      outline: none;
+      margin: 0 auto;
+      display: block;
+    }
+    @media (max-width:900px) {
+      .video-neon iframe {
+        max-width: 98vw;
+      }
+    }
+    @media (max-width:600px) {
+      .video-neon iframe {
+        min-height: 108px;
+      }
+    }
+
+    .announcement-banner-content.custom-banner-font {
+      font-family: 'Google Sans', 'Roboto', Arial, sans-serif;
+      font-weight: bold;
+      font-style: italic;
+      color: #fff;
+      text-shadow: var(--neon, 0 0 12px #4fd8ff, 0 0 32px #1976d2);
+      font-variant: small-caps;
+      letter-spacing: 0.06em;
+      word-break: break-word;
+      padding: 0 12vw;
+    }
+    @media (max-width: 600px) {
+      .announcement-banner-content.custom-banner-font {
+        font-size: 1em;
+        padding: 0 2vw;
+      }
+    }
+
+    /* -------- SCROLL ANIMATION BANDEAU -------- */
+    .announcement-banner-content.custom-banner-font {
+      display: inline-block;
+      white-space: nowrap;
+      overflow: hidden;
+      animation: announcement-marquee 18s linear infinite;
+    }
+    @keyframes announcement-marquee {
+      0%   { transform: translateX(100vw);}
+      100% { transform: translateX(-100vw);}
+    }
+
+  </style>
 </head>
   <script src="{{ url_for('static', filename='js/svgwaves.js') }}"></script>
 <body>
@@ -18,7 +88,7 @@
   <div id="site-announcement-banner" style="display:none;"></div>
   <!-- MODALE ANNONCE -->
   <div id="site-announcement-modal" class="confirmModal" style="z-index:2000;display:none;">
-    <div class="confirmModal-content" style="width:95vw;max-width:420px;">
+    <div class="confirmModal-content" style="width:95vw;max-width:520px;">
       <div id="site-announcement-video" style="display:none;margin-bottom:1em;text-align:center;"></div>
       <p id="site-announcement-message" style="font-size:1.1em;"></p>
       <div class="confirmModal-buttons" style="margin-top:2em;">
@@ -35,38 +105,32 @@ function extractYouTubeID(url) {
   const match = url.match(regExp);
   return match ? match[1] : null;
 }
-function getVideoThumbnail(url) {
+function getVideoEmbedNeon(url) {
   const ytID = extractYouTubeID(url);
-  if (ytID) return `https://img.youtube.com/vi/${ytID}/hqdefault.jpg`;
-  return null;
-}
-function getVideoEmbed(url) {
-  const ytID = extractYouTubeID(url);
-  if (ytID) return `<iframe width="340" height="200" src="https://www.youtube.com/embed/${ytID}" frameborder="0" allowfullscreen></iframe>`;
-  return null;
-}
-
-// --- SIGNATURE DE L'ANNONCE ---
-function getAnnouncementSignature(ann) {
-  // Utilise l'id si présent, sinon hash du contenu, type, video_url
-  if(ann.id) return String(ann.id);
-  return btoa(unescape(encodeURIComponent(
-    (ann.content||"") + "|" + (ann.type||"") + "|" + (ann.video_url||"")
-  )));
+  if (ytID) {
+    return `
+      <div class="video-neon">
+        <iframe
+          src="https://www.youtube.com/embed/${ytID}"
+          allowfullscreen
+        ></iframe>
+      </div>`;
+  }
+  return "";
 }
 
 // --- MODALE ---
-function showAnnouncementModal(content, type, video_url, signature) {
+function showAnnouncementModal(content, type, video_url) {
   const modal = document.getElementById("site-announcement-modal");
   const msg = document.getElementById("site-announcement-message");
   const vid = document.getElementById("site-announcement-video");
 
   msg.innerHTML = content;
-  msg.style.color = announcementTextColor(type);
 
-  // Vidéo preview
-  if(video_url && (getVideoEmbed(video_url) || getVideoThumbnail(video_url))) {
-    vid.innerHTML = getVideoEmbed(video_url) || `<img src="${getVideoThumbnail(video_url)}" style="max-width:100%;border-radius:12px;">`;
+
+  // Vidéo preview (neon, large, arrondi)
+  if(video_url && extractYouTubeID(video_url)) {
+    vid.innerHTML = getVideoEmbedNeon(video_url);
     vid.style.display = "block";
   } else {
     vid.style.display = "none";
@@ -79,70 +143,39 @@ function showAnnouncementModal(content, type, video_url, signature) {
   function closeModal() {
     modal.classList.remove('visible');
     setTimeout(()=>{ modal.style.display = "none"; }, 300);
-    showAnnouncementBanner(content, type, video_url);
-    // On stocke la signature pour ne plus l'afficher tant que pas de nouvelle annonce
-    sessionStorage.setItem('announcementSeenSignature', signature);
+    showAnnouncementBanner(content);
   }
-  // croix ou bouton OK
-  const closeX = document.getElementById("close-announcement-modal");
-  if(closeX) closeX.onclick = closeModal;
-  const btn = document.getElementById("close-announcement-modal-btn");
-  if(btn) btn.onclick = closeModal;
+  // bouton OK
+  const okBtn = document.getElementById("close-announcement-modal");
+  if(okBtn) okBtn.onclick = closeModal;
 }
 
 // --- BANDEAU ---
-function showAnnouncementBanner(content, type, video_url) {
+function showAnnouncementBanner(content) {
   const banner = document.getElementById("site-announcement-banner");
-  let videoThumb = video_url && getVideoThumbnail(video_url) ? `<img src="${getVideoThumbnail(video_url)}" alt="Vidéo annonce" style="height:34px;border-radius:6px;margin-right:8px;vertical-align:middle;">` : "";
   banner.innerHTML = `
-    <div class="announcement-banner-marquee">
-      <span class="announcement-banner-emoji">${type === "promo" ? "🔥" : type === "alerte" ? "⚠️" : "ℹ️"}</span>
-      ${videoThumb}
-      <span class="announcement-banner-content">${content}</span>
-    </div>
+    <div class="announcement-banner-content custom-banner-font">${content}</div>
   `;
   banner.style.display = "block";
-  banner.style.background = announcementColor(type);
-  banner.style.color = announcementTextColor(type);
+  banner.style.background = "linear-gradient(120deg, #2b71d4 40%, #4fd8ff 90%)";
+  banner.style.color = "#fff";
   banner.style.fontWeight = "bold";
-  banner.style.fontSize = "1.08em";
+  banner.style.fontStyle = "italic";
+  banner.style.fontFamily = "'Google Sans','Roboto', Arial, sans-serif";
+  banner.style.fontSize = "1.12em";
+  banner.style.letterSpacing = "0.06em";
+  banner.style.textShadow = "var(--neon, 0 0 12px #4fd8ff, 0 0 32px #1976d2)";
   banner.style.width = "100vw";
-  banner.style.padding = "8px 0";
-  banner.style.position = "fixed";
+  banner.style.padding = "10px 0 10px 0";
+  banner.style.position = "relative";
   banner.style.top = "0";
   banner.style.left = "0";
   banner.style.zIndex = "1500";
-  // Animation défilante
-  let marquee = banner.querySelector('.announcement-banner-content');
-  if (marquee) {
-    marquee.style.display = "inline-block";
-    marquee.style.whiteSpace = "nowrap";
-    marquee.style.animation = "announcement-marquee 18s linear infinite";
-    marquee.style.paddingLeft = "2.5em";
-  }
+  banner.style.textAlign = "center";
+  banner.style.userSelect = "none";
+  banner.style.fontVariant = "small-caps";
+  banner.style.boxShadow = "0 4px 24px #1976d277";
 }
-function announcementColor(type) {
-  if(type === "promo") return "#fff1cc";
-  if(type === "alerte") return "#ffe6e6";
-  return "#e3f6ff";
-}
-function announcementTextColor(type) {
-  if(type === "promo") return "#b87400";
-  if(type === "alerte") return "#b01a1a";
-  return "#1976d2";
-}
-const style = document.createElement("style");
-style.innerHTML = `
-@keyframes announcement-marquee {
-  0%   { transform: translateX(100vw);}
-  100% { transform: translateX(-100vw);}
-}
-.announcement-banner-marquee {
-  display: flex; align-items: center; gap: 1em; width:100vw; overflow:hidden;
-}
-.announcement-banner-emoji { font-size:1.2em; margin-right:0.7em;}
-`;
-document.head.appendChild(style);
 
 // --- INIT ---
 window.addEventListener("DOMContentLoaded", ()=>{
@@ -151,26 +184,16 @@ window.addEventListener("DOMContentLoaded", ()=>{
     .then(data=>{
       if(Array.isArray(data) && data.length && data[0].content) {
         const ann = data[0];
-        const signature = getAnnouncementSignature(ann);
-        const seenSignature = sessionStorage.getItem('announcementSeenSignature');
-        if(seenSignature !== signature) {
-          showAnnouncementModal(ann.content, ann.type || "info", ann.video_url, signature);
+        const isHomepage = window.location.pathname === "/" || window.location.pathname === "/index" || window.location.pathname === "/index.html";
+        if (isHomepage) {
+          // Sur l'accueil : modale puis bandeau quand on clique OK
+          showAnnouncementModal(ann.content, ann.type || "info", ann.video_url);
         } else {
-          showAnnouncementBanner(ann.content, ann.type || "info", ann.video_url);
+          // Sur les autres pages : bandeau direct, pas de modale
+          showAnnouncementBanner(ann.content);
         }
       }
     });
-  const banner = document.getElementById("site-announcement-banner");
-  const navbar = document.querySelector(".navbar");
-  function adjustNavbar() {
-    if(banner && banner.style.display === "block" && navbar) {
-      navbar.style.marginTop = banner.offsetHeight+"px";
-    } else if(navbar) {
-      navbar.style.marginTop = "";
-    }
-  }
-  new MutationObserver(adjustNavbar).observe(banner, {attributes:true,childList:true});
-  window.addEventListener("resize", adjustNavbar);
 });
 </script>
   <nav class="navbar">
@@ -213,7 +236,7 @@ window.addEventListener("DOMContentLoaded", ()=>{
   <!-- Bouton Panier flottant -->
   <button class="cart-bubble" id="cart-bubble" title="Voir le panier" aria-label="Panier" type="button">
     <svg class="cart-icon" width="40" height="40" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-      <path d="M7 4H3V6H4L7.6 15.59L6.25 18C6.09 18.32 6 18.66 6 19C6 20.1 6.9 21 8 21H20V19H8.42C8.28 19 8.17 18.89 8.17 18.74C8.17 18.68 8.18 18.6 8.22 18.51L9.1 16H18.55C19.3 16 19.96 15.56 20.24 14.88L23 8H7.34L7 4Z" fill="var(--cart-icon)"/>
+      <path d="M7 4H3V6H4L7.6 15.59L6.25 18C6.09 18.32 6 18.66 6 19C6 20.1 6.9 21 8 21H20V19H8.42C8.28 19 8.17 18.89 8.17 18.74C8.17 18.68 8.18 18.6 8.22 18.51L9.1 16H18.55C19.3 16 19.96 15.56 20.24 1[...]
       <circle cx="9" cy="21" r="1" fill="var(--cart-icon)"/>
       <circle cx="18" cy="21" r="1" fill="var(--cart-icon)"/>
     </svg>
