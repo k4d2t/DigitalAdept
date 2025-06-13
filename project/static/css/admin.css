@@ -11,7 +11,7 @@ button{
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.8); /* Sombre, semi-transparent */
+    background-color: rgba(0, 0, 0, 0.8);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -28,11 +28,11 @@ button{
 }
 
 .confirmModal-content {
-    background-color: var(--dark-bg); /* Fond sombre */
+    background-color: var(--dark-bg);
     padding: 30px;
     border-radius: 12px;
-    box-shadow: var(--neon); /* Effet néon */
-    color: var(--text-invert); /* Texte clair */
+    box-shadow: var(--neon);
+    color: var(--text-invert);
     text-align: center;
     width: 400px;
     max-width: 90%;
@@ -60,12 +60,12 @@ button{
     font-weight: bold;
     text-transform: uppercase;
     transition: all 0.3s ease;
-    box-shadow: var(--neon); /* Effet néon par défaut */
+    box-shadow: var(--neon);
 }
 
 .confirmModal-button-yes {
-    background-color: var(--primary-dark); /* Couleur "Oui" */
-    color: var(--text-invert);
+    background-color: var(--primary-dark);
+    color: var(--text-invert, #fff);
     box-shadow: var(--neon);
 }
 
@@ -75,15 +75,15 @@ button{
 }
 
 .confirmModal-button-no {
-    background-color: var(--red-dark); /* Couleur "Non" */
-    color: var(--text-invert);
+    background-color: var(--red-dark);
+    color: var(--text-invert, #fff);
     box-shadow: var(--neon-red);
 }
 
 .confirmModal-button-no:hover {
     background-color: var(--red);
     box-shadow: var(--neon-red-hover);
-}
+}*/
 
 /* Admin Login Page */
 .login-page {
