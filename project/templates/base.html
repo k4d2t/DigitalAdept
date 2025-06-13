@@ -87,12 +87,12 @@
     <!-- BANDEAU ANNONCE -->
   <div id="site-announcement-banner" style="display:none;"></div>
   <!-- MODALE ANNONCE -->
-  <div id="site-announcement-modal" class="confirmModal" style="z-index:2000;display:none;">
-    <div class="confirmModal-content" style="width:95vw;max-width:520px;">
+  <div id="site-announcement-modal" class="AnnouncementModal" style="z-index:2000;display:none;">
+    <div class="AnnouncementModal-content" style="width:95vw;max-width:520px;">
       <div id="site-announcement-video" style="display:none;margin-bottom:1em;text-align:center;"></div>
       <p id="site-announcement-message" style="font-size:1.1em;"></p>
-      <div class="confirmModal-buttons" style="margin-top:2em;">
-        <button class="confirmModal-button confirmModal-button-yes" id="close-announcement-modal" style="width:100%;">OK</button>
+      <div class="AnnouncementModal-buttons" style="margin-top:2em;">
+        <button class="AnnouncementModal-button AnnouncementModal-button-yes" id="close-announcement-modal" style="width:100%;">OK</button>
       </div>
     </div>
   </div>
@@ -120,11 +120,11 @@ function getVideoEmbedNeon(url) {
 }
 
 // --- MODALE ---
-function showAnnouncementModal(content, type, video_url) {
+function showAnnouncementModal(content, type, video_url, btn_label, btn_url) {
   const modal = document.getElementById("site-announcement-modal");
   const msg = document.getElementById("site-announcement-message");
   const vid = document.getElementById("site-announcement-video");
-
+  const okBtn = document.getElementById("close-announcement-modal");
   msg.innerHTML = content;
 
 
@@ -145,9 +145,16 @@ function showAnnouncementModal(content, type, video_url) {
     setTimeout(()=>{ modal.style.display = "none"; }, 300);
     showAnnouncementBanner(content);
   }
-  // bouton OK
-  const okBtn = document.getElementById("close-announcement-modal");
-  if(okBtn) okBtn.onclick = closeModal;
+  // Texte du bouton
+  okBtn.textContent = (btn_label && btn_label.trim()) ? btn_label : "OK";
+  if (btn_url && btn_url.trim()) {
+    okBtn.onclick = function() {
+      window.open(btn_url, "_blank");
+      closeModal();
+    };
+  } else {
+    okBtn.onclick = closeModal;
+  }
 }
 
 // --- BANDEAU ---
@@ -187,7 +194,13 @@ window.addEventListener("DOMContentLoaded", ()=>{
         const isHomepage = window.location.pathname === "/" || window.location.pathname === "/index" || window.location.pathname === "/index.html";
         if (isHomepage) {
           // Sur l'accueil : modale puis bandeau quand on clique OK
-          showAnnouncementModal(ann.content, ann.type || "info", ann.video_url);
+          showAnnouncementModal(
+            ann.content,
+            ann.type || "info",
+            ann.video_url,
+            ann.btn_label,
+            ann.btn_url
+          );
         } else {
           // Sur les autres pages : bandeau direct, pas de modale
           showAnnouncementBanner(ann.content);
