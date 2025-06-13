@@ -1353,6 +1353,20 @@ def fetch_announcements():
 def api_announcements():
     return jsonify(fetch_announcements())
 
+@app.route('/api/announcements', methods=['POST'])
+def api_announcements_post():
+    # Ici traite l’ajout d’une annonce (par exemple, via MockAPI ou local)
+    # Ex : tu peux faire un POST sur MockAPI (comme pour les produits)
+    data = request.json
+    try:
+        r = requests.post("https://6840a10f5b39a8039a58afb0.mockapi.io/api/externalapi/annoucements", json=data)
+        if r.status_code in (200, 201):
+            return jsonify(r.json()), 201
+        else:
+            return jsonify({"error": "Erreur lors de l'ajout"}), 500
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @app.route('/admin/announcements', methods=['GET'])
 def admin_announcements():
     """
