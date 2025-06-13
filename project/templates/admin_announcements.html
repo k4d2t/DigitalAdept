@@ -124,8 +124,6 @@ document.addEventListener("DOMContentLoaded", () => {
           <h2 style="margin-bottom:0.5em;">${ann.type === 'promo' ? '🔥 ' : ann.type === 'alerte' ? '⚠️ ' : 'ℹ️ '}${ann.type || 'info'}</h2>
           <p style="margin-bottom:1em;">${ann.content?.slice(0, 80) || ""}${ann.content && ann.content.length > 80 ? "..." : ""}</p>
           <span style="font-size:0.95em;padding:4px 10px;border-radius: 7px;${ann.active?'background:#e8ffe8;color:#0a0;':'background:#eee;color:#aaa;'}">${ann.active?'Active':'Inactive'}</span>
-          ${ann.btn_label ? `<div style="margin-top:0.5em;font-size:0.93em;"><b>Bouton:</b> ${ann.btn_label}</div>` : ""}
-          ${ann.btn_url ? `<div style="margin-top:0.3em;font-size:0.92em;"><a href="${ann.btn_url}" target="_blank" style="color:#1976d2;">Lien bouton</a></div>` : ""}
         </section>
       `;
       tile.onclick = (ev) => { ev.preventDefault(); openModal(ann); };
@@ -174,10 +172,13 @@ document.addEventListener("DOMContentLoaded", () => {
   cancelEdit.onclick = (e) => { e.preventDefault(); closeAnnouncementModal(); };
 
   deleteBtn.onclick = () => {
-    if(confirm("Supprimer définitivement cette annonce ?")) {
-      deleteAnnouncement(idInput.value);
-    }
-  };
+      ConfirmModal(
+        "Supprimer définitivement cette annonce ?",
+        "Oui", "Non",
+        () => { deleteAnnouncement(idInput.value); }, // onYes
+        () => { /* rien à faire si Non */ }
+      );
+    };
 
   function saveAnnouncement() {
     const id = idInput.value;
