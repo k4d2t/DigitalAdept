@@ -15,7 +15,12 @@ from apiMoneyFusion import PaymentClient
 import ssl
 import urllib3
 import html  # Utilisé pour échapper les caractères spéciaux HTML
+from threading import Lock
 
+PRODUCTS_CACHE = {"data": None, "timestamp": 0}
+ANNOUNCEMENTS_CACHE = {"data": None, "timestamp": 0}
+CACHE_TTL = 120  # secondes (2 minutes)
+CACHE_LOCK = Lock()
 
 
 app = Flask(__name__)
@@ -25,7 +30,8 @@ CORS(app)
 
 LOGS_FILE = "data/logs.json"
 COMMENTS_FILE = "data/comments.json"
-CONTACTS_FILE = "data/contacts.json"
+
+#CONTACTS_FILE = "data/contacts.json"
 
 '''def periodic_ping():
     urls = [
@@ -81,6 +87,29 @@ def slugify(text):
 MOCKAPI_URL = "https://6840a10f5b39a8039a58afb0.mockapi.io/api/externalapi/produits"
 
 def fetch_products():
+    """Récupère tous les produits depuis MockAPI (avec cache RAM)"""
+    now = time.time()
+    with CACHE_LOCK:
+        if PRODUCTS_CACHE["data"] is not None and (now - PRODUCTS_CACHE["timestamp"] < CACHE_TTL):
+            return PRODUCTS_CACHE["data"]
+    try:
+        r = requests.get(MOCKAPI_URL, timeout=7)
+        produits = r.json()
+        for p in produits:
+            try:
+                p['id'] = int(p['id'])
+            except (KeyError, ValueError, TypeError):
+                pass
+        with CACHE_LOCK:
+            PRODUCTS_CACHE["data"] = produits
+            PRODUCTS_CACHE["timestamp"] = now
+        return produits
+    except Exception as e:
+        print(f"[MOCKAPI] Erreur fetch_products: {e}")
+        with CACHE_LOCK:
+            if PRODUCTS_CACHE["data"] is not None:
+                return PRODUCTS_CACHE["data"]  # fallback sur ancien cache
+        return []
     """Récupère tous les produits depuis MockAPI (remplace le chargement local)."""
     try:
         r = requests.get(MOCKAPI_URL, timeout=7)
@@ -234,8 +263,8 @@ def sort_comments(comments):
         print(f"Erreur lors de la sauvegarde : {e}")''
         return False'''
 
-TELEGRAM_BOT_TOKEN = "7709634006:AAEvJvaqd9VGsCY8bGJdu6bKGwGTmGmwNB4"
-TELEGRAM_CHAT_ID = "7313154263"
+MESSAGES_BOT_TOKEN = "7709634006:AAEvJvaqd9VGsCY8bGJdu6bKGwGTmGmwNB4"
+MESSAGES_CHAT_ID = "7313154263"
 
 def escape_md(text):
     """
@@ -278,9 +307,9 @@ def send_telegram_message(data):
 
     try:
         response = requests.post(
-            f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage",
+            f"https://api.telegram.org/bot{MESSAGES_BOT_TOKEN}/sendMessage",
             json={
-                "chat_id": TELEGRAM_CHAT_ID,
+                "chat_id": MESSAGES_CHAT_ID,
                 "text": text,
                 "parse_mode": "HTML",
                 "disable_web_page_preview": True
@@ -610,8 +639,6 @@ def download(user_id):
 
     # Passe les produits trouvés, sans message d’erreur
     return render_template("download.html", user_id=user_id, products=user_products)'''
-
-
 
 
 # --- Authentification pour le tableau de bord ---
@@ -993,21 +1020,21 @@ def admin_telegram_files():
     return render_template('admin_telegram_files.html')
 
 
-TELEGRAM_BOT_TOKEN = "7734969718:AAGtUifNLlIUadA-jfT0tQKH60iu_Qu2kSQ"
-TELEGRAM_API_URL = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}"
-TELEGRAM_CHAT_ID = "-1002693426522"  # Remplace par le chat_id de ton groupe
+FILE_BOT_TOKEN = "7734969718:AAGtUifNLlIUadA-jfT0tQKH60iu_Qu2kSQ"
+FILE_API_URL = f"https://api.telegram.org/bot{FILE_BOT_TOKEN}"
+FILE_CHAT_ID = "-1002693426522"  # Remplace par le chat_id de ton groupe
 
 def get_recent_group_files(limit=100):
     """
     Va chercher les derniers messages du groupe et extrait les fichiers/photos/documents.
     """
     # On utilise getUpdates pour la démo, mais tu peux améliorer pour de vraies apps.
-    updates = requests.get(f"{TELEGRAM_API_URL}/getUpdates", params={"limit": limit}).json()
+    updates = requests.get(f"{FILE_API_URL}/getUpdates", params={"limit": limit}).json()
     files = []
 
     for update in updates.get("result", []):
         msg = update.get("message") or update.get("channel_post")
-        if not msg or str(msg.get("chat", {}).get("id")) != TELEGRAM_CHAT_ID:
+        if not msg or str(msg.get("chat", {}).get("id")) != FILE_CHAT_ID:
             continue
 
         # PHOTOS (plusieurs variantes possibles)
@@ -1300,6 +1327,32 @@ def delete_product(product_id):
 """
 FIN PRODUIT
 """
+
+ANNOUNCEMENTS_URL = "https://6840a10f5b39a8039a58afb0.mockapi.io/api/externalapi/annoucements?active=true"
+
+def fetch_announcements():
+    now = time.time()
+    with CACHE_LOCK:
+        if ANNOUNCEMENTS_CACHE["data"] is not None and (now - ANNOUNCEMENTS_CACHE["timestamp"] < CACHE_TTL):
+            return ANNOUNCEMENTS_CACHE["data"]
+    try:
+        r = requests.get(ANNOUNCEMENTS_URL, timeout=5)
+        data = r.json()
+        with CACHE_LOCK:
+            ANNOUNCEMENTS_CACHE["data"] = data
+            ANNOUNCEMENTS_CACHE["timestamp"] = now
+        return data
+    except Exception as e:
+        print(f"[MOCKAPI] Erreur fetch_announcements: {e}")
+        with CACHE_LOCK:
+            if ANNOUNCEMENTS_CACHE["data"] is not None:
+                return ANNOUNCEMENTS_CACHE["data"]
+        return []
+
+@app.route('/api/announcements')
+def api_announcements():
+    return jsonify(fetch_announcements())
+
 @app.route('/admin/announcements', methods=['GET'])
 def admin_announcements():
     """
