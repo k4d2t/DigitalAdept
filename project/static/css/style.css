@@ -12,6 +12,9 @@
     --switch-thumb-dark: #fff;
     --neon: 0 0 12px #4fd8ff, 0 0 32px #1976d2;
     --neon-hover: 0 0 8px #4fd8ff, 0 0 16px #1976d2;
+    --red-dark: #c0392b;
+    --red: #e74c3c;
+    --neon-red-hover: 0 0 8px #e74c3c, 0 0 16px #c0392b;;
 }
 
 [data-theme="dark"] {
@@ -2343,8 +2346,8 @@ display: none;
     }
 }
 
-/* ---- MODALE GENERALE (pour annonces, confirmations, etc.) ---- */
-.confirmModal {
+/* ---- MODALE ANNONCE (pour annonces, confirmations, etc.) ---- */
+.AnnouncementModal {
     position: fixed;
     top: 0;
     left: 0;
@@ -2360,11 +2363,11 @@ display: none;
     z-index: 2000;
     font-family: 'Google Sans', 'Roboto', Arial, sans-serif;
 }
-.confirmModal.visible {
+.AnnouncementModal.visible {
     opacity: 1;
     visibility: visible;
 }
-.confirmModal-content {
+.AnnouncementModal-content {
     background-color: var(--contact-card-bg, #fff);
     padding: 30px;
     border-radius: 12px;
@@ -2377,17 +2380,17 @@ display: none;
     overflow-y: auto;
     position: relative;
 }
-.confirmModal-content p {
+.AnnouncementModal-content p {
     font-size: 18px;
     margin-bottom: 20px;
     line-height: 1.6;
 }
-.confirmModal-buttons {
+.AnnouncementModal-buttons {
     display: flex;
     justify-content: space-between;
     gap: 15px;
 }
-.confirmModal-button {
+.AnnouncementModal-button {
     padding: 12px 20px;
     border: none;
     border-radius: 8px;
@@ -2398,25 +2401,25 @@ display: none;
     transition: all 0.3s ease;
     box-shadow: 0 0 12px #4fd8ff, 0 0 32px #1976d2;
 }
-.confirmModal-button-yes {
+.AnnouncementModal-button-yes {
     background-color: var(--primary-dark, #1976d2);
     color: var(--text-invert, #fff);
     box-shadow: 0 0 12px #4fd8ff, 0 0 32px #1976d2;
 }
-.confirmModal-button-yes:hover {
+.AnnouncementModal-button-yes:hover {
     background-color: var(--primary, #4fc3f7);
     box-shadow: 0 0 8px #4fd8ff, 0 0 16px #1976d2;
 }
-.confirmModal-button-no {
+.AnnouncementModal-button-no {
     background-color: #c0392b;
     color: var(--text-invert, #fff);
     box-shadow: 0 0 12px #e74c3c, 0 0 24px #c0392b;
 }
-.confirmModal-button-no:hover {
+.AnnouncementModal-button-no:hover {
     background-color: #e74c3c;
     box-shadow: 0 0 8px #e74c3c, 0 0 16px #c0392b;
 }
-.confirmModal-close {
+.AnnouncementModal-close {
     position: absolute;
     top: 12px;
     right: 18px;
@@ -2425,7 +2428,7 @@ display: none;
     color: #888;
 }
 @media (max-width: 600px) {
-    .confirmModal-content {
+    .AnnouncementModal-content {
         min-width: 0;
         padding: 16px 6px 12px 6px;
     }
