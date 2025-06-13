@@ -1,9 +1,9 @@
 // --- Préchargement des sons (version améliorée) ---
 const notificationSounds = {
-    success: new Audio("/static/sounds/success.wav"),
-    error: new Audio("/static/sounds/error.wav"),
-    info: new Audio("/static/sounds/info.wav"),
-    warning: new Audio("/static/sounds/warning.wav"),
+    success: new Audio("https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/sounds/success.wav"),
+    error:   new Audio("https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/sounds/error.wav"),
+    info:    new Audio("https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/sounds/info.wav"),
+    warning: new Audio("https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/sounds/warning.wav"),
 };
 // Précharge tous les sons
 Object.values(notificationSounds).forEach(sound => sound.preload = "auto");
