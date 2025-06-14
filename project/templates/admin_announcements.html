@@ -40,11 +40,51 @@
       <div style="display:flex;justify-content:space-between;align-items:center;margin-top:15px;">
         <button type="submit" class="btn cta" style="min-width:130px;">Enregistrer</button>
         <button type="button" class="btn" id="cancelEdit" style="margin-left:10px;">Annuler</button>
-        <button type="button" class="btn" id="deleteAnnouncementBtn" style="margin-left:auto;color:#d34f4f;display:none;background:none;border:1px solid #d34f4f;">Supprimer</button>
       </div>
     </form>
   </div>
 </div>
+
+<style>
+
+#announcementsGrid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;  /* centre horizontalement */
+  align-items: flex-start;   /* aligne en haut pour chaque ligne */
+  gap: 2em 2em;             /* espace entre les tuiles */
+  margin: 0 auto;           /* centre le grid lui-même */
+  width: 100%;
+  padding-bottom: 2em;
+  min-height: 200px;
+}
+.tile-link {
+  margin: 0;
+}
+
+.delete-announcement-btn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  outline: none;
+  z-index: 2;
+  transition: filter 0.17s;
+  padding: 2px;
+}
+.delete-announcement-btn svg {
+  pointer-events: none;
+  display: block;
+}
+.delete-announcement-btn:hover svg rect,
+.delete-announcement-btn:focus svg rect {
+  fill: #a11c1c !important;
+  stroke: #a11c1c !important;
+  filter: drop-shadow(0 0 4px #d34f4f88);
+}
+</style>
 
 <script>
 const MOCKAPI_URL = "/api/announcements"; // Utilise ton backend local pour plus de rapidité
@@ -68,17 +108,18 @@ document.addEventListener("DOMContentLoaded", () => {
   fetchAnnouncements();
 
   function renderAddTile() {
-    const addTile = document.createElement("a");
+    const addTile = document.createElement("div");
     addTile.className = "tile-link";
     addTile.style.maxWidth = "320px";
     addTile.style.minWidth = "260px";
+    addTile.style.cursor = "pointer";
     addTile.innerHTML = `
       <section>
         <h2>+ Nouvelle annonce</h2>
         <p>Créer une nouvelle annonce à afficher sur le site.</p>
       </section>
     `;
-    addTile.onclick = (ev) => { ev.preventDefault(); openModal(); };
+    addTile.addEventListener("click", () => openModal());
     return addTile;
   }
 
@@ -115,21 +156,47 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
     list.forEach(ann => {
-      const tile = document.createElement("a");
+      const tile = document.createElement("div");
       tile.className = "tile-link";
       tile.style.maxWidth = "320px";
       tile.style.minWidth = "260px";
+      tile.style.position = "relative";
       tile.innerHTML = `
         <section style="border-left:6px solid ${ann.active ? '#0a0':'#bbb'};">
           <h2 style="margin-bottom:0.5em;">${ann.type === 'promo' ? '🔥 ' : ann.type === 'alerte' ? '⚠️ ' : 'ℹ️ '}${ann.type || 'info'}</h2>
           <p style="margin-bottom:1em;">${ann.content?.slice(0, 80) || ""}${ann.content && ann.content.length > 80 ? "..." : ""}</p>
           <span style="font-size:0.95em;padding:4px 10px;border-radius: 7px;${ann.active?'background:#e8ffe8;color:#0a0;':'background:#eee;color:#aaa;'}">${ann.active?'Active':'Inactive'}</span>
         </section>
+        <button class="delete-announcement-btn" title="Supprimer l'annonce" data-id="${ann.id}" style="position:absolute;top:10px;right:10px;background:none;border:none;cursor:pointer;padding:2px;z-index:2;">
+          <svg width="26" height="26" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect x="13" y="17" width="2" height="10" rx="1" fill="#d34f4f"/>
+            <rect x="19" y="17" width="2" height="10" rx="1" fill="#d34f4f"/>
+            <rect x="25" y="17" width="2" height="10" rx="1" fill="#d34f4f"/>
+            <rect x="10" y="13" width="20" height="2.2" rx="1.1" fill="#d34f4f"/>
+            <rect x="16" y="8" width="8" height="3" rx="1.5" fill="#d34f4f"/>
+            <rect x="8" y="13" width="24" height="20" rx="4" stroke="#d34f4f" stroke-width="2"/>
+          </svg>
+        </button>
       `;
-      tile.onclick = (ev) => { ev.preventDefault(); openModal(ann); };
+      const btn = tile.querySelector(".delete-announcement-btn");
+      tile.addEventListener("click", (ev) => {
+        // Si clic sur la poubelle, ne pas ouvrir la modale d'édition :
+        if (btn && (ev.target === btn || btn.contains(ev.target))) return;
+        openModal(ann);
+      });
+      btn.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        ConfirmModal(
+          "Supprimer définitivement cette annonce ?",
+          "Oui", "Non",
+          () => { deleteAnnouncement(ann.id); },
+          () => { /* rien à faire si Non */ }
+        );
+      });
       announcementsGrid.appendChild(tile);
     });
   }
+
 
   function openModal(announcement = null) {
     if(announcement) {
@@ -141,7 +208,7 @@ document.addEventListener("DOMContentLoaded", () => {
       videoInput.value = announcement.video_url || "";
       btnLabelInput.value = announcement.btn_label || "";
       btnUrlInput.value = announcement.btn_url || "";
-      deleteBtn.style.display = "inline-block";
+      if (deleteBtn) deleteBtn.style.display = "inline-block";
     } else {
       modalTitle.textContent = "Nouvelle annonce";
       idInput.value = "";
@@ -151,7 +218,7 @@ document.addEventListener("DOMContentLoaded", () => {
       videoInput.value = "";
       btnLabelInput.value = "";
       btnUrlInput.value = "";
-      deleteBtn.style.display = "none";
+      if (deleteBtn) deleteBtn.style.display = "none";
     }
     modal.style.display = "flex";
     setTimeout(()=>modal.classList.add('visible'),10);
@@ -171,14 +238,6 @@ document.addEventListener("DOMContentLoaded", () => {
   closeModal.onclick = closeAnnouncementModal;
   cancelEdit.onclick = (e) => { e.preventDefault(); closeAnnouncementModal(); };
 
-  deleteBtn.onclick = () => {
-      ConfirmModal(
-        "Supprimer définitivement cette annonce ?",
-        "Oui", "Non",
-        () => { deleteAnnouncement(idInput.value); }, // onYes
-        () => { /* rien à faire si Non */ }
-      );
-    };
 
   function saveAnnouncement() {
     const id = idInput.value;
