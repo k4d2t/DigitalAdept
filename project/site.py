@@ -18,7 +18,6 @@ import html  # Utilisé pour échapper les caractères spéciaux HTML
 from threading import Lock
 
 PRODUCTS_CACHE = {"data": None, "timestamp": 0}
-ANNOUNCEMENTS_CACHE = {"data": None, "timestamp": 0}
 CACHE_TTL = 120  # secondes (2 minutes)
 CACHE_LOCK = Lock()
 
@@ -1238,8 +1237,15 @@ def delete_product(product_id):
 """
 FIN PRODUIT
 """
+ANNOUNCEMENTS_CACHE = {"data": None, "timestamp": 0}
 
-ANNOUNCEMENTS_URL = "https://6840a10f5b39a8039a58afb0.mockapi.io/api/externalapi/annoucements?active=true"
+def invalidate_announcements_cache():
+    with CACHE_LOCK:
+        ANNOUNCEMENTS_CACHE["data"] = None
+        ANNOUNCEMENTS_CACHE["timestamp"] = 0
+
+ANNOUNCEMENTS_URL = "https://6840a10f5b39a8039a58afb0.mockapi.io/api/externalapi/annoucements"
+
 
 def fetch_announcements():
     now = time.time()
@@ -1264,6 +1270,11 @@ def fetch_announcements():
 def api_announcements():
     return jsonify(fetch_announcements())
 
+@app.route('/api/announcements/active')
+def api_announcements_active():
+    r = requests.get(f"{ANNOUNCEMENTS_URL}?active=true")
+    return jsonify(r.json())
+
 @app.route('/admin/announcements', methods=['GET'])
 def admin_announcements():
     """
@@ -1276,6 +1287,26 @@ def admin_announcements():
     log_action("view_announcements_page", {"username": session.get('username')})
 
     return render_template('admin_announcements.html')
+
+@app.route('/api/announcements', methods=['POST'])
+def api_announcements_post():
+    data = request.json
+    r = requests.post(ANNOUNCEMENTS_URL, json=data)
+    invalidate_announcements_cache()
+    return (r.text, r.status_code, {'Content-Type': 'application/json'})
+
+@app.route('/api/announcements/<id>', methods=['PUT'])
+def api_announcements_put(id):
+    data = request.json
+    r = requests.put(f"{ANNOUNCEMENTS_URL}/{id}", json=data)
+    invalidate_announcements_cache()
+    return (r.text, r.status_code, {'Content-Type': 'application/json'})
+
+@app.route('/api/announcements/<id>', methods=['DELETE'])
+def api_announcements_delete(id):
+    r = requests.delete(f"{ANNOUNCEMENTS_URL}/{id}")
+    invalidate_announcements_cache()
+    return (r.text, r.status_code, {'Content-Type': 'application/json'})
 
 @app.route('/admin/comments')
 def admin_comments_page():
