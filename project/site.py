@@ -31,22 +31,6 @@ CORS(app)
 LOGS_FILE = "data/logs.json"
 COMMENTS_FILE = "data/comments.json"
 
-#CONTACTS_FILE = "data/contacts.json"
-
-'''def periodic_ping():
-    urls = [
-        "http://127.0.0.1:5001/ping",
-        "http://127.0.0.1:5000/ping"
-    ]
-    while True:
-        for url in urls:
-            try:
-                r = requests.get(url, timeout=10)
-                print(f"[PING] {url} -> {r.status_code}")
-            except Exception as e:
-                print(f"[PING ERROR] {url} -> {e}")
-        time.sleep(300)  # 5 minutes en secondes '''
-
 def log_action(action, details=None):
     """Ajoute une action au journal des activités en incluant l'utilisateur connecté."""
     user = session.get("username", "anonyme")  # Récupère l'utilisateur connecté ou "anonyme"
@@ -238,31 +222,6 @@ def sort_comments(comments):
     """
     return sorted(comments, key=lambda c: (-c["rating"], c["date"]), reverse=False)
 
-'''def save_message(data):
-    """
-    Sauvegarde un message dans contacts.json
-    """
-    file_path = 'data/contacts.json'
-    try:
-        # Charger les messages existants
-        if os.path.exists(file_path):
-            with open(file_path, 'r', encoding='utf-8') as f:
-                messages = json.load(f)
-        else:
-            messages = []
-
-        # Ajouter le nouveau message
-        messages.append(data)
-
-        # Écrire dans le fichier JSON
-        with open(file_path, 'w', encoding='utf-8') as f:
-            json.dump(messages, f, indent=4, ensure_ascii=False)
-
-        return True
-    except Exception as e:
-        print(f"Erreur lors de la sauvegarde : {e}")''
-        return False'''
-
 MESSAGES_BOT_TOKEN = "7709634006:AAEvJvaqd9VGsCY8bGJdu6bKGwGTmGmwNB4"
 MESSAGES_CHAT_ID = "7313154263"
 
@@ -437,9 +396,6 @@ def messages():
         # Récupérer les données du formulaire
         data = request.form.to_dict()
 
-        # Sauvegarder le message (optionnel selon ton besoin)
-        #save_ok = save_message(data)
-
         # ENVOI AU BOT TELEGRAM
         # (si tu veux, tu peux le rendre async/multithread pour ne pas bloquer la réponse web)
         tg_ok = send_telegram_message(data)
@@ -605,40 +561,6 @@ def callback():
         print("product_names:", product_names)
         print("user_products:", user_products)
         return render_template("download.html", products=[], message="Erreur technique, contactez le support.")
-
-
-''''@app.route("/download/<user_id>")
-def download(user_id):
-    produits = PRODUIT_CACHE
-    product_names = request.args.get('products', '').split(',')
-
-    if not product_names or product_names == ['']:
-        user_products = [
-            {
-                "id": produit["id"],
-                "name": produit["name"],
-                "file_id": produit.get("resource_file_id"),
-            }
-            for produit in produits
-            if produit.get("resource_file_id")
-        ]
-    else:
-        user_products = [
-            {
-                "name": produit["name"],
-                "file_id": produit.get("resource_file_id"),
-                "id": produit["id"]
-            }
-            for produit in produits
-            if produit.get("name") in product_names
-        ]
-
-    if not user_products:
-        # Passe products=[] et un message d’erreur
-        return render_template("download.html", products=[], message="Erreur, Veuillez nous contacter")
-
-    # Passe les produits trouvés, sans message d’erreur
-    return render_template("download.html", user_id=user_id, products=user_products)'''
 
 
 # --- Authentification pour le tableau de bord ---
@@ -1073,17 +995,6 @@ def api_telegram_files():
     files = get_recent_group_files()
     return jsonify(files)
 
-''''
-@app.route('/admin/api/telegram-reset', methods=['POST'])
-def api_telegram_reset():
-    updates = requests.get(f"{TELEGRAM_API_URL}/getUpdates").json()
-    results = updates.get("result", [])
-    if results:
-        last_update_id = results[-1]["update_id"]
-        # Consommer tous les updates jusqu'au dernier
-        requests.get(f"{TELEGRAM_API_URL}/getUpdates", params={"offset": last_update_id + 1})
-    return jsonify({"status": "reset done"})'''
-
 @app.route('/admin/products/manage', methods=['GET'])
 def admin_products_manage():
     """
@@ -1353,20 +1264,6 @@ def fetch_announcements():
 def api_announcements():
     return jsonify(fetch_announcements())
 
-@app.route('/api/announcements', methods=['POST'])
-def api_announcements_post():
-    # Ici traite l’ajout d’une annonce (par exemple, via MockAPI ou local)
-    # Ex : tu peux faire un POST sur MockAPI (comme pour les produits)
-    data = request.json
-    try:
-        r = requests.post("https://6840a10f5b39a8039a58afb0.mockapi.io/api/externalapi/annoucements", json=data)
-        if r.status_code in (200, 201):
-            return jsonify(r.json()), 201
-        else:
-            return jsonify({"error": "Erreur lors de l'ajout"}), 500
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
 @app.route('/admin/announcements', methods=['GET'])
 def admin_announcements():
     """
@@ -1379,131 +1276,6 @@ def admin_announcements():
     log_action("view_announcements_page", {"username": session.get('username')})
 
     return render_template('admin_announcements.html')
-
-''''
-@app.route('/admin/messages')
-def admin_messages_page():
-    """
-    Page pour consulter les messages reçus.
-    """
-    if not session.get('admin_logged_in'):
-        flash("Veuillez vous connecter pour accéder à cette page.", "error")
-        return redirect(url_for('admin_login'))
-
-    # Charger les messages depuis le fichier JSON
-    try:
-        with open(CONTACTS_FILE, "r") as f:
-            messages = json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
-        messages = []  # Si le fichier est introuvable ou corrompu, utiliser une liste vide
-
-    # Ajouter un champ 'id' unique si manquant dans les messages
-    for index, message in enumerate(messages):
-        if "id" not in message:
-            message["id"] = index  # Nouveau champ ID
-
-    # Sauvegarder les messages avec les nouveaux IDs dans le fichier JSON
-    with open(CONTACTS_FILE, "w") as f:
-        json.dump(messages, f, indent=4)
-
-    log_action("view_messages", {"username": session.get('username')})
-    return render_template('admin_messages.html', messages=messages)
-
-
-@app.route('/admin/messages/data', methods=['GET'])
-def admin_messages_data():
-    """
-    Retourne la liste des messages et ajoute dynamiquement le champ 'is_read' s'il n'existe pas.
-    """
-    filter_type = request.args.get('filter', 'all')  # Par défaut : tous les messages
-
-    try:
-        with open(CONTACTS_FILE, "r") as f:
-            messages = json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
-        messages = []
-
-    # Ajout dynamique des champs 'id' et 'is_read'
-    for index, message in enumerate(messages):
-        if "id" not in message:
-            message["id"] = index
-        if "is_read" not in message:
-            message["is_read"] = False
-
-    # Filtrer les messages
-    if filter_type == "unread":
-        filtered_messages = [m for m in messages if not m["is_read"]]
-    else:
-        filtered_messages = messages
-
-    return jsonify({"messages": filtered_messages})
-
-@app.route('/admin/messages/<int:message_id>', methods=['GET'])
-def get_message(message_id):
-    """
-    Récupère un message spécifique par son ID.
-    """
-    try:
-        with open(CONTACTS_FILE, "r") as f:
-            messages = json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
-        return jsonify({"error": "Fichier de messages introuvable"}), 404
-
-    if 0 <= message_id < len(messages):
-        return jsonify(messages[message_id])
-    else:
-        return jsonify({"error": "Message introuvable"}), 404
-
-
-@app.route('/admin/messages/mark_as_read', methods=['POST'])
-def mark_message_as_read():
-    """
-    Met à jour le champ 'is_read' d'un message spécifique à 'true'.
-    """
-    message_id = request.json.get("message_id")
-
-    try:
-        with open(CONTACTS_FILE, "r") as f:
-            messages = json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
-        return jsonify({"error": "Fichier de messages introuvable"}), 404
-
-    # Met à jour le champ 'is_read' pour le message correspondant
-    updated = False
-    for message in messages:
-        if message.get("id") == message_id:
-            message["is_read"] = True
-            updated = True
-            break
-
-    if updated:
-        with open(CONTACTS_FILE, "w") as f:
-            json.dump(messages, f, indent=4)
-        return jsonify({"message": "Message marqué comme lu"})
-    else:
-        return jsonify({"error": "Message introuvable"}), 404
-
-@app.route('/admin/messages/<int:message_id>', methods=['DELETE'])
-def delete_message(message_id):
-    """
-    Supprime un message par son ID.
-    """
-    try:
-        with open(CONTACTS_FILE, "r") as f:
-            messages = json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
-        return jsonify({"error": "Fichier de messages introuvable"}), 404
-
-    # Rechercher le message à supprimer par ID
-    for i, message in enumerate(messages):
-        if message.get("id") == message_id:
-            deleted_message = messages.pop(i)
-            with open(CONTACTS_FILE, "w") as f:
-                json.dump(messages, f, indent=4)
-            return jsonify({"message": f"Message '{deleted_message['message']}' supprimé avec succès"})
-
-    return jsonify({"error": "Message introuvable"}), 404
-'''
 
 @app.route('/admin/comments')
 def admin_comments_page():
