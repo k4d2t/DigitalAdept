@@ -8,8 +8,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}Digital Adept{% endblock %}</title>
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Google+Sans:wght@500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/css/style.css">
-  <link rel="icon" href="https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/favicon.ico">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}">
   <style>
     /* === VIDEO NEON ANNOUNCEMENT MODAL === */
     .video-neon {
@@ -79,25 +79,40 @@
       100% { transform: translateX(-100vw);}
     }
 
+  #announcement-modal-close-x[disabled] { cursor: not-allowed; opacity: 0.7; }
+  #announcement-modal-close-x:not([disabled]):hover text:last-child { fill: #ff1744; }
+  #announcement-close-svg { display: block; }
+  #countdown-circle { transition: stroke-dashoffset 0.15s linear; }
+
   </style>
 </head>
-  <script src="https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/js/svgwaves.js"></script>
+  <script src="{{ url_for('static', filename='js/svgwaves.js') }}"></script>
 <body>
   <div id="svg-bg"></div>
     <!-- BANDEAU ANNONCE -->
   <div id="site-announcement-banner" style="display:none;"></div>
   <!-- MODALE ANNONCE -->
   <div id="site-announcement-modal" class="AnnouncementModal" style="z-index:2000;display:none;">
-    <div class="AnnouncementModal-content" style="width:95vw;max-width:520px;">
-      <div id="site-announcement-video" style="display:none;margin-bottom:1em;text-align:center;"></div>
-      <p id="site-announcement-message" style="font-size:1.1em;"></p>
-      <div class="AnnouncementModal-buttons" style="margin-top:2em;">
-        <button class="AnnouncementModal-button AnnouncementModal-button-yes" id="close-announcement-modal" style="width:100%;">OK</button>
-      </div>
+  <span class="custom-modal-close" onclick="closeModal()">&times;</span>
+  <div class="AnnouncementModal-content" style="width:95vw;max-width:520px;position:relative;">
+    <button id="announcement-modal-close-x" title="Fermer" style="position:absolute;top:18px;right:18px;z-index:10;display:none;background:none;border:none;padding:0;width:44px;height:44px;">
+      <svg id="announcement-close-svg" width="44" height="44" viewBox="0 0 44 44">
+        <circle id="countdown-circle-bg" cx="22" cy="22" r="18" stroke="#244" stroke-width="4" fill="none"/>
+        <circle id="countdown-circle" cx="22" cy="22" r="18" stroke="#4fd8ff" stroke-width="4" fill="none"
+          stroke-linecap="round" stroke-dasharray="113.097" stroke-dashoffset="0"/>
+        <text x="50%" y="54%" text-anchor="middle" dominant-baseline="middle" font-size="18" fill="#fff" font-family="Arial" id="countdown-txt">5</text>
+        <text x="50%" y="54%" text-anchor="middle" dominant-baseline="middle" font-size="28" fill="#fff" font-family="Arial" style="pointer-events:none;">✖</text>
+      </svg>
+    </button>
+    <div id="site-announcement-video" style="display:none;margin-bottom:1em;text-align:center;"></div>
+    <p id="site-announcement-message" style="font-size:1.1em;"></p>
+    <div class="AnnouncementModal-buttons" style="margin-top:2em;">
+      <button class="AnnouncementModal-button AnnouncementModal-button-yes" id="close-announcement-modal" style="width:100%;">OK</button>
     </div>
   </div>
+  </div>
   <script>
-const ANNOUNCEMENT_API = "/api/announcements";
+const ANNOUNCEMENT_API = "/api/announcements/active";
 
 // --- UTILS VIDEO ---
 function extractYouTubeID(url) {
@@ -118,15 +133,15 @@ function getVideoEmbedNeon(url) {
   }
   return "";
 }
-
 // --- MODALE ---
 function showAnnouncementModal(content, type, video_url, btn_label, btn_url) {
   const modal = document.getElementById("site-announcement-modal");
   const msg = document.getElementById("site-announcement-message");
   const vid = document.getElementById("site-announcement-video");
   const okBtn = document.getElementById("close-announcement-modal");
+  const closeX = document.getElementById("announcement-modal-close-x");
+  const timerSpan = document.getElementById("announcement-modal-timer");
   msg.innerHTML = content;
-
 
   // Vidéo preview (neon, large, arrondi)
   if(video_url && extractYouTubeID(video_url)) {
@@ -139,12 +154,16 @@ function showAnnouncementModal(content, type, video_url, btn_label, btn_url) {
   modal.style.display = "flex";
   setTimeout(()=>modal.classList.add('visible'),10);
 
-  // Fermeture modale
+  // Pour fermer la modale
   function closeModal() {
     modal.classList.remove('visible');
     setTimeout(()=>{ modal.style.display = "none"; }, 300);
     showAnnouncementBanner(content);
+    // reset croix/timer
+    if (closeX) closeX.style.display = "none";
+    if (timerSpan) timerSpan.textContent = "";
   }
+
   // Texte du bouton
   okBtn.textContent = (btn_label && btn_label.trim()) ? btn_label : "OK";
   if (btn_url && btn_url.trim()) {
@@ -155,8 +174,56 @@ function showAnnouncementModal(content, type, video_url, btn_label, btn_url) {
   } else {
     okBtn.onclick = closeModal;
   }
-}
 
+  // ----- Gestion croix + timer -----
+  if (closeX) closeX.style.display = "none";
+  if (timerSpan) timerSpan.textContent = "";
+
+    // --- Countdown circulaire FLUIDE ---
+  const circle = document.getElementById("countdown-circle");
+  const circleTxt = document.getElementById("countdown-txt");
+
+  const countdown = 5; // secondes
+  const circleLength = 2 * Math.PI * 18; // r=18
+  if (closeX && circle && circleTxt) {
+    closeX.disabled = true;
+    closeX.style.display = "inline-block";
+    closeX.style.cursor = "not-allowed";
+    circle.setAttribute("stroke-dasharray", circleLength);
+    circle.setAttribute("stroke-dashoffset", 0);
+    circleTxt.textContent = countdown;
+    closeX.querySelector('text:last-child').setAttribute('fill', '#aaa');
+
+    let startTime = null;
+    function animateCountdown(ts) {
+      if (!startTime) startTime = ts;
+      const elapsed = (ts - startTime) / 1000;
+      if (elapsed < countdown) {
+        // Progression fluide
+        const progress = elapsed / countdown;
+        circle.setAttribute("stroke-dashoffset", circleLength * progress);
+        // Affiche le chiffre arrondi (optionnel)
+        const secLeft = Math.ceil(countdown - elapsed);
+        circleTxt.textContent = secLeft;
+        requestAnimationFrame(animateCountdown);
+      } else {
+        // Fin du countdown
+        circle.setAttribute("stroke-dashoffset", circleLength);
+        circleTxt.textContent = '';
+        closeX.disabled = false;
+        closeX.style.cursor = "pointer";
+        closeX.querySelector('text:last-child').setAttribute('fill', '#fff');
+        closeX.title = "Fermer";
+      }
+    }
+    requestAnimationFrame(animateCountdown);
+
+    // Empêche la fermeture pendant le timer
+    closeX.onclick = function() {
+      if (!closeX.disabled) closeModal();
+    };
+  }
+}
 // --- BANDEAU ---
 function showAnnouncementBanner(content) {
   const banner = document.getElementById("site-announcement-banner");
@@ -214,7 +281,7 @@ window.addEventListener("DOMContentLoaded", ()=>{
       <span></span><span></span><span></span>
     </button>
     <div class="logo glitch" data-text="Digital Adept">
-      <img src="https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/logo.png" alt="Digital Adept Logo">
+      <img src="{{ url_for('static', filename='logo.png') }}" alt="Digital Adept Logo">
       <span class="brand">Digital Adept</span>
     </div>
     <ul class="nav-links" id="nav-links">
@@ -240,8 +307,8 @@ window.addEventListener("DOMContentLoaded", ()=>{
       {% endif %}
     </ul>
   </div>
-    <script src="https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/js/theme.js"></script>
-    <script src="https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/js/notifications.js"></script>
+    <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/notifications.js') }}"></script>
       {% block content %}{% endblock %}
     <footer>
       <p>&copy; 2025 Digital Adept. Tous droits réservés.</p>
