@@ -494,7 +494,10 @@ def callback():
             })
             print("product_names:", product_names)
             print("user_products:", user_products)
-            return render_template("download.html", products=[], message="Paiement non validé. Contactez le support.")
+            attente_msg = (
+                "Merci de patienter quelques secondes, la page va se recharger automatiquement. "
+            )
+            return render_template("download.html", products=[], message=attente_msg)
 
         # On récupère les noms des produits achetés depuis le paiement (dans "article" ou similaire)
         # Ici, on suppose que tu as envoyé les noms dans personal_Info ou un champ custom, sinon adapte
@@ -560,6 +563,8 @@ def callback():
         print("product_names:", product_names)
         print("user_products:", user_products)
         return render_template("download.html", products=[], message="Erreur technique, contactez le support.")
+
+
 
 
 # --- Authentification pour le tableau de bord ---
