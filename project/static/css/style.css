@@ -2158,6 +2158,7 @@ display: none;
     text-align: center;
     cursor: pointer;
     outline: none;
+    margin-bottom: 1em;
 }
 .download-link:hover {
     border-color: var(--primary);
