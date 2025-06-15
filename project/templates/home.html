@@ -46,4 +46,113 @@
   {% endif %}
 </div>
 </section>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  document.querySelectorAll('.faq-question').forEach(btn => {
+    btn.addEventListener('click', function () {
+      // Toggle only this accordion
+      const expanded = this.getAttribute('aria-expanded') === 'true';
+      // Ferme les autres accordions
+      document.querySelectorAll('.faq-question').forEach(other => {
+        if (other !== this) other.setAttribute('aria-expanded', 'false');
+      });
+      this.setAttribute('aria-expanded', expanded ? 'false' : 'true');
+    });
+    btn.addEventListener('focus', function(e){ this.style.boxShadow = "none"; });
+    btn.addEventListener('blur', function(e){ this.style.boxShadow = "none"; });
+  });
+});
+</script>
+
+<!-- ===== SECTION FAQ ===== -->
+<section class="faq-section neon-section">
+  <h2 class="neon-title">❓ FAQ – Digital Adept</h2>
+  <div class="faq-list">
+    <div class="faq-item">
+      <button class="faq-question" aria-expanded="false">
+        Digital Adept, c’est quoi exactement&nbsp;?
+      </button>
+      <div class="faq-answer">
+        Plateforme <b>africaine</b> de produits digitaux : on vous propose le meilleur du numérique, accessible, simple et sécurisé, pour tous les usages.
+      </div>
+    </div>
+    <div class="faq-item">
+      <button class="faq-question" aria-expanded="false">
+        Qui peut acheter sur Digital Adept&nbsp;?
+      </button>
+      <div class="faq-answer">
+        Tout le monde ! Que vous soyez en Afrique ou ailleurs, Digital Adept est ouvert à tous ceux qui cherchent des solutions numériques innovantes à prix doux.
+      </div>
+    </div>
+    <div class="faq-item">
+      <button class="faq-question" aria-expanded="false">
+        Pourquoi faire confiance à Digital Adept&nbsp;?
+      </button>
+      <div class="faq-answer">
+        <ul>
+          <li>Créé en Afrique, pour les réalités africaines.</li>
+          <li>Des prix <b>waou</b> et des promos régulières.</li>
+          <li>Des produits testés, validés et recommandés par l’équipe.</li>
+          <li>Plateforme rapide, moderne, et 100 % sécurisée (https).</li>
+        </ul>
+      </div>
+    </div>
+    <div class="faq-item">
+      <button class="faq-question" aria-expanded="false">
+        Comment sont sécurisés mes paiements&nbsp;?
+      </button>
+      <div class="faq-answer">
+        <b>Vos paiements passent par FusionPay</b> : solution de paiement chiffrée, reconnue pour la sécurité et la fiabilité en Afrique.<br>
+        Digital Adept ne stocke jamais vos infos bancaires.
+      </div>
+    </div>
+    <div class="faq-item">
+      <button class="faq-question" aria-expanded="false">
+        Et mes données personnelles alors&nbsp;?
+      </button>
+      <div class="faq-answer">
+        Vos données restent confidentielles : elles ne sont jamais revendues ni partagées. La confiance, c’est la base chez Digital Adept.
+      </div>
+    </div>
+    <div class="faq-item">
+      <button class="faq-question" aria-expanded="false">
+        Quels types de produits trouve-t-on ici&nbsp;?
+      </button>
+      <div class="faq-answer">
+        Logiciels, ebooks, outils pour entreprises, ressources pour étudiants, services exclusifs, et plein d’autres surprises à venir !
+      </div>
+    </div>
+    <div class="faq-item">
+      <button class="faq-question" aria-expanded="false">
+        Comment contacter l’équipe ou obtenir un conseil personnalisé&nbsp;?
+      </button>
+      <div class="faq-answer">
+        Écrivez-nous via le <a href="/contact" class="faq-link">formulaire de contact</a> : on répond vite et avec le sourire !
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== SECTION VIDEO ===== -->
+<section class="video-promo-section">
+  <h2>🎬 Découvrez Digital Adept en vidéo</h2>
+  <div class="video-promo-flex">
+    <div class="video-promo-player">
+      <iframe src="https://www.youtube.com/embed/Xr9pQ1pIbi8" title="Présentation Digital Adept" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe>
+    </div>
+    <div class="video-promo-text">
+      <p>En 1 minute, comprenez comment Digital Adept révolutionne l’accès aux solutions numériques. Simplicité, rapidité, sécurité : tout est pensé pour vous offrir la meilleure expérience d’achat en ligne.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ===== SECTION SATISFACTION / CONTACT ===== -->
+<section class="satisfaction-section neon-section">
+  <h2 class="neon-title">Notre site vous a plu&nbsp;?</h2>
+  <p class="satisfaction-text">
+    Grâce à l’intelligence artificielle, votre boutique est construite en un temps record, tout en garantissant une expérience moderne, intuitive et adaptée au contexte africain.<br>
+    Vous voulez aussi accélérer votre présence digitale ou bénéficier d’offres exclusives ? Écrivez-nous, on s’occupe du reste !
+  </p>
+  <a class="cta cta-compact" href="/contact">Contactez-nous</a>
+</section>
 {% endblock %}
