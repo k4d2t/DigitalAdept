@@ -888,16 +888,13 @@ def delete_user(username):
 """
 PRODUIT
 """
-
-PRODUCTS_FILE = "data/products.json"  # Fichier JSON contenant les produits
-# Configurer le dossier de téléchargement des images
-UPLOAD_FOLDER = './static/img'
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+# PAS D'UPLOAD_FOLDER
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 
-# Vérifier si l'extension du fichier est autorisée
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+CDN_PREFIX = "https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/img/"
 
 @app.route('/admin/products', methods=['GET'])
 def get_products():
@@ -1052,25 +1049,16 @@ def update_product(product_id):
     data = request.form.to_dict()
     files = request.files.getlist("images")
 
-    # Télécharger les nouvelles images
-    image_paths = product.get("images", [])  # Garder les images existantes
-    upload_folder = app.config.get('UPLOAD_FOLDER', './static/img')
-    os.makedirs(upload_folder, exist_ok=True)
-
+    # Nouvelle logique : ne sauvegarde rien localement, juste génère les URLs CDN
+    image_paths = product.get("images", [])
     for file in files:
         if file and allowed_file(file.filename):
-            try:
-                filename = secure_filename(file.filename)
-                file_path = os.path.join(upload_folder, filename)
-                file.save(file_path)
-                image_paths.append(f"/static/img/{filename}")
-            except Exception as e:
-                app.logger.error(f"Erreur lors du téléchargement de l'image {file.filename} : {e}")
-                return jsonify({"error": f"Erreur lors du téléchargement de l'image : {str(e)}"}), 500
+            filename = secure_filename(file.filename)
+            # L'admin doit uploader l'image sur GitHub séparément !
+            image_paths.append(f"{CDN_PREFIX}{filename}")
         else:
             return jsonify({"error": f"Fichier invalide ou non autorisé : {file.filename}"}), 400
 
-    # Mettre à jour les champs du produit
     allowed_fields = ['name', 'description', 'price', 'old_price', 'currency', 'stock', 'category',
                       'short_description', 'faq', 'badges', 'featured', 'resource_file_id', 'sku', 'images']
 
@@ -1091,7 +1079,6 @@ def update_product(product_id):
 
     product['images'] = image_paths
 
-    # MAJ sur MockAPI :
     updated = update_product_in_mockapi(product_id, product)
     if not updated:
         return jsonify({"error": "Erreur lors de la sauvegarde sur MockAPI."}), 500
@@ -1133,47 +1120,35 @@ def add_product():
         if field not in data or not data[field]:
             return jsonify({"error": f"Le champ '{field}' est requis."}), 400
 
-    # Charger les produits existants
-    try:
-        products = fetch_products()
-    except (FileNotFoundError, json.JSONDecodeError):
-        products = []
-
-    # Télécharger les images et générer leurs chemins
+    # Nouvelle logique : ne sauvegarde rien localement, juste génère les URLs CDN
     image_paths = []
     for file in files:
         if file and allowed_file(file.filename):
             filename = secure_filename(file.filename)
-            os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
-            image_paths.append(f"/static/img/{filename}")
+            # L'admin doit uploader l'image sur GitHub séparément !
+            image_paths.append(f"{CDN_PREFIX}{filename}")
         else:
             return jsonify({"error": f"Fichier invalide : {file.filename}"}), 400
 
-    # Générer automatiquement l'ID et le slug (MockAPI gère l'ID, mais tu peux le fournir aussi)
     slug = slugify(data['name'])
-
-    # Créer le nouveau produit
     new_product = {
-        # "id": new_id,  # MockAPI gère l'ID
         "name": data['name'],
         "short_description": data.get('short_description', ''),
         "description": data['description'],
         "price": int(data['price']),
         "old_price": int(data.get('old_price', 0)) if data.get('old_price') else None,
         "currency": data['currency'],
-        "images": image_paths,  # Liste des chemins d'images
+        "images": image_paths,
         "resource_file_id": json.loads(data.get('resource_file_id', '[]')),
-        "featured": data.get('featured', False) == 'true',  # Convertir en booléen
-        "badges": json.loads(data.get('badges', '[]')),  # Convertir en liste
+        "featured": data.get('featured', False) == 'true',
+        "badges": json.loads(data.get('badges', '[]')),
         "category": data['category'],
         "stock": int(data['stock']),
         "sku": data.get('sku', ''),
-        "faq": json.loads(data.get('faq', '[]')),  # Convertir en liste
+        "faq": json.loads(data.get('faq', '[]')),
         "slug": slug
     }
 
-    # Ajoute le produit sur MockAPI
     created = add_product_to_mockapi(new_product)
     if not created:
         return jsonify({"error": "Erreur lors de l'ajout du produit."}), 500
@@ -1207,9 +1182,7 @@ def delete_product_image(product_id):
 
     try:
         product['images'].remove(image_url)
-        image_path = os.path.join(app.config['UPLOAD_FOLDER'], os.path.basename(image_url))
-        if os.path.exists(image_path):
-            os.remove(image_path)
+                # SUPPRIMER TOUTE LOGIQUE QUI SUPPRIME UN FICHIER LOCAL
     except Exception as e:
         return jsonify({"error": f"Erreur lors de la suppression de l'image : {str(e)}"}), 500
 
@@ -1218,6 +1191,7 @@ def delete_product_image(product_id):
         return jsonify({"error": "Erreur lors de la sauvegarde sur MockAPI."}), 500
 
     return jsonify({"message": "Image supprimée avec succès.", "product": updated}), 200
+
 
 
 @app.route('/admin/products/manage/<int:product_id>', methods=['DELETE'])
