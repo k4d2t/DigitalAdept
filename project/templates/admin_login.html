@@ -5,6 +5,62 @@
 {% endblock %}
 
 {% block admin_content %}
+<style>
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.login-page {
+  flex: 1 0 auto;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 0;
+  padding: 0 0.7em; /* espace sur les côtés, même mobile */
+  box-sizing: border-box;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 400px;
+  max-height: 98vh;
+  overflow-y: auto;
+  background: var(--contact-card-bg);
+  padding: 1.5em 2em;
+  border-radius: 1.5em;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+  text-align: center;
+}
+
+footer {
+  flex-shrink: 0;
+}
+
+/* Responsive : ajuste le padding et largeur sur mobile */
+@media (max-width: 600px) {
+  .login-page {
+    padding: 0 0.5em;
+  }
+  .login-card {
+    margin-top: 1.5em;
+    max-width: 98vw;
+    padding: 1.2em 1em;
+  }
+  .login-card input {
+    width: 100%;
+    box-sizing: border-box;
+  }
+}
+
+</style>
 <div class="login-page">
     <div class="login-card">
         <h1>Connexion Admin</h1>
