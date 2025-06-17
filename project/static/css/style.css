@@ -2531,7 +2531,8 @@ display: none;
 }
 .faq-link {
     color: #4fd8ff;
-    text-decoration: underline;
+    text-decoration: none;
+    cursor: pointer;
     font-weight: bold;
     transition: color .15s;
 }
