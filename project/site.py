@@ -12,18 +12,59 @@ import requests
 import threading
 import time
 from apiMoneyFusion import PaymentClient
-import ssl
-import urllib3
 import html  # Utilisé pour échapper les caractères spéciaux HTML
-from threading import Lock
+from flask_caching import Cache
+from flask_compress import Compress
+from flask_talisman import Talisman
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
+import random
+from jinja2.runtime import Undefined
+import logging
 
-PRODUCTS_CACHE = {"data": None, "timestamp": 0}
-CACHE_TTL = 120  # secondes (2 minutes)
-CACHE_LOCK = Lock()
+logging.basicConfig(filename='flask_app.log', level=logging.INFO)
 
 
 app = Flask(__name__)
 CORS(app)
+Compress(app)
+app.config['CACHE_TYPE'] = 'SimpleCache'   # Pour prod, tu peux mettre 'RedisCache'
+app.config['CACHE_DEFAULT_TIMEOUT'] = 120  # Valeur par défaut, peut être surchargée par endpoint
+cache = Cache(app)
+
+Talisman(app, content_security_policy=None)
+
+limiter = Limiter(key_func=get_remote_address)
+limiter.init_app(app)
+
+redis_url = os.environ.get("REDIS_URL") or "redis://localhost:6379"
+
+try:
+    # Teste si Redis est lancé (prod)
+    import redis
+    r = redis.from_url(redis_url)
+    r.ping()
+    app.config["RATELIMIT_STORAGE_URL"] = redis_url
+    print("Flask-Limiter : Redis backend actif")
+except Exception:
+    # Pas de Redis ou connexion impossible : fallback in-memory (dev)
+    print("Flask-Limiter : Backend mémoire utilisé (ne pas utiliser en prod multi-worker)")
+
+limiter = Limiter(key_func=get_remote_address)
+limiter.init_app(app)
+
+@app.after_request
+def add_common_headers(response):
+    # Pour toutes les réponses API, ajoute un cache HTTP
+    if request.path.startswith("/api/"):
+        response.headers["Cache-Control"] = "public, max-age=60"
+    # Headers sécurité et SEO-friendly
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["X-Frame-Options"] = "DENY"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    return response
+
+
 
 # --- Helper functions ---
 
@@ -57,56 +98,71 @@ def log_action(action, details=None):
         print(f"Erreur lors de l'enregistrement du log : {e}")
 
 def slugify(text):
+    # Sécurité : si text est None ou “Undefined” Jinja2
+    if not isinstance(text, str):
+        if text is None or isinstance(text, Undefined):
+            return ""
+        text = str(text)
+    text = normalize('NFKD', text).encode('ascii', 'ignore').decode('utf-8')
+    text = re.sub(r'[^\w\s-]', '', text).strip().lower()
+    return re.sub(r'[\s]+', '-', text)
+
+def get_seo_context(
+    *,
+    meta_title=None,
+    meta_description=None,
+    og_image=None,
+    meta_robots="index, follow",
+    meta_author="Digital Adept",
+    meta_canonical=None,
+    meta_og_type="website",
+    meta_og_url=None,
+    meta_twitter_site="@TonCompteTwitter",  # À personnaliser
+    meta_jsonld=None,
+    meta_breadcrumb_jsonld=None,
+    extra_vars=None
+):
     """
-    Convertit une chaîne de caractères en un slug URL-friendly.
-    Exemples :
-    - "Produit Test" devient "produit-test"
-    - "Élément spécial !" devient "element-special"
+    Génère un contexte SEO complet pour Flask render_template.
+    Passez extra_vars=dict(...) pour ajouter d'autres variables.
     """
-    text = normalize('NFKD', text).encode('ascii', 'ignore').decode('utf-8')  # Supprime les accents
-    text = re.sub(r'[^\w\s-]', '', text).strip().lower()  # Supprime les caractères spéciaux
-    return re.sub(r'[\s]+', '-', text)  # Remplace les espaces par des tirets
+    context = dict(
+        meta_title=meta_title or "Digital Adept - Boutique de produits digitaux",
+        meta_description=meta_description or "Plateforme de vente de produits digitaux accessibles à tous.",
+        meta_robots=meta_robots,
+        meta_author=meta_author,
+        meta_canonical=meta_canonical or request.url,
+        meta_og_title=meta_title or "Digital Adept",
+        meta_og_description=meta_description or "Plateforme de vente de produits digitaux accessibles à tous.",
+        meta_og_type=meta_og_type,
+        meta_og_url=meta_og_url or request.url,
+        meta_og_image=og_image,
+        og_image=og_image,  # fallback pour twitter:image
+        meta_twitter_title=meta_title or "Digital Adept",
+        meta_twitter_description=meta_description or "Plateforme de vente de produits digitaux accessibles à tous.",
+        meta_twitter_image=og_image,
+        meta_twitter_site=meta_twitter_site,
+        meta_jsonld=json.dumps(meta_jsonld, ensure_ascii=False) if isinstance(meta_jsonld, dict) else meta_jsonld,
+        meta_breadcrumb_jsonld=json.dumps(meta_breadcrumb_jsonld, ensure_ascii=False) if isinstance(meta_breadcrumb_jsonld, dict) else meta_breadcrumb_jsonld,
+    )
+    if extra_vars:
+        context.update(extra_vars)
+    return context
+
 
 MOCKAPI_URL = "https://6840a10f5b39a8039a58afb0.mockapi.io/api/externalapi/produits"
 
+@cache.cached(timeout=120, key_prefix="products")
 def fetch_products():
-    """Récupère tous les produits depuis MockAPI (avec cache RAM)"""
-    now = time.time()
-    with CACHE_LOCK:
-        if PRODUCTS_CACHE["data"] is not None and (now - PRODUCTS_CACHE["timestamp"] < CACHE_TTL):
-            return PRODUCTS_CACHE["data"]
-    try:
-        r = requests.get(MOCKAPI_URL, timeout=7)
-        produits = r.json()
-        for p in produits:
-            try:
-                p['id'] = int(p['id'])
-            except (KeyError, ValueError, TypeError):
-                pass
-        with CACHE_LOCK:
-            PRODUCTS_CACHE["data"] = produits
-            PRODUCTS_CACHE["timestamp"] = now
-        return produits
-    except Exception as e:
-        print(f"[MOCKAPI] Erreur fetch_products: {e}")
-        with CACHE_LOCK:
-            if PRODUCTS_CACHE["data"] is not None:
-                return PRODUCTS_CACHE["data"]  # fallback sur ancien cache
-        return []
-    """Récupère tous les produits depuis MockAPI (remplace le chargement local)."""
-    try:
-        r = requests.get(MOCKAPI_URL, timeout=7)
-        produits = r.json()
-        # Pour compatibilité : id doit être int et non string
-        for p in produits:
-            try:
-                p['id'] = int(p['id'])
-            except (KeyError, ValueError, TypeError):
-                pass
-        return produits
-    except Exception as e:
-        print(f"[MOCKAPI] Erreur fetch_products: {e}")
-        return []
+    """Récupère tous les produits depuis MockAPI (avec cache Flask)"""
+    r = requests.get(MOCKAPI_URL, timeout=7)
+    produits = r.json()
+    for p in produits:
+        try:
+            p['id'] = int(p['id'])
+        except (KeyError, ValueError, TypeError):
+            pass
+    return produits
 
 def fetch_product_by_id(product_id):
     try:
@@ -280,51 +336,128 @@ def send_telegram_message(data):
         print("Erreur lors de l'envoi à Telegram:", e)
         return False
 
+app.jinja_env.globals['slugify'] = slugify
+@app.template_filter('shuffle')
+def shuffle_filter(seq):
+    seq = list(seq)
+    random.shuffle(seq)
+    return seq
+
 # --- Routes produits ---
 PRODUIT_CACHE = fetch_products()
 @app.route('/')
 def home():
-    """
-    Page d'accueil : affiche les produits vedettes
-    """
     produits = fetch_products()
     produits_vedette = [p for p in produits if p.get("featured")]
-    return render_template('home.html', produits_vedette=produits_vedette)
+    og_image = url_for('static', filename='img/logo.png', _external=True)
+    meta_jsonld = {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "Digital Adept",
+        "url": url_for('home', _external=True)
+    }
+    context = get_seo_context(
+        meta_title="Digital Adept - Boutique de produits digitaux",
+        meta_description="La meilleure boutique de produits digitaux, logiciels, services et astuces pour booster, démarrer ou commencer votre business en ligne.",
+        og_image=og_image,
+        meta_jsonld=meta_jsonld,
+        extra_vars={
+            "produits_vedette": produits_vedette,
+            "produits": produits  # Pour carrousel ou autres usages
+        }
+    )
+    return render_template('home.html', **context)
+
+
 
 @app.route('/produits')
 def produits():
-    """
-    Page listant tous les produits
-    """
     produits = fetch_products()
-    return render_template('produits.html', produits=produits)
+    og_image = url_for('static', filename='img/logo.png', _external=True)
+    meta_jsonld = {
+        "@context": "https://schema.org",
+        "@type": "CollectionPage",
+        "name": "Tous les produits - Digital Adept",
+        "description": "Découvrez tous nos produits digitaux, logiciels, ebooks, services, etc..",
+        "url": url_for('produits', _external=True)
+    }
+    context = get_seo_context(
+        meta_title="Tous les produits - Digital Adept",
+        meta_description="Découvrez tous nos produits digitaux, logiciels, ebooks, services au meilleur prix.",
+        og_image=og_image,
+        meta_jsonld=meta_jsonld,
+        extra_vars={"produits": produits}
+    )
+    return render_template('produits.html', **context)
 
 @app.route('/produit/<slug>')
 def product_detail(slug):
-    """
-    Page détaillée d'un produit (utilise le slug dans l'URL)
-    """
     produits = fetch_products()
-
-    # Trouver le produit correspondant au slug
     produit = next((p for p in produits if slugify(p.get("name")) == slug), None)
     if not produit:
         return render_template('404.html'), 404
 
-    # Charger les commentaires pour ce produit
     comments = load_comments()
     produit_comments = comments.get(str(produit.get("id")), [])
-
-    # Tri des commentaires
     produit_comments = sort_comments(produit_comments)
-
-    # Calculer la note moyenne
     if produit_comments:
         produit["rating"] = round(sum(c["rating"] for c in produit_comments) / len(produit_comments), 2)
     else:
         produit["rating"] = None
 
-    return render_template('product.html', produit=produit, comments=produit_comments)
+    og_image = produit["images"][0] if produit.get("images") else url_for('static', filename='img/logo.png', _external=True)
+    meta_jsonld = {
+        "@context": "https://schema.org/",
+        "@type": "Product",
+        "name": produit.get("name"),
+        "image": [og_image],
+        "description": (produit.get("short_description") or produit.get("description") or ""),
+        "sku": produit.get("sku") or produit.get("id"),
+        "offers": {
+            "@type": "Offer",
+            "priceCurrency": produit.get("currency", "XOF"),
+            "price": produit.get("price"),
+            "availability": "https://schema.org/InStock" if produit.get("stock", 0) > 0 else "https://schema.org/OutOfStock"
+        }
+    }
+    # Fil d'Ariane (optionnel)
+    meta_breadcrumb_jsonld = {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Accueil",
+          "item": url_for('home', _external=True)
+        },
+        {
+          "@type": "ListItem",
+          "position": 2,
+          "name": "Produits",
+          "item": url_for('produits', _external=True)
+        },
+        {
+          "@type": "ListItem",
+          "position": 3,
+          "name": produit.get('name'),
+          "item": request.url
+        }
+      ]
+    }
+    context = get_seo_context(
+        meta_title=f"{produit.get('name')} - Acheter {produit.get('name')} au meilleur prix | Digital Adept",
+        meta_description=(produit.get("short_description") or produit.get("description") or "")[:160],
+        og_image=og_image,
+        meta_jsonld=meta_jsonld,
+        meta_breadcrumb_jsonld=meta_breadcrumb_jsonld,
+        extra_vars={
+            "produit": produit,
+            "produits": produits,  # Pour carrousel ou suggestions
+            "comments": produit_comments
+        }
+    )
+    return render_template('product.html', **context)
 
 @app.route('/produit/<slug>/comment', methods=['POST'])
 def add_comment(slug):
@@ -384,10 +517,11 @@ def get_product_comments(product_id):
 
 @app.route('/contact')
 def contact():
-    """
-    Page de contact
-    """
-    return render_template('contact.html')
+    context = get_seo_context(
+        meta_title="Contact - Digital Adept",
+        meta_description="Contactez l'équipe Digital Adept pour toute question.",
+    )
+    return render_template('contact.html', **context)
 
 @app.route('/contact', methods=['POST'])
 def messages():
@@ -495,7 +629,9 @@ def callback():
             print("product_names:", product_names)
             print("user_products:", user_products)
             attente_msg = (
+                "Votre paiement est en cours de validation par MoneyFusion… "
                 "Merci de patienter quelques secondes, la page va se recharger automatiquement. "
+                "Si rien ne s'affiche après 2 minutes, contactez le support avec votre numéro de transaction."
             )
             return render_template("download.html", products=[], message=attente_msg)
 
@@ -565,6 +701,108 @@ def callback():
         return render_template("download.html", products=[], message="Erreur technique, contactez le support.")
 
 
+@app.route("/callbacktest")
+def callbacktest():
+    """
+    Affiche la page de téléchargement après paiement.
+    - MoneyFusion doit renvoyer ici avec ?token=xxxx dans le return_url.
+    - On va demander à l’API MoneyFusion le détail de la transaction avec ce token.
+    - On affiche les produits achetés à partir des infos du paiement.
+    - MODE DEV : on peut forcer l'état via ?debug_status=pending|paid|fail        http://localhost:5005/callbacktest?debug_status=
+    """
+    token = request.args.get("token")
+    debug_status = request.args.get("debug_status")  # Pour tests sans paiement réel !
+    produits = PRODUIT_CACHE
+
+    # SIMULATION : debug_status présent = mode test
+    if debug_status:
+        if debug_status == "pending":
+            attente_msg = (
+                "Votre paiement est en cours de validation par MoneyFusion… "
+            )
+            return render_template("download.html", products=[], message=attente_msg)
+        elif debug_status == "paid":
+            # Simule un produit acheté
+            user_products = [{
+                "name": "Produit Test",
+                "file_id": ["AgACAgQAAyEFAASgim1aAAMTaE77UHaZ6MLC5mNKYFY2IoS67D8AAurFMRtRbnlSRE_8-hjk_tgBAAMCAAN3AAM2BA"],
+                "id": 1
+            }]
+            return render_template("download.html", products=user_products, message=None)
+        elif debug_status == "fail":
+            return render_template("download.html", products=[], message="Paiement non validé. Contactez le support.")
+        else:
+            return render_template("download.html", products=[], message="Erreur, paiement introuvable")
+
+    # === CODE NORMAL (prod) ===
+    if not token:
+        print("DEBUG CALLBACK:", {
+        "token": token,
+        "produits envoyés": [],
+        "message": None
+        })
+        return render_template("download.html", products=[], message="Erreur, paiement introuvable")
+
+    try:
+        r = requests.get(f"https://www.pay.moneyfusion.net/paiementNotif/{token}")
+        res = r.json()
+        print("Réponse MoneyFusion callback:", res)
+        if not res.get("statut") or "data" not in res:
+            print("DEBUG CALLBACK:", {
+            "token": token,
+            "produits envoyés": [],
+            "message": None
+            })
+            return render_template("download.html", products=[], message="Erreur, paiement introuvable")
+
+        data = res["data"]
+
+        if data.get("statut") != "paid":
+            attente_msg = (
+                "Votre paiement est en cours de validation par MoneyFusion… "
+                "Merci de patienter quelques secondes, la page va se recharger automatiquement. "
+                "Si rien ne s'affiche après 2 minutes, contactez le support avec votre numéro de transaction."
+            )
+            return render_template("download.html", products=[], message=attente_msg)
+
+        product_names = []
+        if "personal_Info" in data and isinstance(data["personal_Info"], list):
+            if "products" in data["personal_Info"][0]:
+                product_names = data["personal_Info"][0]["products"]
+
+        if not product_names:
+            user_products = [
+                {
+                    "id": produit["id"],
+                    "name": produit["name"],
+                    "file_id": produit.get("resource_file_id"),
+                }
+                for produit in produits
+                if produit.get("resource_file_id")
+            ]
+        else:
+            user_products = [
+                {
+                    "name": produit["name"],
+                    "file_id": produit.get("resource_file_id"),
+                    "id": produit["id"]
+                }
+                for produit in produits
+                if produit.get("name") in product_names
+            ]
+
+        if not user_products:
+            return render_template("download.html", products=[], message="Erreur, Veuillez nous contacter")
+
+        return render_template("download.html", products=user_products, message=None)
+
+    except Exception as e:
+        print("DEBUG CALLBACK:", {
+        "token": token,
+        "produits envoyés": [],
+        "message": None
+        })
+        return render_template("download.html", products=[], message="Erreur technique, contactez le support.")
 
 
 # --- Authentification pour le tableau de bord ---
@@ -592,6 +830,7 @@ def is_super_admin():
     return session.get('username') == 'k4d3t'
 
 @app.route('/k4d3t', methods=['GET', 'POST'])
+@limiter.limit("10/minute")
 def admin_login():
     """
     Page de connexion pour accéder au tableau de bord admin.
@@ -1089,6 +1328,7 @@ def update_product(product_id):
         return jsonify({"error": "Erreur lors de la sauvegarde sur MockAPI."}), 500
 
     app.logger.info(f"Produit {product_id} mis à jour avec succès.")
+    cache.delete('products')
     return jsonify({"message": "Produit mis à jour avec succès", "product": updated}), 200
 
 
@@ -1158,6 +1398,7 @@ def add_product():
     if not created:
         return jsonify({"error": "Erreur lors de l'ajout du produit."}), 500
 
+    cache.delete('products')
     return jsonify({"message": "Produit ajouté avec succès.", "product": created}), 201
 
 
@@ -1195,6 +1436,7 @@ def delete_product_image(product_id):
     if not updated:
         return jsonify({"error": "Erreur lors de la sauvegarde sur MockAPI."}), 500
 
+    cache.delete('products')
     return jsonify({"message": "Image supprimée avec succès.", "product": updated}), 200
 
 
@@ -1210,40 +1452,22 @@ def delete_product(product_id):
     deleted = delete_product_from_mockapi(product_id)
     if not deleted:
         return jsonify({"error": "Produit introuvable ou erreur MockAPI"}), 404
+    cache.delete('products')
     return jsonify({"message": "Produit supprimé avec succès."}), 200
 
 
 """
 FIN PRODUIT
 """
-ANNOUNCEMENTS_CACHE = {"data": None, "timestamp": 0}
-
-def invalidate_announcements_cache():
-    with CACHE_LOCK:
-        ANNOUNCEMENTS_CACHE["data"] = None
-        ANNOUNCEMENTS_CACHE["timestamp"] = 0
 
 ANNOUNCEMENTS_URL = "https://6840a10f5b39a8039a58afb0.mockapi.io/api/externalapi/annoucements"
 
 
+@cache.cached(timeout=300, key_prefix="announcements")
 def fetch_announcements():
-    now = time.time()
-    with CACHE_LOCK:
-        if ANNOUNCEMENTS_CACHE["data"] is not None and (now - ANNOUNCEMENTS_CACHE["timestamp"] < CACHE_TTL):
-            return ANNOUNCEMENTS_CACHE["data"]
-    try:
-        r = requests.get(ANNOUNCEMENTS_URL, timeout=5)
-        data = r.json()
-        with CACHE_LOCK:
-            ANNOUNCEMENTS_CACHE["data"] = data
-            ANNOUNCEMENTS_CACHE["timestamp"] = now
-        return data
-    except Exception as e:
-        print(f"[MOCKAPI] Erreur fetch_announcements: {e}")
-        with CACHE_LOCK:
-            if ANNOUNCEMENTS_CACHE["data"] is not None:
-                return ANNOUNCEMENTS_CACHE["data"]
-        return []
+    """Récupère toutes les annonces depuis MockAPI (avec cache Flask)"""
+    r = requests.get(ANNOUNCEMENTS_URL, timeout=5)
+    return r.json()
 
 @app.route('/api/announcements')
 def api_announcements():
@@ -1271,20 +1495,20 @@ def admin_announcements():
 def api_announcements_post():
     data = request.json
     r = requests.post(ANNOUNCEMENTS_URL, json=data)
-    invalidate_announcements_cache()
+    cache.delete('announcements')
     return (r.text, r.status_code, {'Content-Type': 'application/json'})
 
 @app.route('/api/announcements/<id>', methods=['PUT'])
 def api_announcements_put(id):
     data = request.json
     r = requests.put(f"{ANNOUNCEMENTS_URL}/{id}", json=data)
-    invalidate_announcements_cache()
+    cache.delete('announcements')
     return (r.text, r.status_code, {'Content-Type': 'application/json'})
 
 @app.route('/api/announcements/<id>', methods=['DELETE'])
 def api_announcements_delete(id):
     r = requests.delete(f"{ANNOUNCEMENTS_URL}/{id}")
-    invalidate_announcements_cache()
+    cache.delete('announcements')
     return (r.text, r.status_code, {'Content-Type': 'application/json'})
 
 @app.route('/admin/comments')
@@ -1442,8 +1666,77 @@ def admin_logout():
     return redirect(url_for('admin_login'))
 
 
+@app.route('/sitemap.xml')
+def sitemap():
+    pages = []
+    # Accueil
+    pages.append({
+        'loc': url_for('home', _external=True),
+        'priority': '1.0',
+        'changefreq': 'daily',
+        'lastmod': None
+    })
+    # Liste produits
+    products = fetch_products()
+    for prod in products:
+        pages.append({
+            'loc': url_for('product_detail', slug=slugify(prod.get("name","")), _external=True),
+            'priority': '0.8',
+            'changefreq': 'weekly',
+            'lastmod': None
+        })
+    # Ajoute d’autres pages importantes (contact, etc.)
+    pages.append({
+        'loc': url_for('contact', _external=True),
+        'priority': '0.6',
+        'changefreq': 'monthly',
+        'lastmod': None
+    })
+    sitemap_xml = [
+        '<?xml version="1.0" encoding="UTF-8"?>',
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+    ]
+    for page in pages:
+        sitemap_xml.append("<url>")
+        sitemap_xml.append(f"<loc>{page['loc']}</loc>")
+        if page['lastmod']:
+            sitemap_xml.append(f"<lastmod>{page['lastmod']}</lastmod>")
+        sitemap_xml.append(f"<changefreq>{page['changefreq']}</changefreq>")
+        sitemap_xml.append(f"<priority>{page['priority']}</priority>")
+        sitemap_xml.append("</url>")
+    sitemap_xml.append("</urlset>")
+    return Response('\n'.join(sitemap_xml), mimetype='application/xml')
+
+@app.route('/robots.txt')
+def robots_txt():
+    lines = [
+        "User-agent: *",
+        "Disallow: /admin",
+        "Disallow: /k4d3t",
+        "Disallow: /admin/",
+        "Disallow: /k4d3t/",
+        "Disallow: /settings/",
+        "Allow: /",
+        f"Sitemap: {url_for('sitemap', _external=True)}"
+    ]
+    return Response("\n".join(lines), mimetype="text/plain")
+
+@app.errorhandler(404)
+def not_found(e):
+    logging.warning(f"404 Not Found: {request.path}")
+    return render_template("404.html"), 404
+
+@app.errorhandler(500)
+def server_error(e):
+    logging.error(f"500 Internal Server Error: {request.path}", exc_info=True)
+    return render_template("500.html"), 500
+
+@app.route('/health')
+def health():
+    return {"status": "ok", "uptime": "100%", "products_count": len(fetch_products())}, 200
+
 if __name__ == '__main__':
     #threading.Thread(target=periodic_ping, daemon=True).start()
-    port = int(os.environ.get('PORT', 5005))  # Utilise le PORT de Render ou 5005 en local
+    port = int(os.environ.get('PORT', 5005))  # Utilise le PORT de Railway ou 5005 en local
     app.run(host='0.0.0.0', port=port, debug=True)
 
