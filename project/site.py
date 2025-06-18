@@ -353,12 +353,12 @@ def home():
     meta_jsonld = {
         "@context": "https://schema.org",
         "@type": "WebSite",
-        "name": "Digital Adept",
+        "name": "Digital Adept™",
         "url": url_for('home', _external=True)
     }
     context = get_seo_context(
-        meta_title="Digital Adept - Boutique de produits digitaux",
-        meta_description="La meilleure boutique de produits digitaux, logiciels, services et astuces pour booster, démarrer ou commencer votre business en ligne.",
+        meta_title="Digital Adept™ - Boutique africaine de produits 100%  digitaux",
+        meta_description="La meilleure boutique africaine de produits digitaux, logiciels, services et astuces pour booster, démarrer ou commencer votre business en ligne.",
         og_image=og_image,
         meta_jsonld=meta_jsonld,
         extra_vars={
