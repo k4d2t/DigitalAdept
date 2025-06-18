@@ -53,6 +53,13 @@ except Exception:
 limiter = Limiter(key_func=get_remote_address)
 limiter.init_app(app)
 
+
+@app.before_request
+def redirect_to_https():
+    if not request.is_secure and not app.debug:
+        url = request.url.replace("http://", "https://", 1)
+        return redirect(url, code=301)
+
 @app.after_request
 def add_common_headers(response):
     # Pour toutes les réponses API, ajoute un cache HTTP
@@ -1669,29 +1676,39 @@ def admin_logout():
 @app.route('/sitemap.xml')
 def sitemap():
     pages = []
+    now = datetime.utcnow().date().isoformat()
     # Accueil
     pages.append({
-        'loc': url_for('home', _external=True),
+        'loc': url_for('home', _external=True).replace("http://", "https://"),
         'priority': '1.0',
         'changefreq': 'daily',
-        'lastmod': None
+        'lastmod': now
     })
-    # Liste produits
+    # Listing produits
+    pages.append({
+        'loc': url_for('produits', _external=True).replace("http://", "https://"),
+        'priority': '0.9',
+        'changefreq': 'daily',
+        'lastmod': now
+    })
+    # Détail produits
     products = fetch_products()
     for prod in products:
         pages.append({
-            'loc': url_for('product_detail', slug=slugify(prod.get("name","")), _external=True),
+            'loc': url_for('product_detail', slug=slugify(prod.get("name","")), _external=True).replace("http://", "https://"),
             'priority': '0.8',
             'changefreq': 'weekly',
-            'lastmod': None
+            'lastmod': now
         })
-    # Ajoute d’autres pages importantes (contact, etc.)
+    # Contact
     pages.append({
-        'loc': url_for('contact', _external=True),
+        'loc': url_for('contact', _external=True).replace("http://", "https://"),
         'priority': '0.6',
         'changefreq': 'monthly',
-        'lastmod': None
+        'lastmod': now
     })
+    # Ajoute d’autres pages importantes ici
+
     sitemap_xml = [
         '<?xml version="1.0" encoding="UTF-8"?>',
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
@@ -1738,5 +1755,5 @@ def health():
 if __name__ == '__main__':
     #threading.Thread(target=periodic_ping, daemon=True).start()
     port = int(os.environ.get('PORT', 5005))  # Utilise le PORT de Railway ou 5005 en local
-    app.run(host='0.0.0.0', port=port, debug=True)
+    app.run(host='0.0.0.0', port=port)
 
