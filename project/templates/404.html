@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}404 - Page non trouvée{% endblock %}
+
+{% block content %}
+<div class="container text-center mt-5">
+    <h1 class="display-1 text-danger">404</h1>
+    <h2 class="mb-4">Raté 😬! Cette page n’existe pas.</h2>
+    <p class="mb-4">La page que vous recherchez a peut-être été déplacée ou supprimée.<br>
+    <br>
+    <a href="{{ url_for('home') }}" class="btn btn-primary mt-3">
+        Retour à l’accueil
+    </a>
+</div>
+{% endblock %}
