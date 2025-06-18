@@ -65,7 +65,6 @@ def add_common_headers(response):
     return response
 
 
-
 # --- Helper functions ---
 
 LOGS_FILE = "data/logs.json"
@@ -117,33 +116,58 @@ def get_seo_context(
     meta_canonical=None,
     meta_og_type="website",
     meta_og_url=None,
-    meta_twitter_site="@TonCompteTwitter",  # À personnaliser
+    meta_og_site_name="Digital Adept",
+    meta_og_locale="fr_FR",
+    meta_fb_app_id=None,
+    meta_keywords=None,
+    meta_theme_color="#244",
+    meta_image_alt=None,
+    meta_language="fr",
     meta_jsonld=None,
     meta_breadcrumb_jsonld=None,
+    meta_twitter_site="@TonCompteTwitter",  # À personnaliser avec ton compte Twitter
+    meta_twitter_title=None,
+    meta_twitter_description=None,
+    meta_twitter_image=None,
+    meta_publisher=None,
+    meta_date_published=None,
+    meta_date_modified=None,
+    meta_site_verification=None,  # Google/Bing/Yandex site verification
     extra_vars=None
 ):
     """
     Génère un contexte SEO complet pour Flask render_template.
-    Passez extra_vars=dict(...) pour ajouter d'autres variables.
+    Passez extra_vars=dict(...) pour ajouter des variables spécifiques.
     """
     context = dict(
         meta_title=meta_title or "Digital Adept - Boutique de produits digitaux",
         meta_description=meta_description or "Plateforme de vente de produits digitaux accessibles à tous.",
         meta_robots=meta_robots,
         meta_author=meta_author,
-        meta_canonical=meta_canonical or request.url,
+        meta_canonical=(meta_canonical or request.url).replace("http://", "https://"),
         meta_og_title=meta_title or "Digital Adept",
         meta_og_description=meta_description or "Plateforme de vente de produits digitaux accessibles à tous.",
         meta_og_type=meta_og_type,
-        meta_og_url=meta_og_url or request.url,
+        meta_og_url=(meta_og_url or request.url).replace("http://", "https://"),
         meta_og_image=og_image,
-        og_image=og_image,  # fallback pour twitter:image
-        meta_twitter_title=meta_title or "Digital Adept",
-        meta_twitter_description=meta_description or "Plateforme de vente de produits digitaux accessibles à tous.",
-        meta_twitter_image=og_image,
-        meta_twitter_site=meta_twitter_site,
+        meta_og_site_name=meta_og_site_name,
+        meta_og_locale=meta_og_locale,
+        meta_fb_app_id=meta_fb_app_id,
+        meta_keywords=meta_keywords,
+        meta_theme_color=meta_theme_color,
+        meta_image_alt=meta_image_alt,
+        meta_language=meta_language,
         meta_jsonld=json.dumps(meta_jsonld, ensure_ascii=False) if isinstance(meta_jsonld, dict) else meta_jsonld,
         meta_breadcrumb_jsonld=json.dumps(meta_breadcrumb_jsonld, ensure_ascii=False) if isinstance(meta_breadcrumb_jsonld, dict) else meta_breadcrumb_jsonld,
+        meta_twitter_title=meta_twitter_title or meta_title or "Digital Adept",
+        meta_twitter_description=meta_twitter_description or meta_description or "Plateforme de vente de produits digitaux accessibles à tous.",
+        meta_twitter_image=meta_twitter_image or og_image,
+        meta_twitter_site=meta_twitter_site,
+        meta_publisher=meta_publisher,
+        meta_date_published=meta_date_published,
+        meta_date_modified=meta_date_modified,
+        meta_site_verification=meta_site_verification,
+        og_image=og_image,  # fallback pour twitter:image
     )
     if extra_vars:
         context.update(extra_vars)
@@ -1668,54 +1692,27 @@ def admin_logout():
 
 @app.route('/sitemap.xml')
 def sitemap():
-    pages = []
-    now = datetime.utcnow().date().isoformat()
-    # Accueil
-    pages.append({
-        'loc': url_for('home', _external=True).replace("http://", "https://"),
-        'priority': '1.0',
-        'changefreq': 'daily',
-        'lastmod': now
-    })
-    # Listing produits
-    pages.append({
-        'loc': url_for('produits', _external=True).replace("http://", "https://"),
-        'priority': '0.9',
-        'changefreq': 'daily',
-        'lastmod': now
-    })
-    # Détail produits
-    products = fetch_products()
-    for prod in products:
+    pages = [
+        {"loc": url_for('home', _external=True), "priority": "1.0", "changefreq": "daily"},
+        {"loc": url_for('produits', _external=True), "priority": "0.8", "changefreq": "weekly"}
+    ]
+    produits = fetch_products()
+    for produit in produits:
         pages.append({
-            'loc': url_for('product_detail', slug=slugify(prod.get("name","")), _external=True).replace("http://", "https://"),
-            'priority': '0.8',
-            'changefreq': 'weekly',
-            'lastmod': now
+            "loc": url_for('product_detail', slug=slugify(produit['name']), _external=True),
+            "priority": "0.6",
+            "changefreq": "weekly"
         })
-    # Contact
-    pages.append({
-        'loc': url_for('contact', _external=True).replace("http://", "https://"),
-        'priority': '0.6',
-        'changefreq': 'monthly',
-        'lastmod': now
-    })
-    # Ajoute d’autres pages importantes ici
 
     sitemap_xml = [
         '<?xml version="1.0" encoding="UTF-8"?>',
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
     ]
     for page in pages:
-        sitemap_xml.append("<url>")
-        sitemap_xml.append(f"<loc>{page['loc']}</loc>")
-        if page['lastmod']:
-            sitemap_xml.append(f"<lastmod>{page['lastmod']}</lastmod>")
-        sitemap_xml.append(f"<changefreq>{page['changefreq']}</changefreq>")
-        sitemap_xml.append(f"<priority>{page['priority']}</priority>")
-        sitemap_xml.append("</url>")
+        sitemap_xml.append(f"<url><loc>{page['loc']}</loc><changefreq>{page['changefreq']}</changefreq><priority>{page['priority']}</priority></url>")
     sitemap_xml.append("</urlset>")
-    return Response('\n'.join(sitemap_xml), mimetype='application/xml')
+    return Response("\n".join(sitemap_xml), mimetype="application/xml")
+
 
 @app.route('/robots.txt')
 def robots_txt():
