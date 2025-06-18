@@ -53,13 +53,6 @@ except Exception:
 limiter = Limiter(key_func=get_remote_address)
 limiter.init_app(app)
 
-
-@app.before_request
-def redirect_to_https():
-    if not request.is_secure and not app.debug:
-        url = request.url.replace("http://", "https://", 1)
-        return redirect(url, code=301)
-
 @app.after_request
 def add_common_headers(response):
     # Pour toutes les réponses API, ajoute un cache HTTP
