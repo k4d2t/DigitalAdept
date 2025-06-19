@@ -417,7 +417,7 @@ def shuffle_filter(seq):
     return seq
 
 # --- Routes produits ---
-
+@cache.cached(timeout=120)
 @app.route('/')
 def home():
     produits = fetch_products()
@@ -524,7 +524,7 @@ def home():
         }
     )
     return render_template('home.html', **context)
-
+@cache.cached(timeout=120)
 @app.route('/produits')
 def produits():
     produits = fetch_products()
@@ -548,7 +548,7 @@ def produits():
         extra_vars={"produits": produits}
     )
     return render_template('produits.html', **context)
-
+@cache.cached(timeout=120)
 @app.route('/produit/<slug>')
 def product_detail(slug):
     produits = fetch_products()
@@ -652,7 +652,7 @@ def get_product_comments(product_id):
     product_comments = comments.get(str(product_id), [])
     product_comments = sort_comments(product_comments)  # Trier les commentaires
     return jsonify(product_comments)
-
+@cache.cached(timeout=120)
 @app.route('/contact')
 def contact():
     context = get_seo_context(
@@ -726,7 +726,7 @@ def webhook():
     Sans base : on peut juste accuser réception avec 200 OK.
     """
     return "", 200
-
+@cache.cached(timeout=120)
 @app.route("/callback")
 def callback():
     """
@@ -847,7 +847,7 @@ def callback():
         print("user_products:", user_products)
         return render_template("download.html", products=[], message="Erreur technique, contactez le support.")
 
-
+@cache.cached(timeout=120)
 @app.route("/callbacktest")
 def callbacktest():
     """
@@ -975,7 +975,7 @@ def save_data(data):
 # Vérification du rôle super_admin
 def is_super_admin():
     return session.get('username') == 'k4d3t'
-
+@cache.cached(timeout=120)
 @app.route('/k4d3t', methods=['GET', 'POST'])
 @limiter.limit("10/minute")
 def admin_login():
@@ -1013,7 +1013,7 @@ def admin_login():
             flash("Identifiants invalides. Réessayez.", "error")
 
     return render_template('admin_login.html')
-
+@cache.cached(timeout=120)
 @app.route('/k4d3t/dashboard')
 def admin_dashboard():
     """
@@ -1217,7 +1217,7 @@ def get_logs():
         log_action("view_logs_failed", {"username": session.get('username')})  # Enregistrer l'échec de l'accès aux logs
         return jsonify([])  # Retourne une liste vide si aucun log
 
-
+@cache.cached(timeout=120)
 @app.route('/settings/logs/view', methods=['GET'])
 def view_logs():
     """Affiche la page HTML pour le journal d'activité."""
@@ -1298,7 +1298,7 @@ def get_products():
         products = []
 
     return jsonify(products)
-
+@cache.cached(timeout=120)
 @app.route('/admin/products/page', methods=['GET'])
 def admin_products_page():
     """
@@ -1362,6 +1362,7 @@ def telegram_webhook():
     return '', 200
 
 # --- PAGE ADMIN ---
+@cache.cached(timeout=120)
 @app.route('/admin/telegram-files', methods=['GET'])
 def admin_telegram_files():
     """
@@ -1384,7 +1385,7 @@ def api_telegram_files():
 
     # Renvoie les fichiers Telegram reçus via webhook, les plus récents d'abord
     return jsonify(list(TELEGRAM_FILES)[::-1])
-
+@cache.cached(timeout=120)
 @app.route('/admin/products/manage', methods=['GET'])
 def admin_products_manage():
     """
@@ -1481,7 +1482,7 @@ def update_product(product_id):
     cache.delete('products')
     return jsonify({"message": "Produit mis à jour avec succès", "product": updated}), 200
 
-
+@cache.cached(timeout=120)
 @app.route('/admin/products/add', methods=['GET'])
 def admin_products_add():
     """
@@ -1630,7 +1631,7 @@ def api_announcements_active():
     # Filtre côté Python pour ne garder que les actifs
     active = [a for a in announcements if a.get('active') is True]
     return jsonify(active)
-
+@cache.cached(timeout=120)
 @app.route('/admin/announcements', methods=['GET'])
 def admin_announcements():
     """
@@ -1663,7 +1664,7 @@ def api_announcements_delete(id):
     r = requests.delete(f"{ANNOUNCEMENTS_URL}/{id}")
     cache.delete('announcements')
     return (r.text, r.status_code, {'Content-Type': 'application/json'})
-
+@cache.cached(timeout=120)
 @app.route('/admin/comments')
 def admin_comments_page():
     """
@@ -1856,7 +1857,7 @@ def robots_txt():
         f"Sitemap: {url_for('sitemap', _external=True)}"
     ]
     return Response("\n".join(lines), mimetype="text/plain")
-
+@cache.cached(timeout=120)
 @app.errorhandler(404)
 def page_not_found(e):
     context = get_seo_context(
@@ -1868,7 +1869,7 @@ def page_not_found(e):
         )
     )
     return render_template("404.html", **context), 404
-
+@cache.cached(timeout=120)
 @app.errorhandler(500)
 def server_error(e):
     logging.error(f"500 Internal Server Error: {request.path}", exc_info=True)
@@ -1881,5 +1882,5 @@ def health():
 if __name__ == '__main__':
     #threading.Thread(target=periodic_ping, daemon=True).start()
     port = int(os.environ.get('PORT', 5005))  # Utilise le PORT de Railway ou 5005 en local
-    app.run(host='0.0.0.0', port=port)
+    app.run(host='0.0.0.0', port=port, debug=True)
 
