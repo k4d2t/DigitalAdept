@@ -237,6 +237,8 @@ def fetch_products():
             pass
     return produits
 
+PRODUIT_CACHE = fetch_products()
+
 def fetch_product_by_id(product_id):
     try:
         r = requests.get(f"{MOCKAPI_URL}/{product_id}", timeout=7)
@@ -420,7 +422,7 @@ def shuffle_filter(seq):
 @cache.cached(timeout=120)
 @app.route('/')
 def home():
-    produits = fetch_products()
+    produits = PRODUIT_CACHE
     produits_vedette = [p for p in produits if p.get("featured")]
 
     website_jsonld = {
@@ -527,7 +529,7 @@ def home():
 @cache.cached(timeout=120)
 @app.route('/produits')
 def produits():
-    produits = fetch_products()
+    produits = PRODUIT_CACHE
     context = get_seo_context(
         meta_title="Tous les produits - Digital Adept™",
         meta_description="Liste complète de tous les produits digitaux, logiciels, ebooks et services disponibles.",
@@ -551,7 +553,7 @@ def produits():
 @cache.cached(timeout=120)
 @app.route('/produit/<slug>')
 def product_detail(slug):
-    produits = fetch_products()
+    produits = PRODUIT_CACHE
     produit = next((p for p in produits if slugify(p.get("name")) == slug), None)
     if not produit:
         context = get_seo_context(
@@ -602,7 +604,7 @@ def add_comment(slug):
     """
     Route pour ajouter un commentaire à un produit spécifique
     """
-    produits = fetch_products()
+    produits = PRODUIT_CACHE
 
     # Trouver le produit correspondant au slug
     produit = next((p for p in produits if slugify(p.get("name")) == slug), None)
@@ -640,7 +642,7 @@ def api_produits():
     """
     API pour récupérer tous les produits
     """
-    produits = fetch_products()
+    produits = PRODUIT_CACHE
     return jsonify(produits)
 
 @app.route('/api/product/<int:product_id>/comments', methods=['GET'])
@@ -1407,7 +1409,7 @@ def get_product_by_id(product_id):
     Retourne les détails d'un produit spécifique par son ID.
     """
     try:
-        products = fetch_products()
+        products = PRODUIT_CACHE
     except (FileNotFoundError, json.JSONDecodeError):
         return jsonify({"error": "Fichier introuvable ou JSON invalide"}), 500
 
@@ -1429,7 +1431,7 @@ def update_product(product_id):
 
     try:
         # Charger les produits existants
-        products = fetch_products()
+        products = PRODUIT_CACHE
     except (FileNotFoundError, json.JSONDecodeError) as e:
         app.logger.error(f"Erreur lors du chargement des produits : {e}")
         return jsonify({"error": "Fichier introuvable ou JSON invalide"}), 500
@@ -1826,7 +1828,7 @@ def sitemap():
         {"loc": url_for('home', _external=True), "priority": "1.0", "changefreq": "daily"},
         {"loc": url_for('produits', _external=True), "priority": "0.8", "changefreq": "weekly"}
     ]
-    produits = fetch_products()
+    produits = PRODUIT_CACHE
     for produit in produits:
         pages.append({
             "loc": url_for('product_detail', slug=slugify(produit['name']), _external=True),
@@ -1882,5 +1884,5 @@ def health():
 if __name__ == '__main__':
     #threading.Thread(target=periodic_ping, daemon=True).start()
     port = int(os.environ.get('PORT', 5005))  # Utilise le PORT de Railway ou 5005 en local
-    app.run(host='0.0.0.0', port=port, debug=True)
+    app.run(host='0.0.0.0', port=port)
 
