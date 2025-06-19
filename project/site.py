@@ -53,6 +53,16 @@ except Exception:
 limiter = Limiter(key_func=get_remote_address)
 limiter.init_app(app)
 
+@app.before_request
+def start_timer():
+    request.start_time = time.perf_counter()
+
+@app.after_request
+def log_time(response):
+    duration = time.perf_counter() - request.start_time
+    print(f"{request.path} took {duration*1000:.2f} ms")
+    return response
+
 @app.after_request
 def add_common_headers(response):
     # Pour toutes les réponses API, ajoute un cache HTTP
@@ -1254,7 +1264,7 @@ def delete_user(username):
 PRODUIT
 """
 # PAS D'UPLOAD_FOLDER
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp', 'avif'}
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
