@@ -22,47 +22,68 @@ import random
 from jinja2.runtime import Undefined
 import logging
 
-logging.basicConfig(filename='flask_app.log', level=logging.INFO)
-
+# --- Logging robuste en prod ---
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s %(levelname)s %(name)s %(threadName)s : %(message)s',
+    handlers=[
+        logging.FileHandler("flask_app.log"),
+        logging.StreamHandler()
+    ]
+)
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 CORS(app)
 Compress(app)
-app.config['CACHE_TYPE'] = 'SimpleCache'   # Pour prod, tu peux mettre 'RedisCache'
-app.config['CACHE_DEFAULT_TIMEOUT'] = 120  # Valeur par défaut, peut être surchargée par endpoint
-cache = Cache(app)
+
+# -- Flask-Caching en prod (filesystem ou redis selon config) --
+if os.environ.get("USE_REDIS_CACHE") == "1":
+    redis_url = os.environ.get("REDIS_URL") or "redis://localhost:6379"
+    cache = Cache(config={
+        'CACHE_TYPE': 'redis',
+        'CACHE_REDIS_URL': redis_url,
+        'CACHE_DEFAULT_TIMEOUT': 120
+    })
+    print("Flask-Cache: Redis backend actif")
+else:
+    cache = Cache(config={
+        'CACHE_TYPE': 'filesystem',
+        'CACHE_DIR': '/tmp/flask_cache',  # Change si besoin
+        'CACHE_DEFAULT_TIMEOUT': 120
+    })
+    print("Flask-Cache: Filesystem backend actif")
+
+cache.init_app(app)
 
 Talisman(app, content_security_policy=None)
 
-limiter = Limiter(key_func=get_remote_address)
-limiter.init_app(app)
-
+# -- Flask-Limiter, Redis si possible --
 redis_url = os.environ.get("REDIS_URL") or "redis://localhost:6379"
-
 try:
-    # Teste si Redis est lancé (prod)
     import redis
     r = redis.from_url(redis_url)
     r.ping()
     app.config["RATELIMIT_STORAGE_URL"] = redis_url
     print("Flask-Limiter : Redis backend actif")
 except Exception:
-    # Pas de Redis ou connexion impossible : fallback in-memory (dev)
     print("Flask-Limiter : Backend mémoire utilisé (ne pas utiliser en prod multi-worker)")
 
 limiter = Limiter(key_func=get_remote_address)
 limiter.init_app(app)
 
+# --- Logging du temps de traitement ---
 @app.before_request
 def start_timer():
     request.start_time = time.perf_counter()
 
 @app.after_request
 def log_time(response):
-    duration = time.perf_counter() - request.start_time
-    print(f"{request.path} took {duration*1000:.2f} ms")
+    duration = time.perf_counter() - getattr(request, 'start_time', time.perf_counter())
+    logger.info(f"{request.method} {request.path} took {duration*1000:.2f} ms")
     return response
 
+# --- Headers communs ---
 @app.after_request
 def add_common_headers(response):
     # Pour toutes les réponses API, ajoute un cache HTTP
@@ -662,16 +683,11 @@ def messages():
 
         # ENVOI AU BOT TELEGRAM
         # (si tu veux, tu peux le rendre async/multithread pour ne pas bloquer la réponse web)
-        tg_ok = send_telegram_message(data)
-
-        if (tg_ok):
-            return jsonify({"status": "success", "message": "Votre message a été envoyé avec succès !" }), 200
-        else:
-            return jsonify({"status": "error", "message": "Erreur lors de la sauvegarde du message."}), 500
+        threading.Thread(target=send_telegram_message, args=(data,)).start()
+        return jsonify({"status": "success", "message": "Votre message a été envoyé avec succès !"}), 200
     except Exception as e:
         print(f"Erreur : {e}")
         return jsonify({"status": "error", "message": "Une erreur est survenue."}), 500
-
 
 @app.route("/payer", methods=["POST"])
 def payer():
@@ -1298,6 +1314,54 @@ def admin_products_page():
     return render_template('admin_products_dashboard.html')
 
 
+# --- Mémoire temporaire pour fichiers Telegram reçus par webhook ---
+TELEGRAM_FILES = []
+TELEGRAM_FILES_LIMIT = 200  # Ajuste le nombre max si tu veux
+FILE_CHAT_ID = "-1002693426522"
+
+@app.route('/telegram_webhook', methods=['POST'])
+def telegram_webhook():
+    print("Webhook reçu !", request.json)
+    update = request.json
+    msg = update.get("message") or update.get("channel_post")
+    if not msg:
+        return '', 200
+    # Filtrer par chat_id
+    if str(msg.get("chat", {}).get("id")) != FILE_CHAT_ID:
+        return '', 200
+
+    # PHOTOS
+    if 'photo' in msg:
+        variants = []
+        for photo in msg['photo']:
+            variants.append({
+                "label": f"{photo['width']}x{photo['height']}",
+                "file_id": photo['file_id'],
+            })
+        TELEGRAM_FILES.append({
+            "name": msg.get("caption", "Photo Telegram"),
+            "type": "image",
+            "date": msg.get("date"),
+            "variants": variants,
+            "preview_file_id": variants[-1]['file_id'] if variants else None,
+        })
+    # DOCUMENTS (pdf, zip, etc)
+    elif 'document' in msg:
+        doc = msg['document']
+        TELEGRAM_FILES.append({
+            "name": doc.get("file_name", "Fichier Telegram"),
+            "type": doc.get("mime_type", "document"),
+            "date": msg.get("date"),
+            "file_id": doc.get("file_id"),
+            "size": doc.get("file_size"),
+        })
+
+    if len(TELEGRAM_FILES) > TELEGRAM_FILES_LIMIT:
+        TELEGRAM_FILES.pop(0)
+
+    return '', 200
+
+# --- PAGE ADMIN ---
 @app.route('/admin/telegram-files', methods=['GET'])
 def admin_telegram_files():
     """
@@ -1312,59 +1376,14 @@ def admin_telegram_files():
 
     return render_template('admin_telegram_files.html')
 
-
-FILE_BOT_TOKEN = "7734969718:AAGtUifNLlIUadA-jfT0tQKH60iu_Qu2kSQ"
-FILE_API_URL = f"https://api.telegram.org/bot{FILE_BOT_TOKEN}"
-FILE_CHAT_ID = "-1002693426522"  # Remplace par le chat_id de ton groupe
-
-def get_recent_group_files(limit=100):
-    """
-    Va chercher les derniers messages du groupe et extrait les fichiers/photos/documents.
-    """
-    # On utilise getUpdates pour la démo, mais tu peux améliorer pour de vraies apps.
-    updates = requests.get(f"{FILE_API_URL}/getUpdates", params={"limit": limit}).json()
-    files = []
-
-    for update in updates.get("result", []):
-        msg = update.get("message") or update.get("channel_post")
-        if not msg or str(msg.get("chat", {}).get("id")) != FILE_CHAT_ID:
-            continue
-
-        # PHOTOS (plusieurs variantes possibles)
-        if 'photo' in msg:
-            variants = []
-            for photo in msg['photo']:
-                variants.append({
-                    "label": f"{photo['width']}x{photo['height']}",
-                    "file_id": photo['file_id'],
-                })
-            files.append({
-                "name": msg.get("caption", "Photo Telegram"),
-                "type": "image",
-                "date": msg.get("date"),
-                "variants": variants,
-                "preview_file_id": variants[-1]['file_id'] if variants else None,
-            })
-        # DOCUMENTS (pdf, zip, etc)
-        elif 'document' in msg:
-            doc = msg['document']
-            files.append({
-                "name": doc.get("file_name", "Fichier Telegram"),
-                "type": doc.get("mime_type", "document"),
-                "date": msg.get("date"),
-                "file_id": doc.get("file_id"),
-                "size": doc.get("file_size"),
-            })
-
-    return files
-
+# --- API POUR LE FRONTEND ADMIN ---
 @app.route('/admin/api/telegram-files', methods=['GET'])
 def api_telegram_files():
     if not session.get('admin_logged_in'):
         return jsonify({'error': 'Unauthorized'}), 401
 
-    files = get_recent_group_files()
-    return jsonify(files)
+    # Renvoie les fichiers Telegram reçus via webhook, les plus récents d'abord
+    return jsonify(list(TELEGRAM_FILES)[::-1])
 
 @app.route('/admin/products/manage', methods=['GET'])
 def admin_products_manage():
@@ -1606,8 +1625,11 @@ def api_announcements():
 
 @app.route('/api/announcements/active')
 def api_announcements_active():
-    r = requests.get(f"{ANNOUNCEMENTS_URL}?active=true")
-    return jsonify(r.json())
+    # Utilise le cache RAM pour éviter un appel API à chaque fois
+    announcements = fetch_announcements()
+    # Filtre côté Python pour ne garder que les actifs
+    active = [a for a in announcements if a.get('active') is True]
+    return jsonify(active)
 
 @app.route('/admin/announcements', methods=['GET'])
 def admin_announcements():
