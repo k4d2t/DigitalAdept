@@ -174,6 +174,24 @@ def get_seo_context(
     return context
 
 
+def make_breadcrumb(*elements):
+    """
+    elements: liste de tuples (name, url)
+    Retourne le JSON-LD du fil d'Ariane.
+    """
+    return {
+        "@context": "https://schema.org",
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+            {
+                "@type": "ListItem",
+                "position": i+1,
+                "name": name,
+                "item": url
+            } for i, (name, url) in enumerate(elements)
+        ]
+    }
+
 MOCKAPI_URL = "https://6840a10f5b39a8039a58afb0.mockapi.io/api/externalapi/produits"
 
 @cache.cached(timeout=120, key_prefix="products")
@@ -368,48 +386,134 @@ def shuffle_filter(seq):
     return seq
 
 # --- Routes produits ---
-PRODUIT_CACHE = fetch_products()
+
 @app.route('/')
 def home():
     produits = fetch_products()
     produits_vedette = [p for p in produits if p.get("featured")]
-    og_image = url_for('static', filename='img/logo.png', _external=True)
-    meta_jsonld = {
+
+    website_jsonld = {
         "@context": "https://schema.org",
         "@type": "WebSite",
         "name": "Digital Adept™",
-        "url": url_for('home', _external=True)
+        "url": url_for('home', _external=True),
+        "description": "La meilleure boutique africaine de produits digitaux, logiciels, services et astuces pour booster, démarrer ou commencer votre business en ligne.",
+        "inLanguage": "fr"
     }
+
+    faq_jsonld = {
+        "@context": "https://schema.org",
+        "@type": "FAQPage",
+        "mainEntity": [
+            {
+                "@type": "Question",
+                "name": "Digital Adept, c’est quoi exactement ?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "Plateforme africaine de produits digitaux : on vous propose le meilleur du numérique, accessible, simple et sécurisé, pour tous les usages."
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "Qui peut acheter sur Digital Adept ?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": "Tout le monde ! Que vous soyez en Afrique ou ailleurs, Digital Adept est ouvert à tous ceux qui cherchent des solutions numériques innovantes à prix doux."
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "Pourquoi faire confiance à Digital Adept ?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": (
+                        "• Créé en Afrique, pour les réalités africaines.<br>"
+                        "• Des prix <b>waou</b> et des promos régulières.<br>"
+                        "• Des produits testés, validés et recommandés par l’équipe.<br>"
+                        "• Plateforme rapide, moderne, et 100 % sécurisée (https)."
+                    )
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "Comment sont sécurisés mes paiements ?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": (
+                        "<b>Vos paiements passent par FusionPay</b> : solution de paiement chiffrée, reconnue pour la sécurité et la fiabilité en Afrique.<br>"
+                        "Digital Adept ne stocke jamais vos infos bancaires."
+                    )
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "Et mes données personnelles alors ?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": (
+                        "Vos données restent confidentielles : elles ne sont jamais revendues ni partagées. La confiance, c’est la base chez Digital Adept."
+                    )
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "Quels types de produits trouve-t-on ici ?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": (
+                        "Logiciels, ebooks, outils pour entreprises, ressources pour étudiants, services exclusifs, et plein d’autres surprises à venir !"
+                    )
+                }
+            },
+            {
+                "@type": "Question",
+                "name": "Comment contacter l’équipe ou obtenir un conseil personnalisé ?",
+                "acceptedAnswer": {
+                    "@type": "Answer",
+                    "text": (
+                        "Écrivez-nous via le formulaire de contact sur /contact : on répond vite et avec le sourire !"
+                    )
+                }
+            }
+        ]
+    }
+
     context = get_seo_context(
         meta_title="Digital Adept™ - Boutique africaine de produits 100%  digitaux",
         meta_description="La meilleure boutique africaine de produits digitaux, logiciels, services et astuces pour booster, démarrer ou commencer votre business en ligne.",
-        og_image=og_image,
-        meta_jsonld=meta_jsonld,
+        og_image=url_for('static', filename='img/logo.png', _external=True),
+        meta_keywords="digital, boutique, ebooks, logiciels, services, Afrique",
+        meta_jsonld=[website_jsonld, faq_jsonld],  # <-- la bonne syntaxe
+        meta_breadcrumb_jsonld=make_breadcrumb(
+            ("Accueil", url_for('home', _external=True))
+        ),
         extra_vars={
             "produits_vedette": produits_vedette,
-            "produits": produits  # Pour carrousel ou autres usages
+            "produits": produits
         }
     )
     return render_template('home.html', **context)
 
-
-
 @app.route('/produits')
 def produits():
     produits = fetch_products()
-    og_image = url_for('static', filename='img/logo.png', _external=True)
-    meta_jsonld = {
-        "@context": "https://schema.org",
-        "@type": "CollectionPage",
-        "name": "Tous les produits - Digital Adept",
-        "description": "Découvrez tous nos produits digitaux, logiciels, ebooks, services, etc..",
-        "url": url_for('produits', _external=True)
-    }
     context = get_seo_context(
-        meta_title="Tous les produits - Digital Adept",
-        meta_description="Découvrez tous nos produits digitaux, logiciels, ebooks, services au meilleur prix.",
-        og_image=og_image,
-        meta_jsonld=meta_jsonld,
+        meta_title="Tous les produits - Digital Adept™",
+        meta_description="Liste complète de tous les produits digitaux, logiciels, ebooks et services disponibles.",
+        og_image=url_for('static', filename='img/logo.png', _external=True),
+        meta_keywords="catalogue, produits digitaux, ebooks, logiciels, services",
+        meta_jsonld={
+            "@context": "https://schema.org",
+            "@type": "CollectionPage",
+            "name": "Tous les produits - Digital Adept™",
+            "description": "Liste complète de tous les produits digitaux, logiciels, ebooks et services.",
+            "url": url_for('produits', _external=True),
+            "inLanguage": "fr"
+        },
+        meta_breadcrumb_jsonld=make_breadcrumb(
+            ("Accueil", url_for('home', _external=True)),
+            ("Produits", url_for('produits', _external=True)),
+        ),
         extra_vars={"produits": produits}
     )
     return render_template('produits.html', **context)
@@ -419,65 +523,44 @@ def product_detail(slug):
     produits = fetch_products()
     produit = next((p for p in produits if slugify(p.get("name")) == slug), None)
     if not produit:
-        return render_template('404.html'), 404
+        context = get_seo_context(
+            meta_title="Produit introuvable - Digital Adept™",
+            meta_description="Le produit recherché n'existe pas ou a été supprimé.",
+            meta_robots="noindex, follow",
+            meta_breadcrumb_jsonld=make_breadcrumb(
+                ("Accueil", url_for('home', _external=True)),
+                ("Produits", url_for('produits', _external=True)),
+            )
+        )
+        return render_template('404.html', **context), 404
 
-    comments = load_comments()
-    produit_comments = comments.get(str(produit.get("id")), [])
-    produit_comments = sort_comments(produit_comments)
-    if produit_comments:
-        produit["rating"] = round(sum(c["rating"] for c in produit_comments) / len(produit_comments), 2)
-    else:
-        produit["rating"] = None
-
-    og_image = produit["images"][0] if produit.get("images") else url_for('static', filename='img/logo.png', _external=True)
-    meta_jsonld = {
-        "@context": "https://schema.org/",
-        "@type": "Product",
-        "name": produit.get("name"),
-        "image": [og_image],
-        "description": (produit.get("short_description") or produit.get("description") or ""),
-        "sku": produit.get("sku") or produit.get("id"),
-        "offers": {
-            "@type": "Offer",
-            "priceCurrency": produit.get("currency", "XOF"),
-            "price": produit.get("price"),
-            "availability": "https://schema.org/InStock" if produit.get("stock", 0) > 0 else "https://schema.org/OutOfStock"
-        }
-    }
-    # Fil d'Ariane (optionnel)
-    meta_breadcrumb_jsonld = {
-      "@context": "https://schema.org",
-      "@type": "BreadcrumbList",
-      "itemListElement": [
-        {
-          "@type": "ListItem",
-          "position": 1,
-          "name": "Accueil",
-          "item": url_for('home', _external=True)
-        },
-        {
-          "@type": "ListItem",
-          "position": 2,
-          "name": "Produits",
-          "item": url_for('produits', _external=True)
-        },
-        {
-          "@type": "ListItem",
-          "position": 3,
-          "name": produit.get('name'),
-          "item": request.url
-        }
-      ]
-    }
+    produit_comments = load_comments().get(str(produit.get("id")), [])
     context = get_seo_context(
-        meta_title=f"{produit.get('name')} - Acheter {produit.get('name')} au meilleur prix | Digital Adept",
-        meta_description=(produit.get("short_description") or produit.get("description") or "")[:160],
-        og_image=og_image,
-        meta_jsonld=meta_jsonld,
-        meta_breadcrumb_jsonld=meta_breadcrumb_jsonld,
+        meta_title=f"{produit['name']} - Digital Adept™",
+        meta_description=produit.get("short_description", "Découvrez ce produit digital sur Digital Adept."),
+        og_image=produit.get("images", [url_for('static', filename='img/logo.png', _external=True)])[0],
+        meta_keywords=f"{produit['name']}, digital, boutique",
+        meta_jsonld={
+            "@context": "https://schema.org",
+            "@type": "Product",
+            "name": produit['name'],
+            "image": produit.get("images"),
+            "description": produit.get("short_description"),
+            "brand": "Digital Adept™",
+            "offers": {
+                "@type": "Offer",
+                "price": produit['price'],
+                "priceCurrency": produit['currency'],
+                "availability": "https://schema.org/InStock" if produit['stock'] > 0 else "https://schema.org/OutOfStock"
+            }
+        },
+        meta_breadcrumb_jsonld=make_breadcrumb(
+            ("Accueil", url_for('home', _external=True)),
+            ("Produits", url_for('produits', _external=True)),
+            (produit['name'], url_for('product_detail', slug=slugify(produit['name']), _external=True)),
+        ),
         extra_vars={
             "produit": produit,
-            "produits": produits,  # Pour carrousel ou suggestions
             "comments": produit_comments
         }
     )
@@ -542,8 +625,22 @@ def get_product_comments(product_id):
 @app.route('/contact')
 def contact():
     context = get_seo_context(
-        meta_title="Contact - Digital Adept",
-        meta_description="Contactez l'équipe Digital Adept pour toute question.",
+        meta_title="Contactez-nous - Digital Adept™",
+        meta_description="Besoin d'informations ou d'aide ? Contactez l'équipe Digital Adept™.",
+        og_image=url_for('static', filename='img/logo.png', _external=True),
+        meta_keywords="contact, support, digital adept, assistance",
+        meta_jsonld={
+            "@context": "https://schema.org",
+            "@type": "ContactPage",
+            "name": "Contact - Digital Adept™",
+            "description": "Besoin d'aide ou d'une information ? Contactez-nous.",
+            "url": url_for('contact', _external=True),
+            "inLanguage": "fr"
+        },
+        meta_breadcrumb_jsonld=make_breadcrumb(
+            ("Accueil", url_for('home', _external=True)),
+            ("Contact", url_for('contact', _external=True)),
+        ),
     )
     return render_template('contact.html', **context)
 
@@ -1729,9 +1826,16 @@ def robots_txt():
     return Response("\n".join(lines), mimetype="text/plain")
 
 @app.errorhandler(404)
-def not_found(e):
-    logging.warning(f"404 Not Found: {request.path}")
-    return render_template("404.html"), 404
+def page_not_found(e):
+    context = get_seo_context(
+        meta_title="Erreur 404 - Page non trouvée | Digital Adept™",
+        meta_description="Raté 😬! Cette page n’existe pas. Elle a peut-être été supprimée",
+        meta_robots="noindex, follow",
+        meta_breadcrumb_jsonld=make_breadcrumb(
+            ("Accueil", url_for('home', _external=True))
+        )
+    )
+    return render_template("404.html", **context), 404
 
 @app.errorhandler(500)
 def server_error(e):
