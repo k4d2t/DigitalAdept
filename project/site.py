@@ -1828,27 +1828,39 @@ def admin_logout():
     flash("Vous avez été déconnecté.", "success")
     return redirect(url_for('admin_login'))
 
-
 @app.route('/sitemap.xml')
 def sitemap():
     pages = [
         {"loc": url_for('home', _external=True), "priority": "1.0", "changefreq": "daily"},
-        {"loc": url_for('produits', _external=True), "priority": "0.8", "changefreq": "weekly"}
+        {"loc": url_for('produits', _external=True), "priority": "0.8", "changefreq": "weekly"},
+        {"loc": url_for('contact', _external=True), "priority": "0.5", "changefreq": "yearly"},
+        {"loc": url_for('privacy', _external=True), "priority": "0.3", "changefreq": "yearly"},
     ]
-    produits = PRODUIT_CACHE
+    produits = fetch_products()
     for produit in produits:
-        pages.append({
+        # Si tu as la date : produit.get('last_modified', None) ou autre champ
+        lastmod = produit.get('last_modified') if 'last_modified' in produit else None
+        entry = {
             "loc": url_for('product_detail', slug=slugify(produit['name']), _external=True),
             "priority": "0.6",
             "changefreq": "weekly"
-        })
+        }
+        if lastmod:
+            entry['lastmod'] = lastmod  # Format ISO 8601 recommandé : "2025-06-20"
+        pages.append(entry)
 
     sitemap_xml = [
         '<?xml version="1.0" encoding="UTF-8"?>',
         '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
     ]
     for page in pages:
-        sitemap_xml.append(f"<url><loc>{page['loc']}</loc><changefreq>{page['changefreq']}</changefreq><priority>{page['priority']}</priority></url>")
+        sitemap_xml.append("<url>")
+        sitemap_xml.append(f"<loc>{page['loc']}</loc>")
+        if 'lastmod' in page:
+            sitemap_xml.append(f"<lastmod>{page['lastmod']}</lastmod>")
+        sitemap_xml.append(f"<changefreq>{page['changefreq']}</changefreq>")
+        sitemap_xml.append(f"<priority>{page['priority']}</priority>")
+        sitemap_xml.append("</url>")
     sitemap_xml.append("</urlset>")
     return Response("\n".join(sitemap_xml), mimetype="application/xml")
 
