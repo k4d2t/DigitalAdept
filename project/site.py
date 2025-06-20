@@ -568,6 +568,13 @@ def product_detail(slug):
         return render_template('404.html', **context), 404
 
     produit_comments = load_comments().get(str(produit.get("id")), [])
+
+    
+    if produit_comments:
+        produit["rating"] = round(sum(c["rating"] for c in produit_comments) / len(produit_comments), 2)
+    else:
+        produit["rating"] = None
+        
     context = get_seo_context(
         meta_title=f"{produit['name']} - Digital Adept™",
         meta_description=produit.get("short_description", "Découvrez ce produit digital sur Digital Adept."),
