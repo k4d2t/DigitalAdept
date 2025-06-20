@@ -271,17 +271,14 @@ window.initProductPage = function () {
     document.querySelectorAll(".stars").forEach(starElement => {
         const stars = parseFloat(starElement.getAttribute("data-stars") || 0);
         starElement.innerHTML = "";
-        for (let i = 0; i < Math.floor(stars); i++) {
-            const star = document.createElement("span");
-            star.textContent = "★";
-            star.style.color = "#FFD600";
-            starElement.appendChild(star);
-        }
-        for (let i = Math.floor(stars); i < 5; i++) {
-            const emptyStar = document.createElement("span");
-            emptyStar.textContent = "☆";
-            emptyStar.style.color = "#bdbdbd";
-            starElement.appendChild(emptyStar);
+        for (let i = 1; i <= 5; i++) {
+            if (stars >= i) {
+                starElement.innerHTML += '<span style="color:#FFD600">★</span>';
+            } else if (stars >= i - 0.5) {
+                starElement.innerHTML += '<span style="color:#FFD600">⯨</span>';
+            } else {
+                starElement.innerHTML += '<span style="color:#bdbdbd">☆</span>';
+            }
         }
     });
 
