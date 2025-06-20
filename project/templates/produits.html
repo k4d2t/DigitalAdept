@@ -50,11 +50,32 @@
               <span class="product-badge badge-{{ badge.type|lower }}">{{ badge.text }}</span>
             {% endfor %}
           {% endif %}
-          {% if produit.images %}
-            <img src="{{ produit.images[0] }}" alt="{{ produit.name }}">
-          {% else %}
-            <img src="{{ produit.image or '/static/img/default.jpg' }}" alt="{{ produit.name }}">
-          {% endif %}
+          {% set img = produit.images[0] if produit.images else (produit.image or 'default.jpg') %}
+          {% set base = img.split('/')[-1].rsplit('.', 1)[0] %}
+          <picture>
+            <source
+              srcset="
+                https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/img/{{ base }}-400.webp 400w,
+                https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/img/{{ base }}-800.webp 800w,
+                https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/img/{{ base }}-1200.webp 1200w
+              "
+              type="image/webp"
+              sizes="(max-width:600px) 400px, (max-width:1100px) 800px, 1200px"
+            >
+            <source
+              srcset="
+                https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/img/{{ base }}-400.jpg 400w,
+                https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/img/{{ base }}-800.jpg 800w,
+                https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/img/{{ base }}-1200.jpg 1200w
+              "
+              type="image/jpeg"
+              sizes="(max-width:600px) 400px, (max-width:1100px) 800px, 1200px"
+            >
+            <img src="https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/img/{{ base }}-800.jpg"
+                alt="{{ produit.name }}"
+                loading="lazy"
+                width="400" height="266">
+          </picture>
           <div class="product-info">
             <h3>{{ produit.name }}</h3>
             <p class="product-desc">
