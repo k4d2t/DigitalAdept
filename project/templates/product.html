@@ -83,17 +83,17 @@
         {% endfor %}
       </div>
       <h1 class="product-title">{{ produit.name }}</h1>
-      {% if produit.rating %}
-        <div class="product-rating">
-          <span class="stars" data-stars="{{ produit.rating }}"></span>
-          <span class="rating-value">({{ produit.rating }} étoiles)</span>
-        </div>
-      {% else %}
-        <div class="product-rating">
-          <span class="stars" data-stars="0"></span>
-          <span class="rating-value">(Non noté)</span>
-        </div>
-      {% endif %}
+        {% if produit.rating %}
+          <div class="product-rating">
+            <span class="stars" data-stars="{{ produit.rating or 0 }}"></span>
+            <span class="rating-value">({{ produit.rating }} étoiles)</span>
+          </div>
+        {% else %}
+          <div class="product-rating">
+            <span class="stars" data-stars="0"></span>
+            <span class="rating-value">(Non noté)</span>
+          </div>
+        {% endif %}
       <div class="product-price-detailed">
         <span class="current-price">{{ produit.price }} {{ produit.currency }}</span>
         {% if produit.old_price %}
@@ -199,7 +199,7 @@
             {% if p.promo %}
               <span class="product-badge badge-promo">{{ p.promo }}</span>
             {% endif %}
-            <img src="{{ p.images[0] if p.images else url_for('static', filename='img/logo.png') }}" alt="{{ p.name }}">
+            <img src="{{ p.images[0] if p.images else url_for('static', filename='img/logo.webp') }}" alt="{{ p.name }}">
             <div class="product-info">
               <h3>{{ p.name }}</h3>
              <div class="product-desc">
