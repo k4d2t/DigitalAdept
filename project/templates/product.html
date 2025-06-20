@@ -23,9 +23,33 @@
     <div class="product-gallery">
       <div class="gallery-main">
         <div class="gallery-images">
-          {% for img in produit.images %}
-            <img src="{{ img }}" alt="{{ produit.name }}" class="gallery-img{% if loop.first %} active{% endif %}" loading="lazy">
-          {% endfor %}
+        {% for img in produit.images %}
+          {% set base = img.split('/')[-1].rsplit('.', 1)[0] %}
+          <picture>
+            <source
+              srcset="
+                https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/img/{{ base }}-400.webp 400w,
+                https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/img/{{ base }}-800.webp 800w,
+                https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/img/{{ base }}-1200.webp 1200w
+              "
+              type="image/webp"
+              sizes="(max-width:600px) 400px, (max-width:1100px) 800px, 1200px"
+            >
+            <source
+              srcset="
+                https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/img/{{ base }}-400.jpg 400w,
+                https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/img/{{ base }}-800.jpg 800w,
+                https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/img/{{ base }}-1200.jpg 1200w
+              "
+              type="image/jpeg"
+              sizes="(max-width:600px) 400px, (max-width:1100px) 800px, 1200px"
+            >
+            <img src="https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/img/{{ base }}-800.jpg"
+                alt="{{ produit.name }}"
+                class="gallery-img{% if loop.first %} active{% endif %}"
+                width="800" height="533">
+          </picture>
+        {% endfor %}
         </div>
         {% if produit.images and produit.images|length > 1 %}
           <button class="gallery-arrow left" aria-label="Image précédente">&#8249;</button>
@@ -34,9 +58,18 @@
       </div>
       {% if produit.images and produit.images|length > 1 %}
       <div class="gallery-thumbnails">
-        {% for img in produit.images %}
-          <img src="{{ img }}" alt="Miniature {{ loop.index }}" class="gallery-thumb{% if loop.first %} active{% endif %}">
-        {% endfor %}
+      {% for img in produit.images %}
+        {% set base = img.split('/')[-1].rsplit('.', 1)[0] %}
+        <picture>
+          <source srcset="https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/img/{{ base }}-400.webp" type="image/webp">
+          <source srcset="https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/img/{{ base }}-400.jpg" type="image/jpeg">
+          <img src="https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/img/{{ base }}-400.jpg"
+              alt="Miniature {{ loop.index }}"
+              class="gallery-thumb{% if loop.first %} active{% endif %}"
+              width="80" height="53"
+              loading="lazy">
+        </picture>
+      {% endfor %}
       </div>
       {% endif %}
       <div class="gallery-zoom-hint">Survolez ou touchez pour zoomer</div>
