@@ -288,13 +288,24 @@ transition: background 0.3s ease, color 0.3s ease;
 
 
 /* Footer */
-footer {
+footer{
     text-align: center;
     color: #1976d2;
     font-size: 1rem;
     margin-top: 3rem;
     padding-bottom: 1.5rem;
     letter-spacing: 0.04em;
+    text-decoration: none;
+}
+
+footer a {
+    text-align: center;
+    color: #4fc3f7;
+    font-size: 1rem;
+    margin-top: 3rem;
+    padding-bottom: 1.5rem;
+    letter-spacing: 0.04em;
+    text-decoration: none;
 }
 
 /* Responsive */
@@ -1405,35 +1416,35 @@ font-size: 1.2rem;
 }
 
 #buy-from-cart{
-    display: block; /* S'assurer qu'il est affiché comme un bloc */
-    background-color: #ef6c00; /* Couleur orange */
-    color: #fff; /* Couleur du texte */
-    font-size: 16px;
-    font-weight: light;
-    font-family: 'Google Sans', 'Roboto', Arial, sans-serif;
-    padding: 10px 20px;
-    border: none;
-    border-radius: 0.8em;
-    cursor: pointer;
-    text-align: center;
-    transition: background-color 0.3s ease;
-    margin: 10px auto; /* Centrer horizontalement */
+display: block; /* S'assurer qu'il est affiché comme un bloc */
+background-color: #ef6c00; /* Couleur orange */
+color: #fff; /* Couleur du texte */
+font-size: 16px;
+font-weight: light;
+font-family: 'Google Sans', 'Roboto', Arial, sans-serif;
+padding: 10px 20px;
+border: none;
+border-radius: 0.8em;
+cursor: pointer;
+text-align: center;
+transition: background-color 0.3s ease;
+margin: 10px auto; /* Centrer horizontalement */
 }
 
 #buy-from-cart:hover {
-     background-color: #ef6c0099;
+background-color: #ef6c0099;
 }
 
 #close-cart{
-    position: absolute;
-    top: 0.1em;
-    right: 16px;
-    background: none;
-    border: none;
-    color: white;
-    font-size: 2.1rem;
-    cursor: pointer;
-    z-index: 10001;
+position: absolute;
+top: 0.1em;
+right: 16px;
+background: none;
+border: none;
+color: white;
+font-size: 2.1rem;
+cursor: pointer;
+z-index: 10001;
 }
 
 .hidden {
@@ -1566,7 +1577,7 @@ font-size: 1.2rem;
 }
 
 .product-rating{
-margin-bottom: 0.3em;
+    margin-bottom: 0.3em;
 }
 
 .product-rating .stars{
@@ -2382,6 +2393,11 @@ display: none;
     overflow-y: auto;
     position: relative;
 }
+
+.AnnouncementModal-content a{
+    text-decoration: none;
+    color: var(--primary-dark, #1976d2);
+}
 .AnnouncementModal-content p {
     font-size: 18px;
     margin-bottom: 20px;
@@ -2588,8 +2604,8 @@ display: none;
         margin-bottom: 2.6em !important;
         padding-bottom: 2em !important;
 
+    }
 }
- }
 .satisfaction-section .neon-title {
     color: #4fd8ff;
     font-size: 1.5em;
