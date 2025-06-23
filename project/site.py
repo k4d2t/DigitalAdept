@@ -1104,7 +1104,7 @@ def admin_settings_users():
                 "username": username
             })
             flash("Le nom d'utilisateur ne doit contenir que des lettres et des chiffres.", "error")
-               elif User.query.filter_by(username=username).first():
+        elif User.query.filter_by(username=username).first():
             flash("Nom d'utilisateur déjà pris. Choisissez-en un autre.", "error")
         else:
             hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
