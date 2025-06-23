@@ -71,3 +71,12 @@ class SiteSettings(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(255))
     description = db.Column(db.Text)
+
+class Announcement(db.Model):
+    tablename = "announcements"
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(255), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    date = db.Column(db.DateTime, nullable=False)
+    active = db.Column(db.Boolean, default=True)
+    type = db.Column(db.String(64), default="general")  # exemple : promo, info, etc.
