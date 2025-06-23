@@ -540,7 +540,7 @@ def home():
 @cache.cached(timeout=120)
 @app.route('/produits')
 def produits():
-    roduits = Product.query.all()
+    produits = Product.query.all()
     context = get_seo_context(
         meta_title="Tous les produits - Digital Adept™",
         meta_description="Liste complète de tous les produits digitaux, logiciels, ebooks et services disponibles.",
