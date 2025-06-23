@@ -1003,6 +1003,7 @@ def save_data(data):
 # Vérification du rôle super_admin
 def is_super_admin():
     return session.get('role') == 'super_admin'
+    
 @cache.cached(timeout=120)
 @app.route('/k4d3t', methods=['GET', 'POST'])
 def admin_login():
@@ -1013,16 +1014,14 @@ def admin_login():
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
-
         user = User.query.filter_by(username=username).first()
-        if user and bcrypt.checkpw(password.encode('utf-8'), user.password.encode('utf-8')):
+        if user and user.password.startswith('$2b$') and bcrypt.checkpw(password.encode('utf-8'), user.password.encode('utf-8')):
             session['admin_logged_in'] = True
             session['username'] = user.username
             session['role'] = user.role
             flash("Connexion réussie !", "success")
             return redirect(url_for('admin_dashboard'))
-        else:
-            flash("Identifiants invalides. Réessayez.", "error")
+        flash("Identifiants invalides. Réessayez.", "error")
 
     return render_template('admin_login.html')
     
