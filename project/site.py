@@ -21,6 +21,8 @@ from flask_limiter.util import get_remote_address
 import random
 from jinja2.runtime import Undefined
 import logging
+from flask_sqlalchemy import SQLAlchemy
+from models import *
 
 # --- Logging robuste en prod ---
 logging.basicConfig(
@@ -96,6 +98,15 @@ def add_common_headers(response):
     return response
 
 
+# Configuration Railway/PostgreSQL
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get("DATABASE_URL")
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# Initialisation SQLAlchemy
+db.init_app(app)
+
+with app.app_context():
+    db.create_all()
 # --- Helper functions ---
 
 LOGS_FILE = "data/logs.json"
@@ -422,7 +433,7 @@ def shuffle_filter(seq):
 @cache.cached(timeout=120)
 @app.route('/')
 def home():
-    produits = PRODUIT_CACHE
+    produits = Product.query.all()
     produits_vedette = [p for p in produits if p.get("featured")]
 
     website_jsonld = {
@@ -514,7 +525,7 @@ def home():
     context = get_seo_context(
         meta_title="Digital Adept™ - Boutique africaine de produits 100%  digitaux",
         meta_description="La meilleure boutique africaine de produits digitaux, logiciels, services et astuces pour booster, démarrer ou commencer votre business en ligne.",
-        og_image=url_for('static', filename='img/logo.png', _external=True),
+        og_image=url_for('static', filename='img/logo.webp', _external=True),
         meta_keywords="digital, boutique, ebooks, logiciels, services, Afrique",
         meta_jsonld=[website_jsonld, faq_jsonld],  # <-- la bonne syntaxe
         meta_breadcrumb_jsonld=make_breadcrumb(
@@ -529,11 +540,11 @@ def home():
 @cache.cached(timeout=120)
 @app.route('/produits')
 def produits():
-    produits = PRODUIT_CACHE
+    roduits = Product.query.all()
     context = get_seo_context(
         meta_title="Tous les produits - Digital Adept™",
         meta_description="Liste complète de tous les produits digitaux, logiciels, ebooks et services disponibles.",
-        og_image=url_for('static', filename='img/logo.png', _external=True),
+        og_image=url_for('static', filename='img/logo.webp', _external=True),
         meta_keywords="catalogue, produits digitaux, ebooks, logiciels, services",
         meta_jsonld={
             "@context": "https://schema.org",
@@ -550,11 +561,12 @@ def produits():
         extra_vars={"produits": produits}
     )
     return render_template('produits.html', **context)
+    
 @cache.cached(timeout=120)
 @app.route('/produit/<slug>')
 def product_detail(slug):
-    produits = PRODUIT_CACHE
-    produit = next((p for p in produits if slugify(p.get("name")) == slug), None)
+    # On cherche le produit en base via le slug
+    produit = Product.query.filter_by(slug=slug).first()
     if not produit:
         context = get_seo_context(
             meta_title="Produit introuvable - Digital Adept™",
@@ -567,107 +579,114 @@ def product_detail(slug):
         )
         return render_template('404.html', **context), 404
 
-    produit_comments = load_comments().get(str(produit.get("id")), [])
-
-    
+    # On récupère les commentaires SQLAlchemy
+    produit_comments = Comment.query.filter_by(product_id=produit.id).order_by(Comment.date.desc()).all()
+    # Calcul rating moyen
     if produit_comments:
-        produit["rating"] = round(sum(c["rating"] for c in produit_comments) / len(produit_comments), 2)
+        rating = round(sum(c.rating for c in produit_comments) / len(produit_comments), 2)
     else:
-        produit["rating"] = None
-        
+        rating = None
+
+    produits = Product.query.all()  # Pour le carrousel "découvrez aussi"
+
     context = get_seo_context(
-        meta_title=f"{produit['name']} - Digital Adept™",
-        meta_description=produit.get("short_description", "Découvrez ce produit digital sur Digital Adept."),
-        og_image=produit.get("images", [url_for('static', filename='img/logo.png', _external=True)])[0],
-        meta_keywords=f"{produit['name']}, digital, boutique",
+        meta_title=f"{produit.name} - Digital Adept™",
+        meta_description=produit.short_description or "Découvrez ce produit digital sur Digital Adept.",
+        og_image=produit.images[0].url if produit.images else url_for('static', filename='img/logo.png', _external=True),
+        meta_keywords=f"{produit.name}, digital, boutique",
         meta_jsonld={
             "@context": "https://schema.org",
             "@type": "Product",
-            "name": produit['name'],
-            "image": produit.get("images"),
-            "description": produit.get("short_description"),
+            "name": produit.name,
+            "image": [img.url for img in produit.images],
+            "description": produit.short_description,
             "brand": "Digital Adept™",
             "offers": {
                 "@type": "Offer",
-                "price": produit['price'],
-                "priceCurrency": produit['currency'],
-                "availability": "https://schema.org/InStock" if produit['stock'] > 0 else "https://schema.org/OutOfStock"
+                "price": produit.price,
+                "priceCurrency": produit.currency,
+                "availability": "https://schema.org/InStock" if produit.stock > 0 else "https://schema.org/OutOfStock"
             }
         },
         meta_breadcrumb_jsonld=make_breadcrumb(
             ("Accueil", url_for('home', _external=True)),
             ("Produits", url_for('produits', _external=True)),
-            (produit['name'], url_for('product_detail', slug=slugify(produit['name']), _external=True)),
+            (produit.name, url_for('product_detail', slug=produit.slug, _external=True)),
         ),
         extra_vars={
             "produit": produit,
-            "comments": produit_comments
+            "comments": produit_comments,
+            "produits": produits,
+            "rating": rating
         }
     )
     return render_template('product.html', **context)
 
+
+
 @app.route('/produit/<slug>/comment', methods=['POST'])
 def add_comment(slug):
-    """
-    Route pour ajouter un commentaire à un produit spécifique
-    """
-    produits = PRODUIT_CACHE
-
-    # Trouver le produit correspondant au slug
-    produit = next((p for p in produits if slugify(p.get("name")) == slug), None)
-    if not produit:
-        abort(404, "Produit introuvable.")
-
-    product_id = produit.get("id")
-    comments = load_comments()
-    new_comment = request.form.to_dict()
-
-    # Vérifier que les champs nécessaires sont présents
-    if not new_comment.get("comment") or not new_comment.get("rating"):
+    produit = Product.query.filter_by(slug=slug).first_or_404()
+    comment_text = request.form.get("comment")
+    rating = request.form.get("rating")
+    if not comment_text or not rating:
         abort(400, "Le commentaire et la note sont obligatoires.")
 
-    # Créer un id unique pour le commentaire
-    comment_id = max([c['id'] for c in comments.get(str(product_id), [])] or [0]) + 1
-    new_comment["id"] = comment_id
-    new_comment["date"] = datetime.now(timezone.utc).isoformat()
-    new_comment["rating"] = int(new_comment["rating"])  # Convertir en entier
-
-    # Ajouter le commentaire
-    if str(product_id) not in comments:
-        comments[str(product_id)] = []
-    comments[str(product_id)].append(new_comment)
-
-    # Sauvegarder dans le fichier JSON
-    save_comments(comments)
-
-    # Rediriger vers la page du produit après soumission
+    comment = Comment(
+        product_id=produit.id,
+        comment=comment_text,
+        rating=int(rating),
+        date=datetime.now(timezone.utc)
+    )
+    db.session.add(comment)
+    db.session.commit()
     return redirect(url_for('product_detail', slug=slug))
 
 # --- Routes API ---
 @app.route('/api/produits')
 def api_produits():
-    """
-    API pour récupérer tous les produits
-    """
-    produits = PRODUIT_CACHE
-    return jsonify(produits)
+    produits = Product.query.all()
+    def product_to_dict(p):
+        return {
+            "id": p.id,
+            "name": p.name,
+            "short_description": p.short_description,
+            "description": p.description,
+            "price": p.price,
+            "old_price": p.old_price,
+            "currency": p.currency,
+            "featured": p.featured,
+            "category": p.category,
+            "stock": p.stock,
+            "sku": p.sku,
+            "slug": p.slug,
+            "images": [img.url for img in p.images],
+            "badges": [{"type": b.type, "text": b.text} for b in p.badges],
+            "faq": [{"question": f.question, "answer": f.answer} for f in p.faqs],
+            "resource_files": [{"type": r.type, "url": r.url, "file_id": r.file_id} for r in p.resource_files],
+        }
+    return jsonify([product_to_dict(produit) for produit in produits])
 
 @app.route('/api/product/<int:product_id>/comments', methods=['GET'])
 def get_product_comments(product_id):
-    """
-    API pour récupérer les commentaires d'un produit spécifique
-    """
-    comments = load_comments()
-    product_comments = comments.get(str(product_id), [])
-    product_comments = sort_comments(product_comments)  # Trier les commentaires
-    return jsonify(product_comments)
+    comments = Comment.query.filter_by(product_id=product_id).order_by(Comment.date.desc()).all()
+    def comment_to_dict(c):
+        return {
+            "id": c.id,
+            "product_id": c.product_id,
+            "comment": c.comment,
+            "rating": c.rating,
+            "date": c.date.isoformat(),
+        }
+    return jsonify([comment_to_dict(comment) for comment in comments])
+    
 @cache.cached(timeout=120)
 @app.route('/contact')
 def contact():
     context = get_seo_context(
         meta_title="Contactez-nous - Digital Adept™",
         meta_description="Besoin d'informations ou d'aide ? Contactez l'équipe Digital Adept™.",
-        og_image=url_for('static', filename='img/logo.png', _external=True),
+        og_image=url_for('static', filename='img/logo.webp', _external=True),
         meta_keywords="contact, support, digital adept, assistance",
         meta_jsonld={
             "@context": "https://schema.org",
@@ -983,45 +1002,30 @@ def save_data(data):
 
 # Vérification du rôle super_admin
 def is_super_admin():
-    return session.get('username') == 'k4d3t'
+    return session.get('role') == 'super_admin'
 @cache.cached(timeout=120)
 @app.route('/k4d3t', methods=['GET', 'POST'])
-@limiter.limit("10/minute")
 def admin_login():
-    """
-    Page de connexion pour accéder au tableau de bord admin.
-    """
     if session.get('admin_logged_in'):
         flash("Vous êtes déjà connecté.", "info")
-        log_action("already_logged_in", {"message": "Tentative d'accès à la page de connexion alors que l'utilisateur est déjà connecté."})
         return redirect(url_for('admin_dashboard'))
 
     if request.method == 'POST':
         username = request.form.get('username')
         password = request.form.get('password')
 
-        data = load_data()
-        users = data.get("users", [])
-
-        for user in users:
-            if user['username'] == username:
-                if bcrypt.checkpw(password.encode('utf-8'), user['password'].encode('utf-8')):
-                    session['admin_logged_in'] = True
-                    session['username'] = username
-                    session['role'] = user['role']
-
-                    log_action("login_success", {"username": username, "role": user['role']})
-                    flash("Connexion réussie !", "success")
-                    return redirect(url_for('admin_dashboard'))
-
-                log_action("login_failed", {"username": username, "reason": "Mot de passe incorrect."})
-                flash("Identifiants invalides. Réessayez.", "error")
-                break
+        user = User.query.filter_by(username=username).first()
+        if user and bcrypt.checkpw(password.encode('utf-8'), user.password.encode('utf-8')):
+            session['admin_logged_in'] = True
+            session['username'] = user.username
+            session['role'] = user.role
+            flash("Connexion réussie !", "success")
+            return redirect(url_for('admin_dashboard'))
         else:
-            log_action("login_failed", {"username": username, "reason": "Nom d'utilisateur introuvable."})
             flash("Identifiants invalides. Réessayez.", "error")
 
     return render_template('admin_login.html')
+    
 @cache.cached(timeout=120)
 @app.route('/k4d3t/dashboard')
 def admin_dashboard():
@@ -1038,44 +1042,20 @@ def admin_dashboard():
 
 @app.route('/k4d3t/settings', methods=['GET', 'POST'])
 def admin_settings():
-    """
-    Page de gestion des paramètres du site (accessible uniquement pour le super_admin).
-    """
-    # Vérifier si l'utilisateur est connecté et est un super_admin
     if not session.get('admin_logged_in') or session.get('role') != 'super_admin':
-        log_action("unauthorized_access_attempt", {"path": "/k4d3t/settings"})
         flash("Accès non autorisé.", "error")
         return redirect(url_for('admin_dashboard'))
-
-    # Charger les données du site
-    data = load_data()
-
     if request.method == 'POST':
-        # Récupérer les données du formulaire
-        site_title = request.form.get('title')
-        site_description = request.form.get('description')
-
-        # Vérifier que les champs sont remplis
-        if site_title and site_description:
-            # Mettre à jour les paramètres dans le fichier JSON
-            data['site_settings']['title'] = site_title
-            data['site_settings']['description'] = site_description
-
-            # Sauvegarder les modifications
-            save_data(data)
-            log_action("update_site_settings", {
-                "new_title": site_title,
-                "new_description": site_description
-            })
-            flash("Paramètres mis à jour avec succès.", "success")
-        else:
-            log_action("update_site_settings_failed", {
-                "reason": "Champs requis manquants"
-            })
-            flash("Tous les champs sont requis.", "error")
-
-    log_action("access_settings_page", {"role": session.get('role')})
-    return render_template('admin_settings.html', data=data)
+        for key, value in request.form.items():
+            setting = SiteSetting.query.filter_by(key=key).first()
+            if setting:
+                setting.value = value
+            else:
+                db.session.add(SiteSetting(key=key, value=value))
+        db.session.commit()
+        flash("Paramètres mis à jour.", "success")
+    settings = {s.key: s.value for s in SiteSetting.query.all()}
+    return render_template('admin_settings.html', settings=settings)
 
 
 @app.route('/k4d3t/settings/users', methods=['GET', 'POST'])
@@ -1124,83 +1104,36 @@ def admin_settings_users():
                 "username": username
             })
             flash("Le nom d'utilisateur ne doit contenir que des lettres et des chiffres.", "error")
+               elif User.query.filter_by(username=username).first():
+            flash("Nom d'utilisateur déjà pris. Choisissez-en un autre.", "error")
         else:
-            # Vérifier si l'utilisateur existe déjà
-            for user in data['users']:
-                if user['username'] == username:
-                    log_action("add_user_failed", {
-                        "reason": "Nom d'utilisateur déjà pris",
-                        "username": username
-                    })
-                    flash("Nom d'utilisateur déjà pris. Choisissez-en un autre.", "error")
-                    return render_template('admin_settings_users.html', users=data['users'])
-
-            # Ajouter le nouvel utilisateur
             hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-            data['users'].append({"username": username, "password": hashed_password, "role": role})
-            save_data(data)
-            log_action("add_user_success", {"username": username, "role": role})
+            user = User(username=username, password=hashed_password, role=role)
+            db.session.add(user)
+            db.session.commit()
             flash("Nouvel administrateur ajouté avec succès.", "success")
 
-    log_action("access_users_management", {"role": session.get('role')})
-    return render_template('admin_settings_users.html', users=data['users'])
+    users = User.query.all()
+    return render_template('admin_settings_users.html', users=users)
+
 
 @app.route('/k4d3t/settings/users/edit/<username>', methods=['POST'])
 def edit_user(username):
-    """
-    Modifier un utilisateur existant via une requête AJAX.
-    Accessible uniquement au super_admin.
-    """
     if not session.get('admin_logged_in') or session.get('role') != 'super_admin':
-        log_action("unauthorized_edit_attempt", {"target_username": username})
         return {"status": "error", "message": "Accès non autorisé"}, 403
-
-    data = request.json  # Récupérer les données JSON envoyées par le frontend
+    data = request.json
     new_username = data.get('new_username')
     new_role = data.get('new_role')
-
-    # Charger les données existantes
-    site_data = load_data()
-    users = site_data.get('users', [])
-
-    # Rechercher l'utilisateur
-    user = next((user for user in users if user['username'] == username), None)
+    user = User.query.filter_by(username=username).first()
     if not user:
-        log_action("edit_user_failed", {
-            "target_username": username,
-            "reason": "Utilisateur introuvable"
-        })
         return {"status": "error", "message": "Utilisateur introuvable"}, 404
-
-    # Validation des données
     if not new_username or not new_role:
-        log_action("edit_user_failed", {
-            "target_username": username,
-            "reason": "Champs requis manquants"
-        })
         return {"status": "error", "message": "Les champs nom d'utilisateur et rôle sont requis"}, 400
-
-    # Vérifier si le nouveau nom d'utilisateur est déjà pris
-    if new_username != username and any(u['username'] == new_username for u in users):
-        log_action("edit_user_failed", {
-            "target_username": username,
-            "new_username": new_username,
-            "reason": "Nom d'utilisateur déjà pris"
-        })
+    if new_username != username and User.query.filter_by(username=new_username).first():
         return {"status": "error", "message": "Nom d'utilisateur déjà pris"}, 409
-
-    # Mettre à jour les données
-    user['username'] = new_username
-    user['role'] = new_role
-
-    # Sauvegarder dans le fichier JSON
-    save_data(site_data)
-
-    log_action("edit_user_success", {
-        "old_username": username,
-        "new_username": new_username,
-        "new_role": new_role
-    })
+    user.username = new_username
+    user.role = new_role
+    db.session.commit()
     return {"status": "success", "message": "Utilisateur mis à jour avec succès"}
 
 @app.route('/settings/logs', methods=['GET'])
@@ -1260,28 +1193,15 @@ def export_logs():
 
 @app.route('/k4d3t/settings/users/delete/<username>', methods=['POST'])
 def delete_user(username):
-    """
-    Supprimer un utilisateur.
-    Accessible uniquement au super_admin.
-    """
     if not session.get('admin_logged_in') or session.get('role') != 'super_admin':
-        log_action("unauthorized_delete_attempt", {"target_username": username})
         flash("Accès non autorisé.", "error")
         return redirect(url_for('admin_dashboard'))
-
-    data = load_data()
-
-    # Vérifier si l'utilisateur existe avant suppression
-    user_exists = any(user['username'] == username for user in data['users'])
-    if not user_exists:
-        log_action("delete_user_failed", {"target_username": username, "reason": "Utilisateur introuvable"})
+    user = User.query.filter_by(username=username).first()
+    if not user:
         flash("Utilisateur introuvable.", "error")
         return redirect(url_for('admin_settings_users'))
-
-    # Supprimer l'utilisateur
-    data['users'] = [user for user in data['users'] if user['username'] != username]
-    save_data(data)
-    log_action("delete_user_success", {"deleted_username": username})
+    db.session.delete(user)
+    db.session.commit()
     flash("Utilisateur supprimé avec succès.", "success")
     return redirect(url_for('admin_settings_users'))
 
@@ -1298,15 +1218,30 @@ CDN_PREFIX = "https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static
 
 @app.route('/admin/products', methods=['GET'])
 def get_products():
-    """
-    Retourne la liste des produits.
-    """
-    try:
-        products = fetch_products()
-    except (FileNotFoundError, json.JSONDecodeError):
-        products = []
-
-    return jsonify(products)
+    if not session.get('admin_logged_in'):
+        return jsonify({"error": "Non autorisé"}), 401
+    products = Product.query.all()
+    def to_dict(p):
+        return {
+            "id": p.id,
+            "name": p.name,
+            "short_description": p.short_description,
+            "description": p.description,
+            "price": p.price,
+            "old_price": p.old_price,
+            "currency": p.currency,
+            "featured": p.featured,
+            "category": p.category,
+            "stock": p.stock,
+            "sku": p.sku,
+            "slug": p.slug,
+            "images": [img.url for img in p.images],  # Si tu as une relation ProductImage
+            "badges": [{"type": b.type, "text": b.text} for b in p.badges],
+            "faq": [{"question": f.question, "answer": f.answer} for f in p.faqs],
+            "resource_files": [{"type": r.type, "url": r.url, "file_id": r.file_id} for r in p.resource_files],
+        }
+    return jsonify([to_dict(prod) for prod in products])
+    
 @cache.cached(timeout=120)
 @app.route('/admin/products/page', methods=['GET'])
 def admin_products_page():
@@ -1394,6 +1329,7 @@ def api_telegram_files():
 
     # Renvoie les fichiers Telegram reçus via webhook, les plus récents d'abord
     return jsonify(list(TELEGRAM_FILES)[::-1])
+    
 @cache.cached(timeout=120)
 @app.route('/admin/products/manage', methods=['GET'])
 def admin_products_manage():
@@ -1412,85 +1348,60 @@ def admin_products_manage():
 
 @app.route('/admin/products/manage/<int:product_id>', methods=['GET'])
 def get_product_by_id(product_id):
-    """
-    Retourne les détails d'un produit spécifique par son ID.
-    """
-    try:
-        products = PRODUIT_CACHE
-    except (FileNotFoundError, json.JSONDecodeError):
-        return jsonify({"error": "Fichier introuvable ou JSON invalide"}), 500
-
-    # Chercher le produit correspondant à l'ID
-    product = fetch_product_by_id(product_id)
-
-    if not product:
-        return jsonify({"error": "Produit introuvable"}), 404
-
-    return jsonify(product)
+    if not session.get('admin_logged_in'):
+        return jsonify({"error": "Non autorisé"}), 401
+    product = Product.query.get_or_404(product_id)
+    def to_dict(p):
+        return {
+            "id": p.id,
+            "name": p.name,
+            "short_description": p.short_description,
+            "description": p.description,
+            "price": p.price,
+            "old_price": p.old_price,
+            "currency": p.currency,
+            "featured": p.featured,
+            "category": p.category,
+            "stock": p.stock,
+            "sku": p.sku,
+            "slug": p.slug,
+            "images": [img.url for img in p.images],
+            "badges": [{"type": b.type, "text": b.text} for b in p.badges],
+            "faq": [{"question": f.question, "answer": f.answer} for f in p.faqs],
+            "resource_files": [{"type": r.type, "url": r.url, "file_id": r.file_id} for r in p.resource_files],
+        }
+    return jsonify(to_dict(product))
 
 @app.route('/admin/products/manage/<int:product_id>', methods=['PUT'])
 def update_product(product_id):
-    """
-    Met à jour un produit spécifique avec gestion des images.
-    """
     if not session.get('admin_logged_in'):
         return jsonify({"error": "Non autorisé"}), 403
-
-    try:
-        # Charger les produits existants
-        products = PRODUIT_CACHE
-    except (FileNotFoundError, json.JSONDecodeError) as e:
-        app.logger.error(f"Erreur lors du chargement des produits : {e}")
-        return jsonify({"error": "Fichier introuvable ou JSON invalide"}), 500
-
-    # Trouver le produit correspondant à l'ID
-    product = fetch_product_by_id(product_id)
-    if not product:
-        app.logger.warning(f"Produit avec ID {product_id} introuvable.")
-        return jsonify({"error": "Produit introuvable"}), 404
-
-    # Récupérer les données de la requête
+    product = Product.query.get_or_404(product_id)
     data = request.form.to_dict()
     files = request.files.getlist("images")
+    # Màj champs principaux
+    for field in ['name', 'short_description', 'description', 'price', 'old_price', 'currency', 'featured', 'category', 'stock', 'sku', 'slug']:
+        if field in data:
+            setattr(product, field, data[field])
+    if data.get("price"):
+        product.price = int(data["price"])
+    if data.get("old_price"):
+        product.old_price = int(data["old_price"])
+    if data.get("stock"):
+        product.stock = int(data["stock"])
+    db.session.commit()
 
-    # Nouvelle logique : ne sauvegarde rien localement, juste génère les URLs CDN
-    image_paths = product.get("images", [])
+    # Images (optionnel, à adapter selon ta logique de remplacement/addition)
     for file in files:
         if file and allowed_file(file.filename):
             filename = secure_filename(file.filename)
-            # L'admin doit uploader l'image sur GitHub séparément !
-            image_paths.append(f"{CDN_PREFIX}{filename}")
-        else:
-            return jsonify({"error": f"Fichier invalide ou non autorisé : {file.filename}"}), 400
-
-    allowed_fields = ['name', 'description', 'price', 'old_price', 'currency', 'stock', 'category',
-                      'short_description', 'faq', 'badges', 'featured', 'resource_file_id', 'sku', 'images']
-
-    for field in allowed_fields:
-        if field in data:
-            try:
-                if field in ['price', 'stock']:
-                    product[field] = int(data[field])
-                elif field in ['faq', 'badges']:
-                    product[field] = json.loads(data[field])
-                elif field == 'featured':
-                    product[field] = data[field].lower() == 'true'
-                else:
-                    product[field] = data[field]
-            except (ValueError, json.JSONDecodeError) as e:
-                app.logger.error(f"Erreur de validation pour le champ {field} : {e}")
-                return jsonify({"error": f"Le champ {field} est invalide."}), 400
-
-    product['images'] = image_paths
-
-    updated = update_product_in_mockapi(product_id, product)
-    if not updated:
-        return jsonify({"error": "Erreur lors de la sauvegarde sur MockAPI."}), 500
-
-    app.logger.info(f"Produit {product_id} mis à jour avec succès.")
-    cache.delete('products')
-    return jsonify({"message": "Produit mis à jour avec succès", "product": updated}), 200
-
+            url = f"{CDN_PREFIX}{filename}"
+            image = ProductImage(product_id=product.id, url=url)
+            db.session.add(image)
+    # Badges, FAQ, resource_files : faire update/replace si besoin
+    db.session.commit()
+    return jsonify({"message": "Produit mis à jour avec succès"})
+    
 @cache.cached(timeout=120)
 @app.route('/admin/products/add', methods=['GET'])
 def admin_products_add():
@@ -1509,57 +1420,48 @@ def admin_products_add():
 
 @app.route('/admin/products/add', methods=['POST'])
 def add_product():
-    """
-    Ajoute un nouveau produit avec gestion des images.
-    """
     if not session.get('admin_logged_in'):
         return jsonify({"error": "Non autorisé"}), 403
 
-    # Récupérer les données du produit depuis la requête
-    data = request.form.to_dict()  # Récupère les champs texte
-    files = request.files.getlist("images")  # Récupère les fichiers image
-
-    # Valider les champs requis
+    data = request.form.to_dict()
+    files = request.files.getlist("images")
     required_fields = ['name', 'description', 'price', 'currency', 'category', 'stock']
     for field in required_fields:
-        if field not in data or not data[field]:
+        if not data.get(field):
             return jsonify({"error": f"Le champ '{field}' est requis."}), 400
 
-    # Nouvelle logique : ne sauvegarde rien localement, juste génère les URLs CDN
-    image_paths = []
+    produit = Product(
+        name=data['name'],
+        short_description=data.get('short_description', ''),
+        description=data['description'],
+        price=int(data['price']),
+        old_price=int(data.get('old_price', 0)) if data.get('old_price') else None,
+        currency=data['currency'],
+        featured=data.get('featured', False) == 'true',
+        category=data['category'],
+        stock=int(data['stock']),
+        sku=data.get('sku', ''),
+        slug=slugify(data['name'])
+    )
+    db.session.add(produit)
+    db.session.commit()
+
+    # Images (upload sur CDN à faire côté admin)
     for file in files:
         if file and allowed_file(file.filename):
             filename = secure_filename(file.filename)
-            # L'admin doit uploader l'image sur GitHub séparément !
-            image_paths.append(f"{CDN_PREFIX}{filename}")
-        else:
-            return jsonify({"error": f"Fichier invalide : {file.filename}"}), 400
-
-    slug = slugify(data['name'])
-    new_product = {
-        "name": data['name'],
-        "short_description": data.get('short_description', ''),
-        "description": data['description'],
-        "price": int(data['price']),
-        "old_price": int(data.get('old_price', 0)) if data.get('old_price') else None,
-        "currency": data['currency'],
-        "images": image_paths,
-        "resource_file_id": json.loads(data.get('resource_file_id', '[]')),
-        "featured": data.get('featured', False) == 'true',
-        "badges": json.loads(data.get('badges', '[]')),
-        "category": data['category'],
-        "stock": int(data['stock']),
-        "sku": data.get('sku', ''),
-        "faq": json.loads(data.get('faq', '[]')),
-        "slug": slug
-    }
-
-    created = add_product_to_mockapi(new_product)
-    if not created:
-        return jsonify({"error": "Erreur lors de l'ajout du produit."}), 500
-
-    cache.delete('products')
-    return jsonify({"message": "Produit ajouté avec succès.", "product": created}), 201
+            url = f"{CDN_PREFIX}{filename}"
+            image = ProductImage(product_id=produit.id, url=url)
+            db.session.add(image)
+    # Badges, FAQ, resource_files
+    for badge in json.loads(data.get('badges', '[]')):
+        db.session.add(ProductBadge(product_id=produit.id, type=badge['type'], text=badge['text']))
+    for faq in json.loads(data.get('faq', '[]')):
+        db.session.add(ProductFAQ(product_id=produit.id, question=faq['question'], answer=faq['answer']))
+    for rf in json.loads(data.get('resource_file_id', '[]')):
+        db.session.add(ProductResourceFile(product_id=produit.id, type=rf['type'], url=rf['url'], file_id=rf.get('file_id')))
+    db.session.commit()
+    return jsonify({"message": "Produit ajouté avec succès.", "id": produit.id}), 201
 
 
 @app.route('/admin/products/manage/<int:product_id>/image/delete', methods=['POST'])
@@ -1603,18 +1505,12 @@ def delete_product_image(product_id):
 
 @app.route('/admin/products/manage/<int:product_id>', methods=['DELETE'])
 def delete_product(product_id):
-    """
-    Supprime un produit par son ID.
-    """
     if not session.get('admin_logged_in'):
         return jsonify({"error": "Non autorisé"}), 403
-
-    deleted = delete_product_from_mockapi(product_id)
-    if not deleted:
-        return jsonify({"error": "Produit introuvable ou erreur MockAPI"}), 404
-    cache.delete('products')
-    return jsonify({"message": "Produit supprimé avec succès."}), 200
-
+    product = Product.query.get_or_404(product_id)
+    db.session.delete(product)
+    db.session.commit()
+    return jsonify({"message": "Produit supprimé avec succès"})
 
 """
 FIN PRODUIT
@@ -1624,196 +1520,152 @@ ANNOUNCEMENTS_URL = "https://6840a10f5b39a8039a58afb0.mockapi.io/api/externalapi
 
 
 @cache.cached(timeout=300, key_prefix="announcements")
-def fetch_announcements():
-    """Récupère toutes les annonces depuis MockAPI (avec cache Flask)"""
-    r = requests.get(ANNOUNCEMENTS_URL, timeout=5)
-    return r.json()
-
 @app.route('/api/announcements')
 def api_announcements():
-    return jsonify(fetch_announcements())
-
+    annonces = Announcement.query.order_by(Announcement.date.desc()).all()
+    def to_dict(a):
+        return {
+            "id": a.id,
+            "title": a.title,
+            "content": a.content,
+            "date": a.date.isoformat(),
+            "active": a.active,
+            "type": a.type
+        }
+    return jsonify([to_dict(a) for a in annonces])
+    
 @app.route('/api/announcements/active')
 def api_announcements_active():
-    # Utilise le cache RAM pour éviter un appel API à chaque fois
-    announcements = fetch_announcements()
-    # Filtre côté Python pour ne garder que les actifs
-    active = [a for a in announcements if a.get('active') is True]
-    return jsonify(active)
+    annonces = Announcement.query.filter_by(active=True).order_by(Announcement.date.desc()).all()
+    def to_dict(a):
+        return {
+            "id": a.id,
+            "title": a.title,
+            "content": a.content,
+            "date": a.date.isoformat(),
+            "active": a.active,
+            "type": a.type
+        }
+    return jsonify([to_dict(a) for a in annonces])
+    
 @cache.cached(timeout=120)
 @app.route('/admin/announcements', methods=['GET'])
 def admin_announcements():
-    """
-    Page de gestion des annonces dans l'admin dashboard.
-    """
     if not session.get('admin_logged_in'):
         flash("Veuillez vous connecter pour accéder à cette page.", "error")
         return redirect(url_for('admin_login'))
 
-    log_action("view_announcements_page", {"username": session.get('username')})
-
-    return render_template('admin_announcements.html')
+    annonces = Announcement.query.order_by(Announcement.date.desc()).all()
+    return render_template('admin_announcements.html', annonces=annonces)
 
 @app.route('/api/announcements', methods=['POST'])
 def api_announcements_post():
     data = request.json
-    r = requests.post(ANNOUNCEMENTS_URL, json=data)
-    cache.delete('announcements')
-    return (r.text, r.status_code, {'Content-Type': 'application/json'})
+    annonce = Announcement(
+        title=data.get("title"),
+        content=data.get("content"),
+        date=datetime.now(),
+        active=data.get("active", True),
+        type=data.get("type", "general")
+    )
+    db.session.add(annonce)
+    db.session.commit()
+    return jsonify({"message": "Annonce créée", "id": annonce.id}), 201
 
-@app.route('/api/announcements/<id>', methods=['PUT'])
+
+@app.route('/api/announcements/<int:id>', methods=['PUT'])
 def api_announcements_put(id):
     data = request.json
-    r = requests.put(f"{ANNOUNCEMENTS_URL}/{id}", json=data)
-    cache.delete('announcements')
-    return (r.text, r.status_code, {'Content-Type': 'application/json'})
+    annonce = Announcement.query.get_or_404(id)
+    annonce.title = data.get("title", annonce.title)
+    annonce.content = data.get("content", annonce.content)
+    annonce.active = data.get("active", annonce.active)
+    annonce.type = data.get("type", annonce.type)
+    db.session.commit()
+    return jsonify({"message": "Annonce mise à jour"})
 
-@app.route('/api/announcements/<id>', methods=['DELETE'])
+@app.route('/api/announcements/<int:id>', methods=['DELETE'])
 def api_announcements_delete(id):
-    r = requests.delete(f"{ANNOUNCEMENTS_URL}/{id}")
-    cache.delete('announcements')
-    return (r.text, r.status_code, {'Content-Type': 'application/json'})
+    annonce = Announcement.query.get_or_404(id)
+    db.session.delete(annonce)
+    db.session.commit()
+    return jsonify({"message": "Annonce supprimée"})
+    
 @cache.cached(timeout=120)
 @app.route('/admin/comments')
 def admin_comments_page():
-    """
-    Page pour gérer et modérer les commentaires utilisateurs.
-    """
     if not session.get('admin_logged_in'):
         flash("Veuillez vous connecter pour accéder à cette page.", "error")
         return redirect(url_for('admin_login'))
-
-    # Charger les commentaires
-    try:
-        with open(COMMENTS_FILE, "r") as f:
-            comments = json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
-        comments = {}  # Utiliser un dictionnaire vide si le fichier est introuvable ou corrompu
-
-    # Log action
+    comments = Comment.query.order_by(Comment.date.desc()).all()
     log_action("view_comments", {"username": session.get('username')})
     return render_template('admin_comments.html', comments=comments)
-
+    
 @app.route('/admin/comments/data', methods=['GET'])
 def admin_comments_data():
-    """
-    Retourne une liste de commentaires avec un système de filtrage par statut.
-    """
-    filter_type = request.args.get('filter', 'all')  # Par défaut : tous les commentaires
-    page = int(request.args.get('page', 1))  # Pagination : page actuelle
-    comments_per_page = 5  # Limite de commentaires par page
+    if not session.get('admin_logged_in'):
+        return jsonify({'error': 'Unauthorized'}), 401
+    filter_type = request.args.get('filter', 'all')
+    page = int(request.args.get('page', 1))
+    comments_per_page = 5
 
-    try:
-        with open(COMMENTS_FILE, "r") as f:
-            comments = json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
-        comments = {}
-
-    # Aplatir les commentaires par produit pour les manipuler facilement
-    all_comments = []
-    for product_id, product_comments in comments.items():
-        for comment in product_comments:
-            # Ajouter les champs manquants
-            comment["product_id"] = product_id
-            if "is_read" not in comment:
-                comment["is_read"] = False
-            if "content" not in comment:
-                comment["content"] = comment["comment"]
-            if "preview" not in comment:
-                comment["preview"] = comment["comment"][:30] + "..."
-            all_comments.append(comment)
-
-    # Filtrer les commentaires selon le filtre
+    query = Comment.query
     if filter_type == "unread":
-        filtered_comments = [c for c in all_comments if not c.get("is_read", False)]
+        query = query.filter_by(is_read=False)
     elif filter_type == "read":
-        filtered_comments = [c for c in all_comments if c.get("is_read", False)]
-    else:
-        filtered_comments = all_comments
+        query = query.filter_by(is_read=True)
 
-    # Pagination
-    start_index = (page - 1) * comments_per_page
-    paginated_comments = filtered_comments[start_index:start_index + comments_per_page]
+    total = query.count()
+    comments = query.order_by(Comment.date.desc()).offset((page - 1) * comments_per_page).limit(comments_per_page).all()
 
-    return jsonify({"comments": paginated_comments, "total": len(filtered_comments)})
+    def to_dict(comment):
+        return {
+            "id": comment.id,
+            "product_id": comment.product_id,
+            "content": comment.comment,
+            "date": comment.date.isoformat(),
+            "rating": comment.rating,
+            "is_read": comment.is_read,
+            "preview": (comment.comment or "")[:30] + "..."
+        }
+
+    return jsonify({"comments": [to_dict(c) for c in comments], "total": total})
 
 
 @app.route('/admin/comments/<int:comment_id>', methods=['GET'])
 def get_comment(comment_id):
-    """
-    Récupère un commentaire spécifique par son ID.
-    """
-    try:
-        with open(COMMENTS_FILE, "r") as f:
-            comments = json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
-        return jsonify({"error": "Fichier de commentaires introuvable"}), 404
-
-    # Rechercher le commentaire par ID
-    for product_id, product_comments in comments.items():
-        for comment in product_comments:
-            if comment["id"] == comment_id:
-                comment["product_id"] = product_id
-                # Retournez le champ "comment" comme "content" pour éviter toute confusion
-                return jsonify({
-                    "id": comment["id"],
-                    "product_id": comment["product_id"],
-                    "content": comment["comment"],  # Remappez "comment" en "content"
-                    "date": comment["date"],
-                    "rating": comment.get("rating", None)  # Inclure d'autres champs si nécessaire
-                })
-
-    return jsonify({"error": "Commentaire introuvable"}), 404
-
+    if not session.get('admin_logged_in'):
+        return jsonify({'error': 'Unauthorized'}), 401
+    comment = Comment.query.get_or_404(comment_id)
+    return jsonify({
+        "id": comment.id,
+        "product_id": comment.product_id,
+        "content": comment.comment,
+        "date": comment.date.isoformat(),
+        "rating": comment.rating,
+        "is_read": comment.is_read
+    })
 @app.route('/admin/comments/<int:comment_id>', methods=['DELETE'])
 def delete_comment(comment_id):
-    """
-    Supprime un commentaire par son ID.
-    """
-    try:
-        with open(COMMENTS_FILE, "r") as f:
-            comments = json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
-        return jsonify({"error": "Fichier de commentaires introuvable"}), 404
-
-    # Rechercher et supprimer le commentaire par ID
-    for product_id, product_comments in comments.items():
-        for i, comment in enumerate(product_comments):
-            if comment["id"] == comment_id:
-                deleted_comment = product_comments.pop(i)
-                with open(COMMENTS_FILE, "w") as f:
-                    json.dump(comments, f, indent=4)
-                return jsonify({"message": f"Commentaire supprimé avec succès : {deleted_comment['comment']}"})
-
-    return jsonify({"error": "Commentaire introuvable"}), 404
+    if not session.get('admin_logged_in'):
+        return jsonify({'error': 'Unauthorized'}), 401
+    comment = Comment.query.get_or_404(comment_id)
+    db.session.delete(comment)
+    db.session.commit()
+    return jsonify({"message": "Commentaire supprimé avec succès"})
 
 
 @app.route('/admin/comments/mark_as_read', methods=['POST'])
 def mark_comment_as_read():
-    """
-    Marque un commentaire comme lu.
-    """
+    if not session.get('admin_logged_in'):
+        return jsonify({'error': 'Unauthorized'}), 401
     comment_id = request.json.get("comment_id")
-    updated = False
-
-    try:
-        with open(COMMENTS_FILE, "r") as f:
-            comments = json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
-        return jsonify({"error": "Fichier de commentaires introuvable"}), 404
-
-    for product_id, product_comments in comments.items():
-        for comment in product_comments:
-            if comment["id"] == comment_id:
-                comment["is_read"] = True
-                updated = True
-
-    if updated:
-        with open(COMMENTS_FILE, "w") as f:
-            json.dump(comments, f, indent=4)
-        return jsonify({"message": "Commentaire marqué comme lu"})
-    else:
+    comment = Comment.query.get(comment_id)
+    if not comment:
         return jsonify({"error": "Commentaire introuvable"}), 404
+    comment.is_read = True
+    db.session.commit()
+    return jsonify({"message": "Commentaire marqué comme lu"})
 
 
 @app.route('/k4d3t/logout')
