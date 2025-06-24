@@ -261,15 +261,22 @@ document.addEventListener("DOMContentLoaded", () => {
         // Envoie les données au backend
         fetch("/admin/products/add", {
             method: "POST",
-            body: formData, // Content-Type est géré automatiquement
+            body: formData,
         })
-            .then((response) => response.json())
-            .then((data) => {
-                showNotification("Produit ajouté avec succès !", "success");
+        .then(async (response) => {
+            let data;
+            try { data = await response.json(); } catch(e) { data = {}; }
+            if (response.ok) {
+                showNotification(data.message || "Produit ajouté avec succès !", "success");
                 form.reset();
-                imagesContainer.innerHTML = ""; // Réinitialiser les images
-            })
-            .catch((error) => console.error("Erreur lors de l'ajout du produit :", error));
+                imagesContainer.innerHTML = "";
+            } else {
+                showNotification(data.error || "Erreur lors de l'ajout du produit.", "error");
+            }
+        })
+        .catch((error) => {
+            showNotification("Erreur réseau/serveur : " + error, "error");
+        });
     }
 
     // Initialisation de Quill.js
