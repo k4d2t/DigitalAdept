@@ -58,6 +58,7 @@ class Comment(db.Model):
     comment = db.Column(db.Text, nullable=False)
     rating = db.Column(db.Integer, nullable=False)
     date = db.Column(db.DateTime, nullable=False)
+    is_read = db.Column(db.Boolean, default=False)
 
 class User(db.Model):
     __tablename__ = "users"
