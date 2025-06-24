@@ -1426,7 +1426,11 @@ def add_product():
     for field in required_fields:
         if not data.get(field):
             return jsonify({"error": f"Le champ '{field}' est requis."}), 400
-
+            
+    existing = Product.query.filter_by(slug=slugify(data['name'])).first()
+    if existing:
+        return jsonify({"error": f"Un produit avec le slug '{slugify(data['name'])}' existe déjà. Change le nom du produit."}), 400
+    
     produit = Product(
         name=data['name'],
         short_description=data.get('short_description', ''),
