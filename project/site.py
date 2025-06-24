@@ -1366,7 +1366,7 @@ def get_product_by_id(product_id):
             "faq": [{"question": f.question, "answer": f.answer} for f in p.faqs],
             "resource_files": [{"type": r.type, "url": r.url, "file_id": r.file_id} for r in p.resource_files],
         }
-    return jsonify(to_dict(product))
+    return jsonify(to_dict(product)), 200
 
 @app.route('/admin/products/manage/<int:product_id>', methods=['PUT'])
 def update_product(product_id):
@@ -1375,28 +1375,84 @@ def update_product(product_id):
     product = Product.query.get_or_404(product_id)
     data = request.form.to_dict()
     files = request.files.getlist("images")
+
     # Màj champs principaux
-    for field in ['name', 'short_description', 'description', 'price', 'old_price', 'currency', 'featured', 'category', 'stock', 'sku', 'slug']:
+    for field in ['name', 'short_description', 'description', 'price', 'old_price', 'currency', 'featured', 'category', 'stock', 'sku']:
         if field in data:
-            setattr(product, field, data[field])
-    if data.get("price"):
-        product.price = int(data["price"])
-    if data.get("old_price"):
-        product.old_price = int(data["old_price"])
-    if data.get("stock"):
-        product.stock = int(data["stock"])
+            # Convert types si besoin
+            if field in ['price', 'old_price', 'stock']:
+                try:
+                    setattr(product, field, int(data[field]))
+                except Exception:
+                    pass
+            elif field == "featured":
+                setattr(product, field, data[field] == "true" or data[field] == "on")
+            else:
+                setattr(product, field, data[field])
+    # Slug : regénérer si name changé ou reçu explicitement
+    if "slug" in data:
+        product.slug = data["slug"]
+
     db.session.commit()
 
-    # Images (optionnel, à adapter selon ta logique de remplacement/addition)
+    # Images (ajout seulement)
     for file in files:
         if file and allowed_file(file.filename):
             filename = secure_filename(file.filename)
             url = f"{CDN_PREFIX}{filename}"
             image = ProductImage(product_id=product.id, url=url)
             db.session.add(image)
-    # Badges, FAQ, resource_files : faire update/replace si besoin
+
+    # Badges (remplace tout)
+    ProductBadge.query.filter_by(product_id=product.id).delete()
+    try:
+        badges = json.loads(data.get("badges", "[]"))
+    except Exception:
+        badges = []
+    for badge in badges:
+        db.session.add(ProductBadge(
+            product_id=product.id,
+            type=badge.get("type", ""),
+            text=badge.get("text", "")
+        ))
+
+    # FAQ (remplace tout)
+    ProductFAQ.query.filter_by(product_id=product.id).delete()
+    try:
+        faq = json.loads(data.get("faq", "[]"))
+    except Exception:
+        faq = []
+    for item in faq:
+        db.session.add(ProductFAQ(
+            product_id=product.id,
+            question=item.get("question", ""),
+            answer=item.get("answer", "")
+        ))
+
+    # Resource Files (remplace tout)
+    ProductResourceFile.query.filter_by(product_id=product.id).delete()
+    try:
+        resource_files = json.loads(data.get("resource_file_id", "[]"))
+    except Exception:
+        resource_files = []
+    if not isinstance(resource_files, list):
+        resource_files = [resource_files]
+    for rf in resource_files:
+        if isinstance(rf, dict):
+            db.session.add(ProductResourceFile(
+                product_id=product.id,
+                type=rf.get('type'),
+                url=rf.get('url'),
+                file_id=rf.get('file_id')
+            ))
+        elif isinstance(rf, str) and rf.strip():
+            db.session.add(ProductResourceFile(
+                product_id=product.id,
+                file_id=rf
+            ))
+
     db.session.commit()
-    return jsonify({"message": "Produit mis à jour avec succès"})
+    return jsonify({"message": "Produit mis à jour avec succès"}), 200
 
 import json
 @cache.cached(timeout=120)
@@ -1485,39 +1541,36 @@ def add_product():
 @app.route('/admin/products/manage/<int:product_id>/image/delete', methods=['POST'])
 def delete_product_image(product_id):
     """
-    Supprime une image spécifique d'un produit.
+    Supprime une image spécifique d'un produit (en base de données).
     """
     if not session.get('admin_logged_in'):
         return jsonify({"error": "Non autorisé"}), 403
 
-    # Charger les produits existants
-    try:
-        products = fetch_products()
-    except (FileNotFoundError, json.JSONDecodeError):
-        return jsonify({"error": "Fichier introuvable ou JSON invalide"}), 500
-
-    # Trouver le produit correspondant
-    product = fetch_product_by_id(product_id)
-    if not product:
-        return jsonify({"error": "Produit introuvable"}), 404
+    from sqlalchemy.orm.exc import NoResultFound
 
     data = request.get_json()
     image_url = data.get('imageUrl')
-    if not image_url or image_url not in product.get('images', []):
+    if not image_url:
+        return jsonify({"error": "Aucune URL d'image fournie."}), 400
+
+    # Vérifier que le produit existe
+    produit = Product.query.get(product_id)
+    if not produit:
+        return jsonify({"error": "Produit introuvable"}), 404
+
+    # Chercher l'image à supprimer
+    image = ProductImage.query.filter_by(product_id=product_id, url=image_url).first()
+    if not image:
         return jsonify({"error": "Image introuvable ou non associée à ce produit."}), 400
 
     try:
-        product['images'].remove(image_url)
-                # SUPPRIMER TOUTE LOGIQUE QUI SUPPRIME UN FICHIER LOCAL
+        db.session.delete(image)
+        db.session.commit()
     except Exception as e:
+        db.session.rollback()
         return jsonify({"error": f"Erreur lors de la suppression de l'image : {str(e)}"}), 500
 
-    updated = update_product_in_mockapi(product_id, product)
-    if not updated:
-        return jsonify({"error": "Erreur lors de la sauvegarde sur MockAPI."}), 500
-
-    cache.delete('products')
-    return jsonify({"message": "Image supprimée avec succès.", "product": updated}), 200
+    return jsonify({"message": "Image supprimée avec succès."}), 200
 
 
 
