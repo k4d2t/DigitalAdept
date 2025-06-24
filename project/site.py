@@ -104,9 +104,6 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Initialisation SQLAlchemy
 db.init_app(app)
-
-with app.app_context():
-    db.create_all()
 # --- Helper functions ---
 
 LOGS_FILE = "data/logs.json"
