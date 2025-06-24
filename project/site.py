@@ -431,7 +431,7 @@ def shuffle_filter(seq):
 @app.route('/')
 def home():
     produits = Product.query.all()
-    produits_vedette = [p for p in produits if p.get("featured")]
+    produits_vedette = [p for p in produits if p.featured]
 
     website_jsonld = {
         "@context": "https://schema.org",
