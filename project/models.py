@@ -66,7 +66,7 @@ class User(db.Model):
     password = db.Column(db.String(255), nullable=False)
     role = db.Column(db.String(32), nullable=False)
 
-class SiteSettings(db.Model):
+class SiteSetting(db.Model):
     __tablename__ = "site_settings"
     id = db.Column(db.Integer, primary_key=True)
     title = db.Column(db.String(255))
