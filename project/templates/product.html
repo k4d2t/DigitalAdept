@@ -24,7 +24,7 @@
       <div class="gallery-main">
         <div class="gallery-images">
         {% for img in produit.images %}
-          {% set base = img.split('/')[-1].rsplit('.', 1)[0] %}
+          {% if img is string %}   {% set url = img %} {% else %}   {% set url = img.url %} {% endif %} {% set base = url.split('/')[-1].rsplit('.', 1)[0] %}
           <picture>
             <source
               srcset="
@@ -59,7 +59,7 @@
       {% if produit.images and produit.images|length > 1 %}
       <div class="gallery-thumbnails">
       {% for img in produit.images %}
-        {% set base = img.split('/')[-1].rsplit('.', 1)[0] %}
+        {% if img is string %}   {% set url = img %} {% else %}   {% set url = img.url %} {% endif %} {% set base = url.split('/')[-1].rsplit('.', 1)[0] %}
         <picture>
           <source srcset="https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/img/{{ base }}-400.webp" type="image/webp">
           <source srcset="https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/img/{{ base }}-400.jpg" type="image/jpeg">
