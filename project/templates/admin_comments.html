@@ -43,24 +43,28 @@
     let currentPage = 1;
 
     function filterComments(filter) {
-        currentFilter = filter; // Mettre à jour le filtre actif
-        currentPage = 1; // Réinitialiser à la première page
-        loadComments(); // Recharger les commentaires avec le nouveau filtre
+        currentFilter = filter;
+        currentPage = 1;
+        loadComments();
     }
 
-    // Fonction pour charger les commentaires
     function loadComments() {
         fetch(`/admin/comments/data?filter=${currentFilter}&page=${currentPage}`)
-            .then(response => response.json())
+            .then(response => {
+                const contentType = response.headers.get("content-type");
+                if (!contentType || !contentType.includes("application/json")) {
+                    showNotification("Erreur d'authentification ou de chargement. Essayez de recharger ou reconnectez-vous.", "error");
+                    throw new Error("Réponse non JSON reçue");
+                }
+                return response.json();
+            })
             .then(data => {
                 const commentList = document.getElementById('commentList');
-                commentList.innerHTML = ''; // Réinitialiser la liste
-
+                commentList.innerHTML = '';
                 if (data.comments.length === 0) {
                     commentList.innerHTML = '<p style="text-align: center;">Aucun commentaire à afficher</p>';
                     return;
                 }
-
                 data.comments.forEach(comment => {
                     const li = document.createElement('li');
                     li.className = comment.is_read ? 'read' : 'unread';
@@ -73,16 +77,20 @@
                     `;
                     commentList.appendChild(li);
                 });
-
                 renderPagination(data.total);
             })
-            .catch(error => console.error('Erreur lors du chargement des commentaires :', error));
+            .catch(error => {
+                showNotification('Erreur lors du chargement des commentaires : ' + error, "error");
+                console.error('Erreur lors du chargement des commentaires :', error);
+            });
     }
 
-    // Fonction pour afficher le contenu d'un commentaire
     function viewComment(id) {
         fetch(`/admin/comments/${id}`)
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) throw new Error("Erreur serveur lors de la récupération du commentaire.");
+                return response.json();
+            })
             .then(comment => {
                 if (!comment.error) {
                     document.getElementById('commentContent').innerHTML = `
@@ -90,35 +98,24 @@
                         <p>${comment.content}</p>
                         <small>Posté le ${comment.date}</small>
                     `;
-
-                    // Mettre à jour les boutons avec l'ID du commentaire
                     const markReadButton = document.getElementById('markReadButton');
                     const deleteButton = document.getElementById('deleteButton');
-
-                    if (markReadButton) {
-                        markReadButton.setAttribute('data-id', id);
-                    }
-
-                    if (deleteButton) {
-                        deleteButton.setAttribute('data-id', id);
-                    }
+                    if (markReadButton) markReadButton.setAttribute('data-id', id);
+                    if (deleteButton) deleteButton.setAttribute('data-id', id);
                 } else {
-                    console.error('Erreur :', comment.error);
+                    showNotification('Erreur : ' + comment.error, "error");
                 }
             })
-            .catch(error => console.error('Erreur lors de la récupération du commentaire :', error));
+            .catch(error => showNotification('Erreur lors de la récupération du commentaire : ' + error, "error"));
     }
 
-    // Fonction pour marquer un commentaire comme lu
     function markAsRead() {
         const button = document.getElementById('markReadButton');
         const commentId = parseInt(button.getAttribute('data-id'), 10);
-
         if (!commentId && commentId !== 0) {
-            console.error("Aucun ID de commentaire disponible pour marquer comme lu");
+            showNotification("Aucun ID de commentaire disponible pour marquer comme lu", "error");
             return;
         }
-
         fetch('/admin/comments/mark_as_read', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -127,36 +124,32 @@
             .then(response => response.json())
             .then(data => {
                 showNotification(data.message, "success");
-                loadComments(); // Recharger les commentaires
+                loadComments();
             })
-            .catch(error => console.error('Erreur lors du marquage comme lu :', error));
+            .catch(error => showNotification('Erreur lors du marquage comme lu : ' + error, "error"));
     }
 
-    // Fonction pour supprimer un commentaire
     function deleteComment() {
         const button = document.getElementById('deleteButton');
         const commentId = parseInt(button.getAttribute('data-id'), 10);
-
         if (!commentId && commentId !== 0) {
-            console.error('Aucun ID de commentaire disponible pour suppression');
+            showNotification('Aucun ID de commentaire disponible pour suppression', "error");
             return;
         }
-
         fetch(`/admin/comments/${commentId}`, {
             method: 'DELETE',
         })
             .then(response => response.json())
             .then(data => {
                 showNotification(data.message, "success");
-                loadComments(); // Recharger les commentaires
+                loadComments();
                 document.getElementById('commentContent').innerHTML = `
                     <p style="text-align: center; color: #555;">Aucun commentaire sélectionné</p>
                 `;
             })
-            .catch(error => console.error('Erreur lors de la suppression :', error));
+            .catch(error => showNotification('Erreur lors de la suppression : ' + error, "error"));
     }
 
-    // Fonction pour la pagination
     function renderPagination(total) {
         const pagination = document.getElementById('pagination');
         const pages = Math.ceil(total / 5);
@@ -174,7 +167,6 @@
         }
     }
 
-    // Charger les commentaires au chargement de la page
     document.addEventListener('DOMContentLoaded', loadComments);
 </script>
 {% endblock %}
