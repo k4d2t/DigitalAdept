@@ -10,9 +10,78 @@
     <nav class="admin-nav">
         <a href="{{ url_for('admin_products_page') }}">Retour</a>
     </nav>
+    <div class="admin-toolbar glassy-toolbar" style="margin-bottom:1.2em;display:flex;justify-content:center;">
+      <input type="search" id="adminProductSearch" class="admin-search-bar"
+             placeholder="Rechercher un produit..." style="max-width:350px;">
+    </div>
+    <style>
+        .admin-toolbar.glassy-toolbar {
+            background: var(--toolbar-bg,rgba(34,34,50,0.36));
+            box-shadow: 0 2px 12px var(--toolbar-border,rgba(58,138,255,0.13)), var(--neon);
+            border-radius: 1.5em;
+            padding: 0.6em 1.3em;
+            margin: 0 auto 1.2em auto;
+            backdrop-filter: blur(8px);
+            border: 1.2px solid var(--toolbar-border,rgba(58,138,255,0.13));
+        }
+        
+        .admin-search-bar {
+            width: 100%;
+            font-family: var(--toolbar-font, 'Google Sans', 'Roboto', Arial, sans-serif);
+            font-size: 1em;
+            padding: 0.7em 1.2em;
+            border-radius: 1.8em;
+            border: none;
+            background: transparent;
+            color: #fff;
+            box-shadow: 0 0 0 1.3px var(--accent-strong,#6ec0ff), 0 0 8px var(--accent-strong,#6ec0ff)33;
+            outline: none;
+            transition: box-shadow 0.2s, background 0.2s;
+            backdrop-filter: blur(3.5px);
+            margin: 0 0.7em;
+        }
+        .admin-search-bar::placeholder {
+            color: #cdd7ff;
+            opacity: 0.6;
+        }
+        .admin-search-bar:focus {
+            box-shadow: 0 0 0 2px var(--accent,#3a8aff), 0 0 12px var(--accent,#3a8aff)55, var(--neon);
+            background: rgba(80, 180, 255, 0.04);
+        } 
+        
+         .admin-pagination-bar {
+            display: flex;
+            gap: 0.6em;
+            justify-content: center;
+            margin-top: 1.5em;
+            flex-wrap: wrap;
+        }
+        .admin-pagination-btn {
+            background: var(--primary-dark, #1976d2);
+            color: #fff;
+            border-radius: 50%;
+            border: none;
+            width: 2.1em;
+            height: 2.1em;
+            font-weight: bold;
+            font-size: 1em;
+            margin: 0 0.18em;
+            transition: background 0.18s, color 0.18s;
+            box-shadow: var(--neon);
+            cursor: pointer;
+        }
+        .admin-pagination-btn.active,
+        .admin-pagination-btn:hover {
+            background: var(--primary, #4fc3f7);
+            color: #222;
+            box-shadow: var(--neon-hover);
+        }
+                
+    </style>
     <div class="products-grid" id="productsGrid">
         <!-- Les cartes des produits seront générées ici par JavaScript -->
     </div>
+    <div id="adminPagination" class="admin-pagination-bar" style="display:flex;justify-content:center;margin-top:1.5em;gap:0.6em;"></div>
 </div>
 
 <div id="productEditModal" class="custom-modal">
@@ -158,6 +227,29 @@ document.addEventListener("DOMContentLoaded", () => {
 
     loadProducts();
     setupImageDeletion();
+
+    document.getElementById('adminProductSearch').addEventListener('input', function(){
+        const search = this.value.trim().toLowerCase();
+        document.querySelectorAll('.products-grid .product-card').forEach(card => {
+            const text = card.textContent.toLowerCase();
+            card.style.display = text.includes(search) ? "" : "none";
+        });
+    });
+
+    function renderPagination(totalItems, itemsPerPage, onPageChange, currentPage) {
+        const totalPages = Math.ceil(totalItems / itemsPerPage);
+        const pagination = document.getElementById('adminPagination');
+        pagination.innerHTML = '';
+        if(totalPages <= 1) return;
+    
+        for(let i=1; i<=totalPages; i++) {
+            const btn = document.createElement('button');
+            btn.textContent = i;
+            btn.className = 'admin-pagination-btn' + (i === currentPage ? ' active' : '');
+            btn.onclick = () => onPageChange(i);
+            pagination.appendChild(btn);
+        }
+    }
 
     function handleFileSelection(event) {
         const files = event.target.files;
