@@ -469,7 +469,8 @@ document.addEventListener("DOMContentLoaded", () => {
     // Utility to render a responsive <picture> element like on the front
     function renderProductPicture(url, alt = "Image produit") {
         // Extraction du nom de base sans extension
-        let base = url.split('/')[-1].rsplit('.', 1)[0];
+        let filename = url.split('/').pop(); // Récupère le dernier élément (ex: "bar.jpg")
+        let base = filename.split('.').slice(0, -1).join('.');
         return `
         <picture style="display:block;text-align:center;">
             <source
