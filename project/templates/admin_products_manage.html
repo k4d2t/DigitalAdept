@@ -502,11 +502,16 @@ document.addEventListener("DOMContentLoaded", () => {
     function displayExistingImage(imageUrl) {
         const imageWrapper = document.createElement("div");
         imageWrapper.className = "image-wrapper";
+    
         imageWrapper.innerHTML = `
-            ${renderProductPicture(imageUrl, "Image du produit")}
-            <span class="remove-image" style="position:absolute;top:6px;right:6px;cursor:pointer;">&times;</span>
+            <img src="${imageUrl}" alt="Image du produit" class="preview-image" style="width:100px; height:100px;">
+            <span class="remove-image" style="cursor:pointer;">&times;</span>
         `;
-        imageWrapper.querySelector(".remove-image").addEventListener("click", () => {
+    
+        // Utilise addEventListener, pas onclick dans le HTML
+        const removeBtn = imageWrapper.querySelector(".remove-image");
+        removeBtn.addEventListener("click", function(event) {
+            event.stopPropagation(); // ← Important !
             fetch(`/admin/products/manage/${form.dataset.productId}/image/delete`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -521,8 +526,12 @@ document.addEventListener("DOMContentLoaded", () => {
                         showNotification("Erreur lors de la suppression de l'image.", "error");
                     }
                 })
-                .catch((error) => console.error("Erreur lors de la suppression de l'image :", error));
+                .catch((error) => {
+                    showNotification("Erreur lors de la suppression de l'image.", "error");
+                    console.error("Erreur lors de la suppression de l'image :", error);
+                });
         });
+    
         imagesContainer.appendChild(imageWrapper);
     }
 
