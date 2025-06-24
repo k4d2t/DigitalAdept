@@ -1397,7 +1397,8 @@ def update_product(product_id):
     # Badges, FAQ, resource_files : faire update/replace si besoin
     db.session.commit()
     return jsonify({"message": "Produit mis à jour avec succès"})
-    
+
+import json
 @cache.cached(timeout=120)
 @app.route('/admin/products/add', methods=['GET'])
 def admin_products_add():
