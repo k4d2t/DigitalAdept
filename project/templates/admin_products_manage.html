@@ -24,7 +24,7 @@
             backdrop-filter: blur(8px);
             border: 1.2px solid var(--toolbar-border,rgba(58,138,255,0.13));
         }
-        
+
         .admin-search-bar {
             width: 100%;
             font-family: var(--toolbar-font, 'Google Sans', 'Roboto', Arial, sans-serif);
@@ -47,8 +47,8 @@
         .admin-search-bar:focus {
             box-shadow: 0 0 0 2px var(--accent,#3a8aff), 0 0 12px var(--accent,#3a8aff)55, var(--neon);
             background: rgba(80, 180, 255, 0.04);
-        } 
-        
+        }
+
          .admin-pagination-bar {
             display: flex;
             gap: 0.6em;
@@ -76,7 +76,7 @@
             color: #222;
             box-shadow: var(--neon-hover);
         }
-                
+
     </style>
     <div class="products-grid" id="productsGrid">
         <!-- Les cartes des produits seront générées ici par JavaScript -->
@@ -241,7 +241,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const pagination = document.getElementById('adminPagination');
         pagination.innerHTML = '';
         if(totalPages <= 1) return;
-    
+
         for(let i=1; i<=totalPages; i++) {
             const btn = document.createElement('button');
             btn.textContent = i;
@@ -381,7 +381,7 @@ document.addEventListener("DOMContentLoaded", () => {
             })
             .catch((error) => console.error("Erreur lors de la suppression du produit :", error));
     }
-    
+
     // PATCH Rendu featured + resource_file_id + images
     function openProductModal(productId) {
         fetch(`/admin/products/manage/${productId}`)
@@ -465,7 +465,7 @@ document.addEventListener("DOMContentLoaded", () => {
     addResourceFileIdBtnEdit.addEventListener("click", () => {
         renderResourceFileIdInputs(Array.from(resourceFileIdsContainerEdit.querySelectorAll("input[name='resource_file_id[]']")).map(i => i.value).concat([""]));
     });
-    
+
     // Utility to render a responsive <picture> element like on the front
     function renderProductPicture(url, alt = "Image produit") {
         // Extraction du nom de base sans extension
@@ -497,7 +497,7 @@ document.addEventListener("DOMContentLoaded", () => {
         </picture>
         `;
     }
-    
+
     function displayExistingImage(imageUrl) {
         const imageWrapper = document.createElement("div");
         imageWrapper.className = "image-wrapper";
@@ -531,19 +531,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
         formData.set("featured", document.getElementById("productFeatured").checked ? "true" : "false");
 
-        formData.append("badges", JSON.stringify(
-            Array.from(badgesContainer.children).map((badgeDiv) => ({
-                type: badgeDiv.querySelector("input[placeholder='Type']").value,
-                text: badgeDiv.querySelector("input[placeholder='Contenu']").value
-            }))
-        ));
-        
-        formData.append("faq", JSON.stringify(
-            Array.from(faqContainer.children).map((faqDiv) => ({
-                question: faqDiv.querySelector("input[placeholder='Question']").value,
-                answer: faqDiv.querySelector("textarea").value
-            }))
-        ));
+        formData.set("badges", JSON.stringify(Array.from(badgesContainer.children).map((badgeDiv) => ({
+            type: badgeDiv.querySelector("input[placeholder='Type']").value,
+            text: badgeDiv.querySelector("input[placeholder='Contenu']").value,
+        }))));
+        formData.set("faq", JSON.stringify(Array.from(faqContainer.children).map((faqDiv) => ({
+            question: faqDiv.querySelector("input[placeholder='Question']").value,
+            answer: faqDiv.querySelector("textarea").value,
+        }))));
         const fileIdInputs = resourceFileIdsContainerEdit.querySelectorAll("input[name='resource_file_id[]']");
         const resource_file_ids = Array.from(fileIdInputs).map(input => input.value.trim()).filter(val => val !== "");
         formData.set("resource_file_id", JSON.stringify(resource_file_ids));
