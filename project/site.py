@@ -1449,13 +1449,32 @@ def add_product():
             url = f"{CDN_PREFIX}{filename}"
             image = ProductImage(product_id=produit.id, url=url)
             db.session.add(image)
-    # Badges, FAQ, resource_files
+    # Badges, FAQ
     for badge in json.loads(data.get('badges', '[]')):
-        db.session.add(ProductBadge(product_id=produit.id, type=badge['type'], text=badge['text']))
+        db.session.add(ProductBadge(product_id=produit.id, type=badge.get('type', ''), text=badge.get('text', '')))
     for faq in json.loads(data.get('faq', '[]')):
-        db.session.add(ProductFAQ(product_id=produit.id, question=faq['question'], answer=faq['answer']))
-    for rf in json.loads(data.get('resource_file_id', '[]')):
-        db.session.add(ProductResourceFile(product_id=produit.id, type=rf['type'], url=rf['url'], file_id=rf.get('file_id')))
+        db.session.add(ProductFAQ(product_id=produit.id, question=faq.get('question', ''), answer=faq.get('answer', '')))
+
+    # Resource files - robust to string/list/dict
+    import json
+    resource_files_raw = data.get('resource_file_id', '[]')
+    try:
+        resource_files = json.loads(resource_files_raw)
+    except Exception:
+        resource_files = []
+    if not isinstance(resource_files, list):
+        resource_files = [resource_files]
+    for rf in resource_files:
+        if isinstance(rf, dict):
+            db.session.add(ProductResourceFile(
+                product_id=produit.id,
+                type=rf.get('type'),
+                url=rf.get('url'),
+                file_id=rf.get('file_id')
+            ))
+        elif isinstance(rf, str):
+            db.session.add(ProductResourceFile(product_id=produit.id, file_id=rf))
+        # else: ignore autres formats
     db.session.commit()
     return jsonify({"message": "Produit ajouté avec succès.", "id": produit.id}), 201
 
