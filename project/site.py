@@ -579,8 +579,9 @@ def product_detail(slug):
     # On récupère les commentaires SQLAlchemy
     produit_comments = Comment.query.filter_by(product_id=produit.id).order_by(Comment.date.desc()).all()
     # Calcul rating moyen
-    if produit_comments:
-        rating = round(sum(c.rating for c in produit_comments) / len(produit_comments), 2)
+    ratings = [c.rating for c in produit_comments if c.rating is not None]
+    if ratings:
+        rating = round(sum(ratings) / len(ratings), 2)
     else:
         rating = None
 
@@ -1482,11 +1483,14 @@ def add_product():
     for field in required_fields:
         if not data.get(field):
             return jsonify({"error": f"Le champ '{field}' est requis."}), 400
-            
+
     existing = Product.query.filter_by(slug=slugify(data['name'])).first()
     if existing:
         return jsonify({"error": f"Un produit avec le slug '{slugify(data['name'])}' existe déjà. Change le nom du produit."}), 400
-    
+
+    # Correction: bien parser featured (bool JS -> bool Python)
+    featured = str(data.get('featured', '')).lower() in ['true', 'on', '1']
+
     produit = Product(
         name=data['name'],
         short_description=data.get('short_description', ''),
@@ -1494,18 +1498,50 @@ def add_product():
         price=int(data['price']),
         old_price=int(data.get('old_price', 0)) if data.get('old_price') else None,
         currency=data['currency'],
-        featured=data.get('featured', False) == 'true',
+        featured=featured,
         category=data['category'],
         stock=int(data['stock']),
         sku=data.get('sku', ''),
         slug=slugify(data['name'])
     )
     db.session.add(produit)
-    db.session.commit()
-    
-    resource_files_raw = data.get('resource_file_id', '[]')
+    db.session.flush()  # Pour récupérer produit.id sans commit
+
+    # Images
+    for file in files:
+        if file and allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            url = f"{CDN_PREFIX}{filename}"
+            image = ProductImage(product_id=produit.id, url=url)
+            db.session.add(image)
+
+    # Badges
     try:
-        resource_files = json.loads(resource_files_raw)
+        badges = json.loads(data.get('badges', '[]'))
+    except Exception:
+        badges = []
+    for badge in badges:
+        db.session.add(ProductBadge(
+            product_id=produit.id,
+            type=badge.get('type', ''),
+            text=badge.get('text', '')
+        ))
+
+    # FAQ
+    try:
+        faqs = json.loads(data.get('faq', '[]'))
+    except Exception:
+        faqs = []
+    for faq in faqs:
+        db.session.add(ProductFAQ(
+            product_id=produit.id,
+            question=faq.get('question', ''),
+            answer=faq.get('answer', '')
+        ))
+
+    # Resource files
+    try:
+        resource_files = json.loads(data.get('resource_file_id', '[]'))
     except Exception:
         resource_files = []
     if not isinstance(resource_files, list):
@@ -1518,23 +1554,13 @@ def add_product():
                 url=rf.get('url'),
                 file_id=rf.get('file_id')
             ))
-        elif isinstance(rf, str):
-            db.session.add(ProductResourceFile(product_id=produit.id, file_id=rf))
-        # else: ignore autres formats
-    db.session.commit()
-    # Images (upload sur CDN à faire côté admin)
-    for file in files:
-        if file and allowed_file(file.filename):
-            filename = secure_filename(file.filename)
-            url = f"{CDN_PREFIX}{filename}"
-            image = ProductImage(product_id=produit.id, url=url)
-            db.session.add(image)
-    # Badges, FAQ
-    for badge in json.loads(data.get('badges', '[]')):
-        db.session.add(ProductBadge(product_id=produit.id, type=badge.get('type', ''), text=badge.get('text', '')))
-    for faq in json.loads(data.get('faq', '[]')):
-        db.session.add(ProductFAQ(product_id=produit.id, question=faq.get('question', ''), answer=faq.get('answer', '')))
+        elif isinstance(rf, str) and rf.strip():
+            db.session.add(ProductResourceFile(
+                product_id=produit.id,
+                file_id=rf
+            ))
 
+    db.session.commit()
     return jsonify({"message": "Produit ajouté avec succès.", "id": produit.id}), 201
 
 
