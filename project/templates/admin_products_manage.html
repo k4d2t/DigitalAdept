@@ -531,14 +531,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
         formData.set("featured", document.getElementById("productFeatured").checked ? "true" : "false");
 
-        formData.set("badges", JSON.stringify(Array.from(badgesContainer.children).map((badgeDiv) => ({
-            type: badgeDiv.querySelector("input[placeholder='Type']").value,
-            text: badgeDiv.querySelector("input[placeholder='Contenu']").value,
-        }))));
-        formData.set("faq", JSON.stringify(Array.from(faqContainer.children).map((faqDiv) => ({
-            question: faqDiv.querySelector("input[placeholder='Question']").value,
-            answer: faqDiv.querySelector("textarea").value,
-        }))));
+        formData.append("badges", JSON.stringify(
+            Array.from(badgesContainer.children).map((badgeDiv) => ({
+                type: badgeDiv.querySelector("input[placeholder='Type']").value,
+                text: badgeDiv.querySelector("input[placeholder='Contenu']").value
+            }))
+        ));
+        
+        formData.append("faq", JSON.stringify(
+            Array.from(faqContainer.children).map((faqDiv) => ({
+                question: faqDiv.querySelector("input[placeholder='Question']").value,
+                answer: faqDiv.querySelector("textarea").value
+            }))
+        ));
         const fileIdInputs = resourceFileIdsContainerEdit.querySelectorAll("input[name='resource_file_id[]']");
         const resource_file_ids = Array.from(fileIdInputs).map(input => input.value.trim()).filter(val => val !== "");
         formData.set("resource_file_id", JSON.stringify(resource_file_ids));
