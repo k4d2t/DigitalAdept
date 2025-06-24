@@ -504,8 +504,8 @@ document.addEventListener("DOMContentLoaded", () => {
         imageWrapper.className = "image-wrapper";
     
         imageWrapper.innerHTML = `
-            <img src="${imageUrl}" alt="Image du produit" class="preview-image" style="width:100px; height:100px;">
-            <span class="remove-image" style="cursor:pointer;">&times;</span>
+            ${renderProductPicture(imageUrl, "Image du produit")}
+            <span class="remove-image" style="position:absolute;top:6px;right:6px;cursor:pointer;">&times;</span>
         `;
     
         // Utilise addEventListener, pas onclick dans le HTML
@@ -534,6 +534,8 @@ document.addEventListener("DOMContentLoaded", () => {
     
         imagesContainer.appendChild(imageWrapper);
     }
+
+    
 
     function updateProduct() {
         const productId = form.getAttribute("data-product-id");
