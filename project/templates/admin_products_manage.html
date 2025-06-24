@@ -386,13 +386,23 @@ document.addEventListener("DOMContentLoaded", () => {
             theme: "snow",
             modules: {
                 toolbar: [
-                    [{ header: [1, 2, 3, false] }],
-                    ["bold", "italic", "underline", "strike"],
-                    [{ list: "ordered" }, { list: "bullet" }],
-                    ["link", "image", "video"],
-                    ["clean"],
+                    [{ 'header': [1, 2, 3, false] }],
+                    ['bold', 'italic', 'underline', 'strike'],
+                    [{ 'align': [] }],
+                    [{ 'color': [] }, { 'background': [] }],
+                    [{ 'script': 'sub'}, { 'script': 'super' }],
+                    ['blockquote', 'code-block'],
+                    [{ 'list': 'ordered' }, { 'list': 'bullet' }, { 'indent': '-1'}, { 'indent': '+1' }],
+                    ['link', 'image', 'video', 'formula'],
+                    ['clean'],
+                    [{ 'table': [] }]
                 ],
-            },
+                table: true, // Table support (native in Quill 2.x)
+                clipboard: {
+                    matchVisual: false
+                },
+                history: { delay: 2000, maxStack: 500, userOnly: true }
+            }
         });
     }
 
