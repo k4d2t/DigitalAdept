@@ -220,6 +220,76 @@ document.addEventListener("DOMContentLoaded", () => {
         faqContainer.appendChild(faqDiv);
     }
 
+    // Charger la liste des produits
+    function loadProducts() {
+        fetch("/admin/products")
+            .then((response) => response.json())
+            .then((products) => {
+                const grid = document.getElementById("productsGrid");
+                grid.innerHTML = "";
+
+                products.forEach((product) => {
+                    const card = document.createElement("div");
+                    card.className = "product-card";
+                    card.setAttribute("data-id", product.id);
+                    card.innerHTML = `
+                        <h2>${product.name}</h2>
+                        <p><strong>Prix :</strong> ${product.price}</p>
+                        <p><strong>Catégorie :</strong> ${product.category}</p>
+                        <p><strong>Stock :</strong> ${product.stock}</p>
+                        <div class="product-card-actions">
+                            <button class="delete-button" onclick="deleteProduct(${product.id})">
+                                <?xml version="1.0" encoding="utf-8"?><!-- SVG intégré -->
+                                <svg width="60px" height="40px" viewBox="-2.5 0 61 61" xmlns="http://www.w3.org/2000/svg">
+                                    <defs>
+                                        <filter id="a" width="200%" height="200%" x="-50%" y="-50%" filterUnits="objectBoundingBox">
+                                            <feOffset dy="1" in="SourceAlpha" result="shadowOffsetOuter1"/>
+                                            <feGaussianBlur stdDeviation="10" in="shadowOffsetOuter1" result="shadowBlurOuter1"/>
+                                            <feColorMatrix values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.1 0" in="shadowBlurOuter1" result="shadowMatrixOuter1"/>
+                                            <feMerge>
+                                                <feMergeNode in="shadowMatrixOuter1"/>
+                                                <feMergeNode in="SourceGraphic"/>
+                                            </feMerge>
+                                        </filter>
+                                    </defs>
+                                    <path fill-rule="evenodd" d="M36 26v10.997c0 1.659-1.337 3.003-3.009 3.003h-9.981c-1.662 0-3.009-1.342-3.009-3.003v-10.997h16zm-2 0v10.998c0 .554-.456 1.002-1.002 1.002h-9.995c-.554 0-1.002-.456-1.002-1.002v-10.998h12zm-9-5c0-.552.451-1 .991-1h4.018c.547 0 .991.444.991 1 0 .552-.451 1-.991 1h-4.018c-.547 0-.991-.444-.991-1zm0 6.997c0-.551.444-.997 1-.997.552 0 1 .453 1 .997v6.006c0 .551-.444.997-1 .997-.552 0-1-.453-1-.997v-6.006zm4 0c0-.551.444-.997 1-.997.552 0 1 .453 1 .997v6.006c0 .551-.444.997-1 .997-.552 0-1-.453-1-.997v-6.006zm-6-5.997h-4.008c-.536 0-.992.448-.992 1 0 .556.444 1 .992 1h18.016c.536 0 .992-.448.992-1 0-.556-.444-1-.992-1h-4.008v-1c0-1.653-1.343-3-3-3h-3.999c-1.652 0-3 1.343-3 3v1z" filter="url(#a)"/>
+                                </svg>
+                            </button>
+                        </div>
+                    `;
+                    card.addEventListener("click", () => openProductModal(product.id));
+                    card.querySelector(".delete-button").addEventListener("click", (event) => {
+                        event.stopPropagation();
+                        ConfirmModal(
+                            "Êtes-vous sûr de vouloir supprimer ce produit ?",
+                            "Oui",
+                            "Non",
+                            () => deleteProduct(product.id),
+                            () => showNotification("Suppression annulée.", "info")
+                        );
+                    });
+                    grid.appendChild(card);
+                });
+            })
+            .catch((error) => console.error("Erreur lors du chargement des produits :", error));
+    }
+
+    // Supprimer un produit
+    function deleteProduct(productId) {
+        fetch(`/admin/products/manage/${productId}`, {
+            method: "DELETE",
+        })
+            .then((response) => {
+                if (response.ok) {
+                    showNotification("Produit supprimé avec succès !", "success");
+                    loadProducts();
+                } else {
+                    showNotification("Erreur lors de la suppression du produit.", "error");
+                }
+            })
+            .catch((error) => console.error("Erreur lors de la suppression du produit :", error));
+    }
+    
     // PATCH Rendu featured + resource_file_id + images
     function openProductModal(productId) {
         fetch(`/admin/products/manage/${productId}`)
