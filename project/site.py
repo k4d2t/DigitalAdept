@@ -1783,11 +1783,11 @@ def sitemap():
         {"loc": url_for('home', _external=True), "priority": "1.0", "changefreq": "daily"},
         {"loc": url_for('produits', _external=True), "priority": "0.8", "changefreq": "weekly"},
         {"loc": url_for('contact', _external=True), "priority": "0.5", "changefreq": "yearly"},
-        {"loc": url_for('privacy', _external=True), "priority": "0.3", "changefreq": "yearly"},
+        # Suppression de la référence à 'privacy' qui n'existe pas
     ]
     produits = fetch_products()
     for produit in produits:
-        # Si tu as la date : produit.get('last_modified', None) ou autre champ
+        # Si tu as la date : produit.get('last_modified', None) ou autre champ
         lastmod = produit.get('last_modified') if 'last_modified' in produit else None
         entry = {
             "loc": url_for('product_detail', slug=slugify(produit['name']), _external=True),
@@ -1795,7 +1795,7 @@ def sitemap():
             "changefreq": "weekly"
         }
         if lastmod:
-            entry['lastmod'] = lastmod  # Format ISO 8601 recommandé : "2025-06-20"
+            entry['lastmod'] = lastmod  # Format ISO 8601 recommandé : "2025-06-20"
         pages.append(entry)
 
     sitemap_xml = [
