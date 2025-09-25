@@ -753,7 +753,30 @@ def payer():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+# AJOUTEZ CETTE NOUVELLE ROUTE
+@app.route('/api/checkout/prepare', methods=['POST'])
+def prepare_checkout():
+    data = request.json
+    email = data.get('email')
+    cart_items = data.get('cart')
+    nom_client = data.get('nom_client')
+    total_price = data.get('totalPrice')
 
+    if not email or not cart_items:
+        return jsonify({"error": "Email et contenu du panier sont requis."}), 400
+
+    # Enregistre le panier abandonné dans la base de données
+    abandoned_cart = AbandonedCart(
+        email=email,
+        customer_name=nom_client,
+        cart_content=cart_items,
+        total_price=total_price
+    )
+    db.session.add(abandoned_cart)
+    db.session.commit()
+
+    # On renvoie un statut de succès pour que le frontend continue
+    return jsonify({"status": "prepared", "cart_id": abandoned_cart.id}), 200
 
 @app.route("/webhook", methods=["POST"])
 def webhook():
