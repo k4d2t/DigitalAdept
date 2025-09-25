@@ -1648,6 +1648,16 @@ FIN PRODUIT
 
 ANNOUNCEMENTS_URL = "https://6840a10f5b39a8039a58afb0.mockapi.io/api/externalapi/annoucements"
 
+@app.route('/admin/marketing')
+def admin_marketing():
+    if not session.get('admin_logged_in'):
+        flash("Veuillez vous connecter pour accéder à cette page.", "error")
+        return redirect(url_for('admin_login'))
+
+    # On récupère tous les paniers avec le statut "abandoned", les plus récents en premier
+    abandoned_carts = AbandonedCart.query.filter_by(status='abandoned').order_by(AbandonedCart.created_at.desc()).all()
+
+    return render_template('admin_marketing.html', carts=abandoned_carts)
 
 @cache.cached(timeout=300, key_prefix="announcements")
 @app.route('/api/announcements', methods=['GET'])
