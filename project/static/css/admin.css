@@ -276,6 +276,7 @@ button{
  
 /* Style pour la tuile de la zone de danger */
 .tile-link.danger-zone {
+    margin-top: 0.2rem;
     border-color: var(--red-dark);
 }
 
