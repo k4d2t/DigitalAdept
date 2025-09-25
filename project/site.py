@@ -1627,33 +1627,48 @@ ANNOUNCEMENTS_URL = "https://6840a10f5b39a8039a58afb0.mockapi.io/api/externalapi
 
 
 @cache.cached(timeout=300, key_prefix="announcements")
-@app.route('/api/announcements')
+@app.route('/api/announcements', methods=['GET'])
 def api_announcements():
-    annonces = Announcement.query.order_by(Announcement.date.desc()).all()
-    def to_dict(a):
-        return {
-            "id": a.id,
-            "title": a.title,
-            "content": a.content,
-            "date": a.date.isoformat(),
-            "active": a.active,
-            "type": a.type
-        }
-    return jsonify([to_dict(a) for a in annonces])
+    """Récupère toutes les annonces depuis la base de données."""
+    try:
+        annonces = Announcement.query.order_by(Announcement.date.desc()).all()
+        def to_dict(a):
+            return {
+                "id": a.id,
+                "content": a.content,
+                "date": a.date.isoformat(),
+                "active": a.active,
+                "type": a.type,
+                "video_url": a.video_url,
+                "btn_label": a.btn_label,
+                "btn_url": a.btn_url
+            }
+        return jsonify([to_dict(a) for a in annonces])
+    except Exception as e:
+        logging.error(f"Erreur API GET annonces: {e}")
+        return jsonify({"error": "Erreur serveur"}), 500
     
-@app.route('/api/announcements/active')
+@app.route('/api/announcements/active', methods=['GET'])
+@cache.cached(timeout=60) # On peut cacher cette route car elle est publique
 def api_announcements_active():
-    annonces = Announcement.query.filter_by(active=True).order_by(Announcement.date.desc()).all()
-    def to_dict(a):
-        return {
-            "id": a.id,
-            "title": a.title,
-            "content": a.content,
-            "date": a.date.isoformat(),
-            "active": a.active,
-            "type": a.type
-        }
-    return jsonify([to_dict(a) for a in annonces])
+    """Récupère uniquement les annonces actives."""
+    try:
+        annonces = Announcement.query.filter_by(active=True).order_by(Announcement.date.desc()).all()
+        def to_dict(a):
+            return {
+                "id": a.id,
+                "content": a.content,
+                "date": a.date.isoformat(),
+                "active": a.active,
+                "type": a.type,
+                "video_url": a.video_url,
+                "btn_label": a.btn_label,
+                "btn_url": a.btn_url
+            }
+        return jsonify([to_dict(a) for a in annonces])
+    except Exception as e:
+        logging.error(f"Erreur API GET annonces actives: {e}")
+        return jsonify({"error": "Erreur serveur"}), 500
     
 @cache.cached(timeout=120)
 @app.route('/admin/announcements', methods=['GET'])
@@ -1667,35 +1682,54 @@ def admin_announcements():
 
 @app.route('/api/announcements', methods=['POST'])
 def api_announcements_post():
+    """Crée une nouvelle annonce dans la base de données."""
+    if not session.get('admin_logged_in'):
+        return jsonify({"error": "Non autorisé"}), 403
     data = request.json
+    if not data or not data.get('content'):
+        return jsonify({"error": "Le contenu est obligatoire"}), 400
+        
     annonce = Announcement(
-        title=data.get("title"),
         content=data.get("content"),
-        date=datetime.now(),
+        date=datetime.now(timezone.utc),
         active=data.get("active", True),
-        type=data.get("type", "general")
+        type=data.get("type", "info"),
+        video_url=data.get("video_url"),
+        btn_label=data.get("btn_label"),
+        btn_url=data.get("btn_url")
     )
     db.session.add(annonce)
     db.session.commit()
+    cache.delete_memoized(api_announcements_active) # Invalider le cache
     return jsonify({"message": "Annonce créée", "id": annonce.id}), 201
 
 
 @app.route('/api/announcements/<int:id>', methods=['PUT'])
 def api_announcements_put(id):
+    """Met à jour une annonce existante."""
+    if not session.get('admin_logged_in'):
+        return jsonify({"error": "Non autorisé"}), 403
     data = request.json
     annonce = Announcement.query.get_or_404(id)
-    annonce.title = data.get("title", annonce.title)
     annonce.content = data.get("content", annonce.content)
     annonce.active = data.get("active", annonce.active)
     annonce.type = data.get("type", annonce.type)
+    annonce.video_url = data.get("video_url", annonce.video_url)
+    annonce.btn_label = data.get("btn_label", annonce.btn_label)
+    annonce.btn_url = data.get("btn_url", annonce.btn_url)
     db.session.commit()
+    cache.delete_memoized(api_announcements_active) # Invalider le cache
     return jsonify({"message": "Annonce mise à jour"})
 
 @app.route('/api/announcements/<int:id>', methods=['DELETE'])
 def api_announcements_delete(id):
+    """Supprime une annonce."""
+    if not session.get('admin_logged_in'):
+        return jsonify({"error": "Non autorisé"}), 403
     annonce = Announcement.query.get_or_404(id)
     db.session.delete(annonce)
     db.session.commit()
+    cache.delete_memoized(api_announcements_active) # Invalider le cache
     return jsonify({"message": "Annonce supprimée"})
     
 @cache.cached(timeout=120)
