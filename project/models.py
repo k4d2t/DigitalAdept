@@ -75,8 +75,10 @@ class SiteSetting(db.Model):
 
 class Announcement(db.Model):
     tablename = "announcements"
-    id = db.Column(db.Integer, primary_key=True)
-    title = db.Column(db.String(255), nullable=False)
+    id = db.Column(db.Integer, primary_key=True)    
+    video_url = db.Column(db.String(255), nullable=True)
+    btn_label = db.Column(db.String(100), nullable=True)
+    btn_url = db.Column(db.String(255), nullable=True)
     content = db.Column(db.Text, nullable=False)
     date = db.Column(db.DateTime, nullable=False)
     active = db.Column(db.Boolean, default=True)
