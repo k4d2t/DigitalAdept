@@ -1,0 +1,85 @@
+{% extends "admin_base.html" %}
+
+{% block admin_title %}
+    Marketing - Paniers Abandonnés
+{% endblock %}
+
+{% block admin_content %}
+<div class="users-page"> <!-- On réutilise le style de la page des utilisateurs pour la cohérence -->
+    <h1>Marketing : Paniers Abandonnés</h1>
+    <nav class="admin-nav">
+        <a href="{{ url_for('admin_dashboard') }}">Retour au tableau de bord</a>
+    </nav>
+
+    {% if carts %}
+    <table style="margin-top: 2em;">
+        <thead>
+            <tr>
+                <th>Client</th>
+                <th>Email</th>
+                <th>Contenu du Panier</th>
+                <th>Total</th>
+                <th>Date</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for cart in carts %}
+            <tr id="cart-row-{{ cart.id }}">
+                <td>{{ cart.customer_name or 'N/A' }}</td>
+                <td>{{ cart.email }}</td>
+                <td>
+                    <ul style="padding-left: 15px; margin: 0;">
+                        {% for item in cart.cart_content %}
+                            <li>{{ item.name }} ({{ item.price }} XOF)</li>
+                        {% endfor %}
+                    </ul>
+                </td>
+                <td>{{ cart.total_price }} XOF</td>
+                <td>{{ cart.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
+                <td>
+                    <button class="cta remind-btn" data-cart-id="{{ cart.id }}">Relancer</button>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <div style="text-align: center; padding: 3em; background: var(--contact-card-bg); border-radius: 1rem; margin-top: 2em;">
+        <h2>Félicitations !</h2>
+        <p>Il n'y a aucun panier abandonné pour le moment.</p>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.remind-btn').forEach(button => {
+        button.addEventListener('click', (e) => {
+            const cartId = e.target.dataset.cartId;
+            e.target.disabled = true;
+            e.target.textContent = 'Envoi...';
+
+            fetch(`/api/marketing/remind/${cartId}`, { method: 'POST' })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        showNotification('Email de relance envoyé avec succès !', 'success');
+                        // On change le statut du bouton et de la ligne
+                        e.target.textContent = 'Relancé';
+                        e.target.style.backgroundColor = '#4CAF50'; // Vert
+                        document.getElementById(`cart-row-${cartId}`).style.opacity = '0.5';
+                    } else {
+                        throw new Error(data.message || 'Erreur inconnue');
+                    }
+                })
+                .catch(err => {
+                    showNotification(`Erreur: ${err.message}`, 'error');
+                    e.target.disabled = false;
+                    e.target.textContent = 'Relancer';
+                });
+        });
+    });
+});
+</script>
+{% endblock %}
