@@ -608,17 +608,17 @@ window.initProductPage = function () {
 
             // FONCTION A UTILISER POUR TOUT PAIEMENT (panier ou achat direct)
             function redirectToPayment(amount, cart) {
-                PaymentInfoModal(({ nom_client, numero_send, email }) => {
+                PaymentInfoModal(({ nom_client, email }) => { // On ne récupère plus numero_send ici
                     const checkoutData = {
                         totalPrice: getTotalPrice(cart),
                         article: getArticleObject(cart),
-                        cart: cart, // On envoie le panier complet
-                        email: email, // On envoie l'email
+                        cart: cart,
+                        email: email,
                         nom_client: nom_client,
-                        numero_send: numero_send
+                        // numero_send n'est plus nécessaire ici
                     };
-
-                    // Étape 1 : Préparer le checkout et sauvegarder le panier abandonné
+            
+                    // Étape 1 : Préparer le checkout (sauvegarde du panier abandonné)
                     fetch("/api/checkout/prepare", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
@@ -629,22 +629,21 @@ window.initProductPage = function () {
                         return res.json();
                     })
                     .then(prepareData => {
-                        // On continue vers le paiement une fois le panier sauvegardé
+                        // Étape 2 : On continue vers le paiement une fois le panier sauvegardé
                         const paymentData = {
                             totalPrice: checkoutData.totalPrice,
                             article: checkoutData.article,
                             personal_Info: [{
                                 userId: nom_client,
-                                orderId: `cart_${prepareData.cart_id}`, // On lie le paiement au panier
+                                orderId: `cart_${prepareData.cart_id}`,
                                 products: cart.map(item => item.name)
                             }],
-                            numeroSend: numero_send,
+                            // numeroSend n'est plus envoyé, MoneyFusion devrait le demander si nécessaire
                             nomclient: nom_client,
                             return_url: window.location.origin + "/callback",
                             webhook_url: window.location.origin + "/webhook"
                         };
                         
-                        // Étape 2 : Créer la session de paiement
                         return fetch("/payer", {
                             method: "POST",
                             headers: { "Content-Type": "application/json" },
