@@ -538,21 +538,24 @@ window.initProductPage = function () {
                 modal.className = 'customModal';
                 modal.innerHTML = `
                 <div class="customModal-content" role="dialog" aria-labelledby="modal-title">
-                <h3 id="modal-title">Informations de paiement</h3>
-                <label>
-                Nom complet :
-                <input type="text" id="payment-nom-client" placeholder="Votre nom complet" required>
-                <span class="error-message" id="error-client" aria-live="polite"></span>
-                </label>
-                <label>
-                Numéro Mobile Money:
-                <input type="tel" id="payment-numero-send" placeholder="Numéro Mobile Money">
-                <span class="error-message" id="error-client" aria-live="polite"></span>
-                </label>
-                <div class="customModal-buttons">
-                <button class="customModal-yes">Valider</button>
-                <button class="customModal-no">Annuler</button>
-                </div>
+                    <h3 id="modal-title">Finaliser la commande</h3>
+                    <label>
+                        Nom complet :
+                        <input type="text" id="payment-nom-client" placeholder="Votre nom complet" required>
+                    </label>
+                    <label>
+                        Numéro Mobile Money :
+                        <input type="tel" id="payment-numero-send" placeholder="Numéro pour le paiement" required>
+                    </label>
+                    <!-- CHAMP EMAIL AJOUTÉ ICI -->
+                    <label>
+                        Adresse e-mail :
+                        <input type="email" id="payment-email" placeholder="Pour recevoir vos produits et offres" required>
+                    </label>
+                    <div class="customModal-buttons">
+                        <button class="customModal-yes">Valider et Payer</button>
+                        <button class="customModal-no">Annuler</button>
+                    </div>
                 </div>
                 `;
                 document.body.appendChild(modal);
@@ -565,20 +568,22 @@ window.initProductPage = function () {
                 modal.querySelector('.customModal-yes').onclick = () => {
                     const nom = modal.querySelector('#payment-nom-client').value.trim();
                     const numero = modal.querySelector('#payment-numero-send').value.trim();
+                    const email = modal.querySelector('#payment-email').value.trim(); // <-- On récupère l'email
 
-                    let hasError = false;
-                    const errorNomClient = modal.querySelector('#error-client');
-                    if (!nom || !numero){
-                        showNotification("Merci de remplir tous les champs", "error");
-                        modal.querySelector('#payment-nom-client').focus();
-                        hasError = true;
-                    } else {
-                        errorNomClient.textContent = "";
+                    if (!nom || !numero || !email) {
+                        showNotification("Merci de remplir tous les champs.", "error");
+                        return;
                     }
-                    if (hasError) return;
+                    
+                    // Simple validation d'email
+                    if (!/^\S+@\S+\.\S+$/.test(email)) {
+                        showNotification("Veuillez entrer une adresse e-mail valide.", "error");
+                        return;
+                    }
 
                     close();
-                    onSubmit({ nom_client: nom, numero_send: numero });
+                    // On passe maintenant l'email à la fonction de soumission
+                    onSubmit({ nom_client: nom, numero_send: numero, email: email });
                 };
 
                 modal.querySelector('.customModal-no').onclick = () => {
@@ -586,12 +591,11 @@ window.initProductPage = function () {
                     if (typeof onCancel === 'function') onCancel();
                 };
 
-                    function close() {
-                        modal.classList.remove('visible');
-                        setTimeout(() => modal.remove(), 250);
-                    }
+                function close() {
+                    modal.classList.remove('visible');
+                    setTimeout(() => modal.remove(), 250);
+                }
             }
-
             // Fonction utilitaire pour l'objet article attendu par MoneyFusion
             function getArticleObject(cart) {
                 const article = {};
