@@ -1973,6 +1973,88 @@ def reset_database_secure():
     # Redirige vers la page des paramètres
     return redirect(url_for('admin_settings'))
 
+import smtplib
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+
+@app.route('/api/marketing/remind/<int:cart_id>', methods=['POST'])
+def remind_abandoned_cart(cart_id):
+    if not session.get('admin_logged_in'):
+        return jsonify({"status": "error", "message": "Non autorisé"}), 403
+
+    cart = AbandonedCart.query.get(cart_id)
+    if not cart or cart.status != 'abandoned':
+        return jsonify({"status": "error", "message": "Panier introuvable ou déjà traité"}), 404
+
+    # --- Construction de l'e-mail ---
+    sender_email = os.environ.get('MAIL_USERNAME')
+    password = os.environ.get('MAIL_PASSWORD')
+    smtp_server = os.environ.get('MAIL_SERVER')
+    smtp_port = int(os.environ.get('MAIL_PORT', 587))
+
+    if not all([sender_email, password, smtp_server, smtp_port]):
+        return jsonify({"status": "error", "message": "Configuration email manquante côté serveur."}), 500
+
+    receiver_email = cart.email
+    subject = "Vous avez oublié quelque chose dans votre panier..."
+
+    # Corps de l'email en HTML
+    cart_items_html = "".join([f"<li><b>{item['name']}</b> ({item['price']} XOF)</li>" for item in cart.cart_content])
+    body_html = f"""
+    <html>
+    <head>
+        <style>
+            body {{ font-family: Arial, sans-serif; color: #333; }}
+            .container {{ max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px; }}
+            .header {{ font-size: 24px; color: #1976d2; text-align: center; }}
+            .cart-list {{ list-style: none; padding: 0; }}
+            .button {{ display: inline-block; background-color: #1976d2; color: #fff; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold; }}
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <h1 class="header">Votre panier vous attend !</h1>
+            <p>Bonjour {cart.customer_name or 'cher client'},</p>
+            <p>Nous avons remarqué que vous avez laissé ces articles dans votre panier. Ne les manquez pas !</p>
+            <ul class="cart-list">
+                {cart_items_html}
+            </ul>
+            <p><b>Total : {cart.total_price} XOF</b></p>
+            <p style="text-align:center; margin-top: 30px;">
+                <a href="{url_for('produits', _external=True)}" class="button">Finaliser ma commande</a>
+            </p>
+            <p style="font-size: 12px; color: #888; text-align:center; margin-top: 20px;">
+                Si vous avez déjà finalisé votre achat, veuillez ignorer cet e-mail.
+            </p>
+        </div>
+    </body>
+    </html>
+    """
+
+    # --- Envoi de l'e-mail ---
+    try:
+        message = MIMEMultipart("alternative")
+        message["Subject"] = subject
+        message["From"] = f"Digital Adept <{sender_email}>"
+        message["To"] = receiver_email
+
+        message.attach(MIMEText(body_html, "html"))
+
+        with smtplib.SMTP(smtp_server, smtp_port) as server:
+            server.starttls()
+            server.login(sender_email, password)
+            server.sendmail(sender_email, receiver_email, message.as_string())
+
+        # Mettre à jour le statut du panier pour ne pas le relancer à nouveau
+        cart.status = 'contacted'
+        db.session.commit()
+
+        return jsonify({"status": "success", "message": "Email envoyé."})
+
+    except Exception as e:
+        logging.error(f"Erreur lors de l'envoi de l'email de relance : {e}")
+        return jsonify({"status": "error", "message": f"Erreur SMTP : {e}"}), 500
+
 if __name__ == '__main__':
     #threading.Thread(target=periodic_ping, daemon=True).start()
     port = int(os.environ.get('PORT', 5005))  # Utilise le PORT de Railway ou 5005 en local
