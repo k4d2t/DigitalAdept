@@ -275,7 +275,7 @@ button{
 }
  
 /* Style pour la tuile de la zone de danger */
-/*.tile-link.danger-zone {
+ .tile-link.danger-zone {
     margin-top: 0.2rem;
     border-color: var(--red-dark);
 }
@@ -284,7 +284,7 @@ button{
 .tile-link.danger-zone:focus {
     box-shadow: 0 4px 22px -3px var(--red, #e74c3c), 0 0 0 2px #fff3, 0 2px 24px #e74c3c;
     transform: translateY(-4px) scale(1.012);
-}*/
+}.
 
 /* Page des paramètres */
 .settings-page {
