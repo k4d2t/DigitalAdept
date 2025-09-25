@@ -531,11 +531,12 @@ window.initProductPage = function () {
                     }
                 });
             });
-
-
+            
+            
             function PaymentInfoModal(onSubmit, onCancel) {
                 const modal = document.createElement('div');
                 modal.className = 'customModal';
+                // MISE À JOUR DU HTML DE LA MODALE
                 modal.innerHTML = `
                 <div class="customModal-content" role="dialog" aria-labelledby="modal-title">
                     <h3 id="modal-title">Finaliser la commande</h3>
@@ -544,13 +545,8 @@ window.initProductPage = function () {
                         <input type="text" id="payment-nom-client" placeholder="Votre nom complet" required>
                     </label>
                     <label>
-                        Numéro Mobile Money :
-                        <input type="tel" id="payment-numero-send" placeholder="Numéro pour le paiement" required>
-                    </label>
-                    <!-- CHAMP EMAIL AJOUTÉ ICI -->
-                    <label>
                         Adresse e-mail :
-                        <input type="email" id="payment-email" placeholder="Pour recevoir vos produits et offres" required>
+                        <input type="email" id="payment-email" placeholder="Pour recevoir vos produits" required>
                     </label>
                     <div class="customModal-buttons">
                         <button class="customModal-yes">Valider et Payer</button>
@@ -559,38 +555,37 @@ window.initProductPage = function () {
                 </div>
                 `;
                 document.body.appendChild(modal);
-
+            
                 setTimeout(() => {
                     modal.classList.add('visible');
                     modal.querySelector('#payment-nom-client').focus();
                 }, 10);
-
+            
                 modal.querySelector('.customModal-yes').onclick = () => {
                     const nom = modal.querySelector('#payment-nom-client').value.trim();
-                    const numero = modal.querySelector('#payment-numero-send').value.trim();
-                    const email = modal.querySelector('#payment-email').value.trim(); // <-- On récupère l'email
-
-                    if (!nom || !numero || !email) {
-                        showNotification("Merci de remplir tous les champs.", "error");
+                    const email = modal.querySelector('#payment-email').value.trim();
+            
+                    if (!nom || !email) {
+                        showNotification("Le nom et l'e-mail sont requis.", "error");
                         return;
                     }
                     
-                    // Simple validation d'email
                     if (!/^\S+@\S+\.\S+$/.test(email)) {
                         showNotification("Veuillez entrer une adresse e-mail valide.", "error");
                         return;
                     }
-
+            
                     close();
-                    // On passe maintenant l'email à la fonction de soumission
-                    onSubmit({ nom_client: nom, numero_send: numero, email: email });
+                    // On passe maintenant l'e-mail à la fonction de soumission
+                    // Le numéro de téléphone est maintenant `null` ou non défini.
+                    onSubmit({ nom_client: nom, numero_send: null, email: email });
                 };
-
+            
                 modal.querySelector('.customModal-no').onclick = () => {
                     close();
                     if (typeof onCancel === 'function') onCancel();
                 };
-
+            
                 function close() {
                     modal.classList.remove('visible');
                     setTimeout(() => modal.remove(), 250);
