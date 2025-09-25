@@ -5,6 +5,7 @@ import bcrypt
 db = SQLAlchemy()
 
 class User(db.Model):
+    __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(80), unique=True, nullable=False)
     password = db.Column(db.String(120), nullable=False)
@@ -38,18 +39,21 @@ class ProductImage(db.Model):
     product_id = db.Column(db.Integer, db.ForeignKey('product.id'), nullable=False)
 
 class ProductBadge(db.Model):
+    __tablename__ = 'product_badges'
     id = db.Column(db.Integer, primary_key=True)
     type = db.Column(db.String(50))
     text = db.Column(db.String(100))
     product_id = db.Column(db.Integer, db.ForeignKey('product.id'), nullable=False)
 
 class ProductFAQ(db.Model):
+    __tablename__ = 'product_faqs'
     id = db.Column(db.Integer, primary_key=True)
     question = db.Column(db.String(255), nullable=False)
     answer = db.Column(db.Text, nullable=False)
     product_id = db.Column(db.Integer, db.ForeignKey('product.id'), nullable=False)
 
 class ProductResourceFile(db.Model):
+    __tablename__ = 'product_resource_files'
     id = db.Column(db.Integer, primary_key=True)
     type = db.Column(db.String(50))
     url = db.Column(db.String(255))
@@ -57,6 +61,7 @@ class ProductResourceFile(db.Model):
     product_id = db.Column(db.Integer, db.ForeignKey('product.id'), nullable=False)
 
 class Comment(db.Model):
+    __tablename__ = 'comments'
     id = db.Column(db.Integer, primary_key=True)
     product_id = db.Column(db.Integer, db.ForeignKey('product.id'), nullable=False)
     comment = db.Column(db.Text, nullable=False)
@@ -65,6 +70,7 @@ class Comment(db.Model):
     is_read = db.Column(db.Boolean, default=False)
 
 class Announcement(db.Model):
+    __tablename__ = 'announcements'
     id = db.Column(db.Integer, primary_key=True)
     content = db.Column(db.Text, nullable=False)
     date = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
@@ -75,23 +81,26 @@ class Announcement(db.Model):
     btn_url = db.Column(db.String(255))
 
 class SiteSetting(db.Model):
+    __tablename__ = 'site_settings'
     key = db.Column(db.String(50), primary_key=True)
     value = db.Column(db.String(255))
 
 class AbandonedCart(db.Model):
+    __tablename__ = 'abandoned_carts'
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(120), nullable=False)
     customer_name = db.Column(db.String(120))
     cart_content = db.Column(db.JSON, nullable=False)
     total_price = db.Column(db.Float, nullable=False)
-    status = db.Column(db.String(20), default='abandoned') # abandoned, contacted, completed
+    status = db.Column(db.String(20), default='abandoned')
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     last_contact_date = db.Column(db.DateTime)
 
 class DownloadLink(db.Model):
+    __tablename__ = 'download_links'
     id = db.Column(db.Integer, primary_key=True)
     product_id = db.Column(db.Integer, db.ForeignKey('product.id'), nullable=False)
-    cart_id = db.Column(db.Integer, db.ForeignKey('abandoned_cart.id'), nullable=False)
+    cart_id = db.Column(db.Integer, db.ForeignKey('abandoned_carts.id'), nullable=False)
     token = db.Column(db.String(36), unique=True, nullable=False, index=True)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     expires_at = db.Column(db.DateTime, nullable=False)
