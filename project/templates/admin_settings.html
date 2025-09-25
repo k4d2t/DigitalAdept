@@ -1,49 +1,43 @@
 {% extends "admin_base.html" %}
 
 {% block admin_title %}
-    Paramètres du Site
+    Paramètres du site
 {% endblock %}
 
 {% block admin_content %}
-<div class="settings-page -h1">
-    <h1>Paramètres</h1>
+<div class="settings-page">
+    <h1>Paramètres du Site</h1>
+    <nav class="admin-nav">
+        <a href="{{ url_for('admin_dashboard') }}">Retour au tableau de bord</a>
+    </nav>
 
-        <nav class="admin-nav ">
-            <a href="{{ url_for('admin_dashboard') }}">Retour</a>
-        </nav>
-
-    <!-- Sections des paramètres -->
-    <div class="dashboard-sections">
+    <div class="tiles" style="margin-top: 2em;">
         <a href="{{ url_for('admin_settings_users') }}" class="tile-link">
             <section>
-                <h2>Administrateurs et Rôles</h2>
-                <p>Gérez les administrateurs et leurs rôles.</p>
+                <h2>Utilisateurs</h2>
+                <p>Gérer les administrateurs et leurs rôles.</p>
             </section>
-        </a>
-       <!-- <a href="{{ url_for('view_logs') }}" class="tile-link">
+         </a>
+        <!--<a href="{{ url_for('view_logs') }}" class="tile-link">
             <section>
-                <h2>Journal d'Activité</h2>
-                <p>Consultez les actions effectuées sur le site.</p>
-            </section> -->
-        </a>
-    </div>
-</div>
+                <h2>Logs</h2>
+                <p>Consulter le journal d'activité du site.</p>
+            </section>
+        </a>-->
 
-
-    <!-- SECTION OPÉRATIONS DANGEREUSES -->
-    <div style="margin-top: 4em; padding: 2em; border: 2px solid var(--red-dark); border-radius: 12px; background: rgba(220, 53, 69, 0.1);">
-        <h2 style="color: var(--red); text-align: center;">Zone de Danger</h2>
-        <p style="text-align: center; color: var(--text); margin-bottom: 1.5em;">
-            Les actions ci-dessous sont irréversibles. Soyez certain de ce que vous faites.
-        </p>
-        
-        <div style="display: flex; justify-content: center;">
-            <!-- Formulaire sécurisé pour la réinitialisation -->
-            <form id="resetDbForm" action="{{ url_for('reset_database_secure') }}" method="POST" style="display: inline-block;">
-                <button type="button" id="resetDbButton" class="btn" style="background-color: var(--red-dark); color: white;">
-                    Réinitialiser la Base de Données
-                </button>
-            </form>
+        <!-- CORRECTION : Section "Zone de Danger" stylisée comme une tuile -->
+        <div class="tile-link danger-zone">
+            <section>
+                <h2 style="color: var(--red);">Zone de Danger</h2>
+                <p style="color: var(--text); margin-bottom: 1.5em;">
+                    L'action ci-dessous est irréversible et effacera toutes les données.
+                </p>
+                <form id="resetDbForm" action="{{ url_for('reset_database_secure') }}" method="POST" style="display: inline-block;">
+                    <button type="button" id="resetDbButton" class="btn" style="background-color: var(--red-dark); color: white;">
+                        Réinitialiser la Base de Données
+                    </button>
+                </form>
+            </section>
         </div>
     </div>
 </div>
@@ -55,17 +49,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (resetButton && resetForm) {
         resetButton.addEventListener('click', () => {
-            // Utilise la modale de confirmation déjà présente dans admin_base.html
             ConfirmModal(
                 'Êtes-vous absolument certain de vouloir réinitialiser la base de données ? Toutes les données (produits, utilisateurs, etc.) seront définitivement perdues.',
                 'Oui, réinitialiser',
                 'Non, annuler',
                 () => {
-                    // Si l'utilisateur clique "Oui", on soumet le formulaire
                     resetForm.submit();
                 },
                 () => {
-                    // Si l'utilisateur clique "Non", on ne fait rien
                     showNotification('Opération annulée.', 'info');
                 }
             );
