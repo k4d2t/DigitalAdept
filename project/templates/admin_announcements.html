@@ -46,14 +46,14 @@
 </div>
 
 <style>
-
+/* Styles spécifiques à cette page pour plus de clarté */
 #announcementsGrid {
   display: flex;
   flex-wrap: wrap;
-  justify-content: center;  /* centre horizontalement */
-  align-items: flex-start;   /* aligne en haut pour chaque ligne */
-  gap: 2em 2em;             /* espace entre les tuiles */
-  margin: 0 auto;           /* centre le grid lui-même */
+  justify-content: center;
+  align-items: flex-start;
+  gap: 2em;
+  margin: 0 auto;
   width: 100%;
   padding-bottom: 2em;
   min-height: 200px;
@@ -61,7 +61,6 @@
 .tile-link {
   margin: 0;
 }
-
 .delete-announcement-btn {
   position: absolute;
   top: 10px;
@@ -74,10 +73,7 @@
   transition: filter 0.17s;
   padding: 2px;
 }
-.delete-announcement-btn svg {
-  pointer-events: none;
-  display: block;
-}
+.delete-announcement-btn svg { pointer-events: none; display: block; }
 .delete-announcement-btn:hover svg rect,
 .delete-announcement-btn:focus svg rect {
   fill: #a11c1c !important;
@@ -87,224 +83,189 @@
 </style>
 
 <script>
-const MOCKAPI_URL = "/api/announcements"; // Utilise ton backend local pour plus de rapidité
-
 document.addEventListener("DOMContentLoaded", () => {
-  const announcementsGrid = document.getElementById("announcementsGrid");
-  const modal = document.getElementById("announcementModal");
-  const closeModal = document.getElementById("closeAnnouncementModal");
-  const form = document.getElementById("announcementForm");
-  const modalTitle = document.getElementById("modalTitle");
-  const contentInput = document.getElementById("announcementContent");
-  const typeInput = document.getElementById("announcementType");
-  const activeInput = document.getElementById("announcementActive");
-  const idInput = document.getElementById("announcementId");
-  const cancelEdit = document.getElementById("cancelEdit");
-  const deleteBtn = document.getElementById("deleteAnnouncementBtn");
-  const videoInput = document.getElementById("announcementVideo");
-  const btnLabelInput = document.getElementById("announcementBtnLabel");
-  const btnUrlInput = document.getElementById("announcementBtnUrl");
+    // URL de l'API, maintenant propre et unique
+    const API_ENDPOINT = "/api/announcements";
 
-  fetchAnnouncements();
+    // Références aux éléments du DOM
+    const grid = document.getElementById("announcementsGrid");
+    const modal = document.getElementById("announcementModal");
+    const form = document.getElementById("announcementForm");
 
-  function renderAddTile() {
-    const addTile = document.createElement("div");
-    addTile.className = "tile-link";
-    addTile.style.maxWidth = "320px";
-    addTile.style.minWidth = "260px";
-    addTile.style.cursor = "pointer";
-    addTile.innerHTML = `
-      <section>
-        <h2>+ Nouvelle annonce</h2>
-        <p>Créer une nouvelle annonce à afficher sur le site.</p>
-      </section>
-    `;
-    addTile.addEventListener("click", () => openModal());
-    return addTile;
-  }
-
-  function renderNoAnnouncementTile() {
-    const noTile = document.createElement("div");
-    noTile.className = "tile-link";
-    noTile.style.maxWidth = "320px";
-    noTile.style.minWidth = "260px";
-    noTile.innerHTML = `
-      <section>
-        <h2 style="color:#888;">Aucune annonce</h2>
-        <p>Il n'y a actuellement aucune annonce enregistrée.</p>
-      </section>
-    `;
-    return noTile;
-  }
-
-  function fetchAnnouncements() {
-    fetch(MOCKAPI_URL)
-      .then(res => res.json())
-      .then(data => displayAnnouncements(data))
-      .catch(() => {
-        announcementsGrid.innerHTML = "";
-        announcementsGrid.appendChild(renderAddTile());
-        announcementsGrid.appendChild(renderNoAnnouncementTile());
-      });
-  }
-
-  function displayAnnouncements(list) {
-    announcementsGrid.innerHTML = "";
-    announcementsGrid.appendChild(renderAddTile());
-    if(!Array.isArray(list) || list.length === 0) {
-      announcementsGrid.appendChild(renderNoAnnouncementTile());
-      return;
-    }
-    list.forEach(ann => {
-      const tile = document.createElement("div");
-      tile.className = "tile-link";
-      tile.style.maxWidth = "320px";
-      tile.style.minWidth = "260px";
-      tile.style.position = "relative";
-      tile.innerHTML = `
-        <section style="border-left:6px solid ${ann.active ? '#0a0':'#bbb'};">
-          <h2 style="margin-bottom:0.5em;">${ann.type === 'promo' ? '🔥 ' : ann.type === 'alerte' ? '⚠️ ' : 'ℹ️ '}${ann.type || 'info'}</h2>
-          <p style="margin-bottom:1em;">${ann.content?.slice(0, 80) || ""}${ann.content && ann.content.length > 80 ? "..." : ""}</p>
-          <span style="font-size:0.95em;padding:4px 10px;border-radius: 7px;${ann.active?'background:#e8ffe8;color:#0a0;':'background:#eee;color:#aaa;'}">${ann.active?'Active':'Inactive'}</span>
-        </section>
-        <button class="delete-announcement-btn" title="Supprimer l'annonce" data-id="${ann.id}" style="position:absolute;top:10px;right:10px;background:none;border:none;cursor:pointer;padding:2px;z-index:2;">
-          <svg width="26" height="26" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <rect x="13" y="17" width="2" height="10" rx="1" fill="#d34f4f"/>
-            <rect x="19" y="17" width="2" height="10" rx="1" fill="#d34f4f"/>
-            <rect x="25" y="17" width="2" height="10" rx="1" fill="#d34f4f"/>
-            <rect x="10" y="13" width="20" height="2.2" rx="1.1" fill="#d34f4f"/>
-            <rect x="16" y="8" width="8" height="3" rx="1.5" fill="#d34f4f"/>
-            <rect x="8" y="13" width="24" height="20" rx="4" stroke="#d34f4f" stroke-width="2"/>
-          </svg>
-        </button>
-      `;
-      const btn = tile.querySelector(".delete-announcement-btn");
-      tile.addEventListener("click", (ev) => {
-        // Si clic sur la poubelle, ne pas ouvrir la modale d'édition :
-        if (btn && (ev.target === btn || btn.contains(ev.target))) return;
-        openModal(ann);
-      });
-      btn.addEventListener("click", (ev) => {
-        ev.stopPropagation();
-        ConfirmModal(
-          "Supprimer définitivement cette annonce ?",
-          "Oui", "Non",
-          () => { deleteAnnouncement(ann.id); },
-          () => { /* rien à faire si Non */ }
-        );
-      });
-      announcementsGrid.appendChild(tile);
-    });
-  }
-
-
-  function openModal(announcement = null) {
-    if(announcement) {
-      modalTitle.textContent = "Éditer l'annonce";
-      idInput.value = announcement.id;
-      contentInput.value = announcement.content || "";
-      typeInput.value = announcement.type || "info";
-      activeInput.checked = !!announcement.active;
-      videoInput.value = announcement.video_url || "";
-      btnLabelInput.value = announcement.btn_label || "";
-      btnUrlInput.value = announcement.btn_url || "";
-      if (deleteBtn) deleteBtn.style.display = "inline-block";
-    } else {
-      modalTitle.textContent = "Nouvelle annonce";
-      idInput.value = "";
-      contentInput.value = "";
-      typeInput.value = "info";
-      activeInput.checked = true;
-      videoInput.value = "";
-      btnLabelInput.value = "";
-      btnUrlInput.value = "";
-      if (deleteBtn) deleteBtn.style.display = "none";
-    }
-    modal.style.display = "flex";
-    setTimeout(()=>modal.classList.add('visible'),10);
-  }
-
-  function closeAnnouncementModal() {
-    modal.classList.remove('visible');
-    setTimeout(()=>{ modal.style.display = "none"; }, 300);
-    form.reset();
-  }
-
-  form.onsubmit = (e) => {
-    e.preventDefault();
-    saveAnnouncement();
-  };
-
-  closeModal.onclick = closeAnnouncementModal;
-  cancelEdit.onclick = (e) => { e.preventDefault(); closeAnnouncementModal(); };
-
-
-  function saveAnnouncement() {
-    const id = idInput.value;
-    const data = {
-      content: contentInput.value.trim(),
-      type: typeInput.value,
-      active: activeInput.checked,
-      video_url: videoInput.value.trim(),
-      btn_label: btnLabelInput.value.trim(),
-      btn_url: btnUrlInput.value.trim()
+    // Éléments de la modale
+    const modalElements = {
+        title: document.getElementById("modalTitle"),
+        id: document.getElementById("announcementId"),
+        content: document.getElementById("announcementContent"),
+        type: document.getElementById("announcementType"),
+        active: document.getElementById("announcementActive"),
+        video: document.getElementById("announcementVideo"),
+        btnLabel: document.getElementById("announcementBtnLabel"),
+        btnUrl: document.getElementById("announcementBtnUrl"),
+        close: document.getElementById("closeAnnouncementModal"),
+        cancel: document.getElementById("cancelEdit"),
     };
-    if(!data.content) {
-      showNotification("Le contenu est obligatoire !", "error");
-      return;
-    }
-    if(id) {
-      // Update
-      fetch(`${MOCKAPI_URL}/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data)
-      }).then(res => {
-        if(res.ok) {
-          showNotification("Annonce modifiée avec succès", "success");
-          fetchAnnouncements();
-          closeAnnouncementModal();
-        } else {
-          showNotification("Erreur lors de la modification", "error");
-        }
-      }).catch(()=>{
-        showNotification("Erreur lors de la modification", "error");
-      });
-    } else {
-      // Create
-      fetch(MOCKAPI_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data)
-      }).then(res => {
-        if(res.ok) {
-          showNotification("Annonce ajoutée avec succès", "success");
-          fetchAnnouncements();
-          closeAnnouncementModal();
-        } else {
-          showNotification("Erreur lors de l'ajout", "error");
-        }
-      }).catch(()=>{
-        showNotification("Erreur lors de l'ajout", "error");
-      });
-    }
-  }
 
-  function deleteAnnouncement(id) {
-    fetch(`${MOCKAPI_URL}/${id}`, {
-      method: "DELETE"
-    }).then((res) => {
-      if(res.ok) {
-        showNotification("Annonce supprimée avec succès", "success");
-        fetchAnnouncements();
+    // --- LOGIQUE PRINCIPALE ---
+    
+    fetchAnnouncements();
+
+    form.onsubmit = (e) => {
+        e.preventDefault();
+        saveAnnouncement();
+    };
+
+    modalElements.close.onclick = closeAnnouncementModal;
+    modalElements.cancel.onclick = (e) => {
+        e.preventDefault();
         closeAnnouncementModal();
-      } else {
-        showNotification("Erreur lors de la suppression", "error");
-      }
-    }).catch(()=>{
-      showNotification("Erreur lors de la suppression", "error");
-    });
-  }
+    };
+
+    // --- FONCTIONS ---
+
+    function fetchAnnouncements() {
+        fetch(API_ENDPOINT)
+            .then(res => res.ok ? res.json() : Promise.reject('Failed to fetch'))
+            .then(displayAnnouncements)
+            .catch(() => {
+                grid.innerHTML = "";
+                grid.appendChild(createAddTile());
+                grid.appendChild(createMessageTile("Erreur", "Impossible de charger les annonces."));
+            });
+    }
+
+    function displayAnnouncements(announcements) {
+        grid.innerHTML = "";
+        grid.appendChild(createAddTile());
+
+        if (!announcements || announcements.length === 0) {
+            grid.appendChild(createMessageTile("Aucune annonce", "Il n'y a actuellement aucune annonce."));
+            return;
+        }
+
+        announcements.forEach(ann => {
+            const tile = createAnnouncementTile(ann);
+            grid.appendChild(tile);
+        });
+    }
+
+    function createAnnouncementTile(ann) {
+        const tile = document.createElement("div");
+        tile.className = "tile-link";
+        tile.style.cssText = "max-width: 320px; min-width: 260px; position: relative;";
+        
+        const typeIcons = { promo: '🔥', alerte: '⚠️', info: 'ℹ️' };
+        const icon = typeIcons[ann.type] || 'ℹ️';
+
+        tile.innerHTML = `
+            <section style="border-left: 6px solid ${ann.active ? '#0a0' : '#bbb'};">
+                <h2 style="margin-bottom:0.5em;">${icon} ${ann.type || 'info'}</h2>
+                <p style="margin-bottom:1em;">${(ann.content || "").slice(0, 80)}...</p>
+                <span style="font-size:0.95em;padding:4px 10px;border-radius:7px;background:${ann.active ? '#e8ffe8' : '#eee'};color:${ann.active ? '#0a0' : '#aaa'};">${ann.active ? 'Active' : 'Inactive'}</span>
+            </section>
+            <button class="delete-announcement-btn" title="Supprimer l'annonce" data-id="${ann.id}">
+                <svg width="26" height="26" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="13" y="17" width="2" height="10" rx="1" fill="#d34f4f"/><rect x="19" y="17" width="2" height="10" rx="1" fill="#d34f4f"/><rect x="25" y="17" width="2" height="10" rx="1" fill="#d34f4f"/><rect x="10" y="13" width="20" height="2.2" rx="1.1" fill="#d34f4f"/><rect x="16" y="8" width="8" height="3" rx="1.5" fill="#d34f4f"/><rect x="8" y="13" width="24" height="20" rx="4" stroke="#d34f4f" stroke-width="2"/></svg>
+            </button>
+        `;
+
+        const deleteBtn = tile.querySelector('.delete-announcement-btn');
+        tile.addEventListener("click", (ev) => {
+            if (deleteBtn && (ev.target === deleteBtn || deleteBtn.contains(ev.target))) return;
+            openModal(ann);
+        });
+
+        deleteBtn.addEventListener("click", (ev) => {
+            ev.stopPropagation();
+            ConfirmModal("Supprimer définitivement cette annonce ?", "Oui, supprimer", "Non", () => deleteAnnouncement(ann.id));
+        });
+
+        return tile;
+    }
+
+    function createAddTile() {
+        const tile = document.createElement("div");
+        tile.className = "tile-link";
+        tile.style.cssText = "max-width: 320px; min-width: 260px; cursor: pointer;";
+        tile.innerHTML = `<section><h2>+ Nouvelle annonce</h2><p>Créer une nouvelle annonce à afficher sur le site.</p></section>`;
+        tile.addEventListener("click", () => openModal());
+        return tile;
+    }
+
+    function createMessageTile(title, message) {
+        const tile = document.createElement("div");
+        tile.className = "tile-link";
+        tile.style.cssText = "max-width: 320px; min-width: 260px;";
+        tile.innerHTML = `<section><h2 style="color:#888;">${title}</h2><p>${message}</p></section>`;
+        return tile;
+    }
+
+    function openModal(announcement = null) {
+        form.reset();
+        if (announcement) {
+            modalElements.title.textContent = "Éditer l'annonce";
+            modalElements.id.value = announcement.id;
+            modalElements.content.value = announcement.content || "";
+            modalElements.type.value = announcement.type || "info";
+            modalElements.active.checked = !!announcement.active;
+            modalElements.video.value = announcement.video_url || "";
+            modalElements.btnLabel.value = announcement.btn_label || "";
+            modalElements.btnUrl.value = announcement.btn_url || "";
+        } else {
+            modalElements.title.textContent = "Nouvelle annonce";
+            modalElements.id.value = "";
+            modalElements.active.checked = true;
+        }
+        modal.style.display = "flex";
+        setTimeout(() => modal.classList.add('visible'), 10);
+    }
+
+    function closeAnnouncementModal() {
+        modal.classList.remove('visible');
+        setTimeout(() => { modal.style.display = "none"; }, 300);
+    }
+
+    function saveAnnouncement() {
+        const id = modalElements.id.value;
+        const data = {
+            content: modalElements.content.value.trim(),
+            type: modalElements.type.value,
+            active: modalElements.active.checked,
+            video_url: modalElements.video.value.trim(),
+            btn_label: modalElements.btnLabel.value.trim(),
+            btn_url: modalElements.btnUrl.value.trim(),
+        };
+
+        if (!data.content) {
+            showNotification("Le contenu de l'annonce est obligatoire !", "error");
+            return;
+        }
+
+        const url = id ? `${API_ENDPOINT}/${id}` : API_ENDPOINT;
+        const method = id ? "PUT" : "POST";
+
+        fetch(url, {
+            method: method,
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(data),
+        })
+        .then(res => res.ok ? res.json() : Promise.reject('Échec de la sauvegarde'))
+        .then(() => {
+            showNotification(`Annonce ${id ? 'modifiée' : 'ajoutée'} avec succès.`, "success");
+            fetchAnnouncements();
+            closeAnnouncementModal();
+        })
+        .catch(() => showNotification("Erreur lors de la sauvegarde.", "error"));
+    }
+
+    function deleteAnnouncement(id) {
+        fetch(`${API_ENDPOINT}/${id}`, { method: "DELETE" })
+            .then(res => res.ok ? res.json() : Promise.reject('Échec de la suppression'))
+            .then(() => {
+                showNotification("Annonce supprimée.", "success");
+                fetchAnnouncements();
+            })
+            .catch(() => showNotification("Erreur lors de la suppression.", "error"));
+    }
 });
 </script>
 {% endblock %}
