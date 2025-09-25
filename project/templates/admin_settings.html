@@ -28,4 +28,49 @@
         </a>
     </div>
 </div>
+
+
+    <!-- SECTION OPÉRATIONS DANGEREUSES -->
+    <div style="margin-top: 4em; padding: 2em; border: 2px solid var(--red-dark); border-radius: 12px; background: rgba(220, 53, 69, 0.1);">
+        <h2 style="color: var(--red); text-align: center;">Zone de Danger</h2>
+        <p style="text-align: center; color: var(--text); margin-bottom: 1.5em;">
+            Les actions ci-dessous sont irréversibles. Soyez certain de ce que vous faites.
+        </p>
+        
+        <div style="display: flex; justify-content: center;">
+            <!-- Formulaire sécurisé pour la réinitialisation -->
+            <form id="resetDbForm" action="{{ url_for('reset_database_secure') }}" method="POST" style="display: inline-block;">
+                <button type="button" id="resetDbButton" class="btn" style="background-color: var(--red-dark); color: white;">
+                    Réinitialiser la Base de Données
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const resetButton = document.getElementById('resetDbButton');
+    const resetForm = document.getElementById('resetDbForm');
+
+    if (resetButton && resetForm) {
+        resetButton.addEventListener('click', () => {
+            // Utilise la modale de confirmation déjà présente dans admin_base.html
+            ConfirmModal(
+                'Êtes-vous absolument certain de vouloir réinitialiser la base de données ? Toutes les données (produits, utilisateurs, etc.) seront définitivement perdues.',
+                'Oui, réinitialiser',
+                'Non, annuler',
+                () => {
+                    // Si l'utilisateur clique "Oui", on soumet le formulaire
+                    resetForm.submit();
+                },
+                () => {
+                    // Si l'utilisateur clique "Non", on ne fait rien
+                    showNotification('Opération annulée.', 'info');
+                }
+            );
+        });
+    }
+});
+</script>
 {% endblock %}
