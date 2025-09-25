@@ -613,44 +613,60 @@ window.initProductPage = function () {
 
             // FONCTION A UTILISER POUR TOUT PAIEMENT (panier ou achat direct)
             function redirectToPayment(amount, cart) {
-                PaymentInfoModal(({ nom_client, numero_send }) => {
-                    const paymentData = {
+                PaymentInfoModal(({ nom_client, numero_send, email }) => {
+                    const checkoutData = {
                         totalPrice: getTotalPrice(cart),
-                                 article: getArticleObject(cart),
-                                 // ICI ON AJOUTE LA LISTE DES PRODUITS DANS personal_Info
-                                 personal_Info: [{
-                                     userId: nom_client, // À remplacer si tu as un vrai identifiant utilisateur
-                                     orderId: Date.now(),
-                                 products: cart.map(item => item.name) // <-- LISTE DES PRODUITS ACHETÉS
-                                 }],
-                                 numeroSend: numero_send,
-                                 nomclient: nom_client,
-                                 return_url: window.location.origin + "/callback",
-                                 webhook_url: window.location.origin + "/webhook"
+                        article: getArticleObject(cart),
+                        cart: cart, // On envoie le panier complet
+                        email: email, // On envoie l'email
+                        nom_client: nom_client,
+                        numero_send: numero_send
                     };
 
-                    console.log("paymentData à envoyer à MoneyFusion :", paymentData);
-
-                    // Appel backend pour générer la session MoneyFusion
-                    fetch("/payer", {
+                    // Étape 1 : Préparer le checkout et sauvegarder le panier abandonné
+                    fetch("/api/checkout/prepare", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify(paymentData)
+                        body: JSON.stringify(checkoutData)
+                    })
+                    .then(res => {
+                        if (!res.ok) throw new Error('La préparation du paiement a échoué.');
+                        return res.json();
+                    })
+                    .then(prepareData => {
+                        // On continue vers le paiement une fois le panier sauvegardé
+                        const paymentData = {
+                            totalPrice: checkoutData.totalPrice,
+                            article: checkoutData.article,
+                            personal_Info: [{
+                                userId: nom_client,
+                                orderId: `cart_${prepareData.cart_id}`, // On lie le paiement au panier
+                                products: cart.map(item => item.name)
+                            }],
+                            numeroSend: numero_send,
+                            nomclient: nom_client,
+                            return_url: window.location.origin + "/callback",
+                            webhook_url: window.location.origin + "/webhook"
+                        };
+                        
+                        // Étape 2 : Créer la session de paiement
+                        return fetch("/payer", {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify(paymentData)
+                        });
                     })
                     .then(res => res.json())
-                    .then(data => {
-                        if (data.pay_url) {
-                            // Vider le panier si besoin
+                    .then(paymentResponse => {
+                        if (paymentResponse.pay_url) {
                             localStorage.removeItem("cart");
-                            // Rediriger vers l'URL MoneyFusion
-                            window.location.href = data.pay_url;
+                            window.location.href = paymentResponse.pay_url;
                         } else {
-                            showNotification("Erreur lors de la création du paiement : " + (data.error || "inconnue"), "error");
-                            console.error("Erreur lors de la création du paiement : " + (data.error || "inconnue"), "error")
+                            throw new Error(paymentResponse.error || "Erreur lors de la création du lien de paiement.");
                         }
                     })
                     .catch(err => {
-                        showNotification("Erreur technique lors du paiement.", "error");
+                        showNotification("Erreur technique : " + err.message, "error");
                         console.error(err);
                     });
                 });
