@@ -2129,7 +2129,20 @@ def remind_abandoned_cart(cart_id):
         return jsonify({"status": "error", "message": "Erreur lors de l'envoi de l'e-mail."}), 500
 
 if __name__ == '__main__':
-    #threading.Thread(target=periodic_ping, daemon=True).start()
-    port = int(os.environ.get('PORT', 5005))  # Utilise le PORT de Railway ou 5005 en local
+    with app.app_context():
+        # Cette ligne va créer toutes les tables définies dans models.py si elles n'existent pas
+        db.create_all()
+
+        # On s'assure que l'utilisateur super_admin existe pour ne pas être bloqué dehors
+        super_admin_user = User.query.filter_by(username='k4d3t').first()
+        if not super_admin_user:
+            hashed_password = bcrypt.hashpw("spacekali".encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+            new_super_admin = User(username='k4d3t', password=hashed_password, role='super_admin')
+            db.session.add(new_super_admin)
+            db.session.commit()
+            print("Utilisateur super_admin 'k4d3t' créé avec succès.")
+
+    # Le reste du code pour lancer le serveur
+    port = int(os.environ.get('PORT', 5005))
     app.run(host='0.0.0.0', port=port)
 
