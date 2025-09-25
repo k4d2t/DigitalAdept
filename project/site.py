@@ -779,13 +779,75 @@ def prepare_checkout():
     # On renvoie un statut de succès pour que le frontend continue
     return jsonify({"status": "prepared", "cart_id": abandoned_cart.id}), 200
 
+# --- WEBHOOK MIS À JOUR (LOGIQUE FIABLE) ---
 @app.route("/webhook", methods=["POST"])
 def webhook():
-    """
-    MoneyFusion envoie les notifications ici.
-    Sans base : on peut juste accuser réception avec 200 OK.
-    """
+    data = request.json
+    # On vérifie que le paiement est réussi et qu'on a les infos nécessaires
+    if data.get('statut') == 'paid' and 'personal_Info' in data:
+        order_id_str = data['personal_Info'][0].get('orderId')
+        
+        if order_id_str and order_id_str.startswith('cart_'):
+            try:
+                cart_id = int(order_id_str.split('_')[1])
+                cart = AbandonedCart.query.get(cart_id)
+
+                # On vérifie que le panier existe et n'a pas déjà été traité
+                if cart and cart.status != 'completed':
+                    cart.status = 'completed' # On marque comme complété
+
+                    # --- LOGIQUE DE GÉNÉRATION DES LIENS DE TÉLÉCHARGEMENT SÉCURISÉS ---
+                    product_names = [item['name'] for item in cart.cart_content]
+                    products_from_db = Product.query.filter(Product.name.in_(product_names)).all()
+                    
+                    download_links_html = ""
+                    for product in products_from_db:
+                        if product.resource_files:
+                            # 1. Créer un token de téléchargement unique pour ce produit et cet achat
+                            download_token = str(uuid.uuid4())
+                            expiration_date = datetime.now(timezone.utc) + timedelta(days=7) # Liens valables 7 jours
+
+                            new_download = DownloadLink(
+                                product_id=product.id,
+                                cart_id=cart.id,
+                                token=download_token,
+                                expires_at=expiration_date
+                            )
+                            db.session.add(new_download)
+                            
+                            # 2. Construire l'URL de téléchargement avec ce token
+                            link_url = url_for('download_file', token=download_token, _external=True)
+                            download_links_html += f"<li><b>{product.name}</b>: <a href='{link_url}'>Télécharger ici</a></li>"
+
+                    db.session.commit() # On sauvegarde le nouveau statut du panier et les tokens de téléchargement
+
+                    # 3. Envoyer l'e-mail avec les liens uniques générés
+                    if download_links_html:
+                        email_subject = "Confirmation de votre commande et liens de téléchargement"
+                        email_body = f\"\"\"
+                        <html>
+                            <body style="font-family: Arial, sans-serif; color: #333;">
+                                <div style="max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
+                                    <h1 style="color: #1976d2;">Merci pour votre achat !</h1>
+                                    <p>Bonjour {cart.customer_name or 'cher client'},</p>
+                                    <p>Votre commande a été validée. Vous pouvez accéder à vos produits en utilisant les liens ci-dessous. Ces liens sont personnels et valables 7 jours :</p>
+                                    <ul style="list-style: none; padding: 0;">
+                                        {download_links_html}
+                                    </ul>
+                                    <p>Conservez cet e-mail pour accéder à vos produits.</p>
+                                    <p>L'équipe Digital Adept.</p>
+                                </div>
+                            </body>
+                        </html>
+                        \"\"\"
+                        threading.Thread(target=send_email, args=(cart.email, email_subject, email_body)).start()
+
+            except Exception as e:
+                logging.error(f"Erreur critique dans le webhook: {e}")
+                db.session.rollback() # En cas d'erreur, on annule les changements
+    
     return "", 200
+    
 @cache.cached(timeout=120)
 @app.route("/callback")
 def callback():
@@ -906,7 +968,7 @@ def callback():
         print("product_names:", product_names)
         print("user_products:", user_products)
         return render_template("download.html", products=[], message="Erreur technique, contactez le support.")
-
+ 
 @cache.cached(timeout=120)
 @app.route("/callbacktest")
 def callbacktest():
@@ -1009,8 +1071,36 @@ def callbacktest():
         "produits envoyés": [],
         "message": None
         })
-        return render_template("download.html", products=[], message="Erreur technique, contactez le support.")
+        return render_template("download.html", products=[], message="Erreur technique, contactez le support.") 
+        
+# --- NOUVELLE ROUTE POUR LE TÉLÉCHARGEMENT SÉCURISÉ ---
+@app.route('/download/<token>')
+def download_file(token):
+    link = DownloadLink.query.filter_by(token=token).first()
 
+    # Vérifications de sécurité
+    if not link:
+        return "Lien invalide ou expiré.", 404
+    if link.expires_at < datetime.now(timezone.utc):
+        return "Ce lien de téléchargement a expiré.", 410 # 410 Gone
+    if link.download_count >= 5: # Limite de 5 téléchargements par lien
+        return "Vous avez atteint le nombre maximum de téléchargements pour ce lien.", 403
+
+    product = Product.query.get(link.product_id)
+    if not product or not product.resource_files:
+        return "Produit ou fichier associé introuvable.", 404
+
+    # Incrémenter le compteur de téléchargement
+    link.download_count += 1
+    db.session.commit()
+
+    # Logique pour servir le fichier (exemple avec une redirection vers un fichier stocké)
+    # Pour l'instant, on redirige vers le premier file_id trouvé.
+    file_id_to_serve = product.resource_files[0].file_id
+    
+    # Ici, vous mettriez la logique pour envoyer le fichier depuis Telegram en utilisant le file_id
+    # Pour l'instant, on retourne un message placeholder.
+    return f"Redirection vers le téléchargement du produit '{product.name}'... (file_id: {file_id_to_serve})"
 
 # --- Authentification pour le tableau de bord ---
 app.secret_key = 'r5Ik9KbKouxeI1uxXtvHLNCvSHAsciBF4cWUcBkMk0g'  # Assurez-vous de stocker la clé de manière sécurisée
@@ -1978,6 +2068,34 @@ import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
+def send_email(receiver_email, subject, html_body):
+    """Fonction centralisée pour envoyer des e-mails."""
+    sender_email = os.environ.get('MAIL_USERNAME')
+    password = os.environ.get('MAIL_PASSWORD')
+    smtp_server = os.environ.get('MAIL_SERVER')
+    smtp_port = int(os.environ.get('MAIL_PORT', 587))
+
+    if not all([sender_email, password, smtp_server]):
+        logging.error("Configuration email (MAIL_USERNAME, MAIL_PASSWORD, MAIL_SERVER) manquante.")
+        return False
+
+    try:
+        message = MIMEMultipart("alternative")
+        message["Subject"] = subject
+        message["From"] = f"Digital Adept <{sender_email}>"
+        message["To"] = receiver_email
+        message.attach(MIMEText(html_body, "html"))
+
+        with smtplib.SMTP(smtp_server, smtp_port) as server:
+            server.starttls()
+            server.login(sender_email, password)
+            server.sendmail(sender_email, receiver_email, message.as_string())
+        logging.info(f"Email envoyé avec succès à {receiver_email}")
+        return True
+    except Exception as e:
+        logging.error(f"Erreur lors de l'envoi de l'email à {receiver_email}: {e}")
+        return False
+
 @app.route('/api/marketing/remind/<int:cart_id>', methods=['POST'])
 def remind_abandoned_cart(cart_id):
     if not session.get('admin_logged_in'):
@@ -1987,74 +2105,26 @@ def remind_abandoned_cart(cart_id):
     if not cart or cart.status != 'abandoned':
         return jsonify({"status": "error", "message": "Panier introuvable ou déjà traité"}), 404
 
-    # --- Construction de l'e-mail ---
-    sender_email = os.environ.get('MAIL_USERNAME')
-    password = os.environ.get('MAIL_PASSWORD')
-    smtp_server = os.environ.get('MAIL_SERVER')
-    smtp_port = int(os.environ.get('MAIL_PORT', 587))
-
-    if not all([sender_email, password, smtp_server, smtp_port]):
-        return jsonify({"status": "error", "message": "Configuration email manquante côté serveur."}), 500
-
-    receiver_email = cart.email
-    subject = "Vous avez oublié quelque chose dans votre panier..."
-
-    # Corps de l'email en HTML
     cart_items_html = "".join([f"<li><b>{item['name']}</b> ({item['price']} XOF)</li>" for item in cart.cart_content])
-    body_html = f"""
-    <html>
-    <head>
-        <style>
-            body {{ font-family: Arial, sans-serif; color: #333; }}
-            .container {{ max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px; }}
-            .header {{ font-size: 24px; color: #1976d2; text-align: center; }}
-            .cart-list {{ list-style: none; padding: 0; }}
-            .button {{ display: inline-block; background-color: #1976d2; color: #fff; padding: 12px 25px; text-decoration: none; border-radius: 5px; font-weight: bold; }}
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <h1 class="header">Votre panier vous attend !</h1>
-            <p>Bonjour {cart.customer_name or 'cher client'},</p>
-            <p>Nous avons remarqué que vous avez laissé ces articles dans votre panier. Ne les manquez pas !</p>
-            <ul class="cart-list">
-                {cart_items_html}
-            </ul>
-            <p><b>Total : {cart.total_price} XOF</b></p>
-            <p style="text-align:center; margin-top: 30px;">
-                <a href="{url_for('produits', _external=True)}" class="button">Finaliser ma commande</a>
-            </p>
-            <p style="font-size: 12px; color: #888; text-align:center; margin-top: 20px;">
-                Si vous avez déjà finalisé votre achat, veuillez ignorer cet e-mail.
-            </p>
-        </div>
-    </body>
-    </html>
-    """
+    body_html = f\"\"\"
+    <html><body>
+        <h1>Votre panier vous attend !</h1>
+        <p>Bonjour {cart.customer_name or 'cher client'},</p>
+        <p>Nous avons remarqué que vous avez laissé ces articles dans votre panier :</p>
+        <ul>{cart_items_html}</ul>
+        <p><b>Total : {cart.total_price} XOF</b></p>
+        <p><a href="{url_for('produits', _external=True)}">Finaliser ma commande</a></p>
+    </body></html>
+    \"\"\"
+    
+    email_sent = send_email(cart.email, "Vous avez oublié quelque chose...", body_html)
 
-    # --- Envoi de l'e-mail ---
-    try:
-        message = MIMEMultipart("alternative")
-        message["Subject"] = subject
-        message["From"] = f"Digital Adept <{sender_email}>"
-        message["To"] = receiver_email
-
-        message.attach(MIMEText(body_html, "html"))
-
-        with smtplib.SMTP(smtp_server, smtp_port) as server:
-            server.starttls()
-            server.login(sender_email, password)
-            server.sendmail(sender_email, receiver_email, message.as_string())
-
-        # Mettre à jour le statut du panier pour ne pas le relancer à nouveau
+    if email_sent:
         cart.status = 'contacted'
         db.session.commit()
-
-        return jsonify({"status": "success", "message": "Email envoyé."})
-
-    except Exception as e:
-        logging.error(f"Erreur lors de l'envoi de l'email de relance : {e}")
-        return jsonify({"status": "error", "message": f"Erreur SMTP : {e}"}), 500
+        return jsonify({"status": "success", "message": "Email de relance envoyé."})
+    else:
+        return jsonify({"status": "error", "message": "Erreur lors de l'envoi de l'e-mail."}), 500
 
 if __name__ == '__main__':
     #threading.Thread(target=periodic_ping, daemon=True).start()
