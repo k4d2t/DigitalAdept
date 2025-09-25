@@ -433,13 +433,23 @@ def home():
     produits = Product.query.all()
     produits_vedette = [p for p in produits if p.featured]
 
+    # --- JSON-LD AMÉLIORÉ POUR LE SITE WEB ---
     website_jsonld = {
         "@context": "https://schema.org",
         "@type": "WebSite",
         "name": "Digital Adept™",
         "url": url_for('home', _external=True),
         "description": "La meilleure boutique africaine de produits digitaux, logiciels, services et astuces pour booster, démarrer ou commencer votre business en ligne.",
-        "inLanguage": "fr"
+        "inLanguage": "fr",
+        # AJOUT : Indique à Google comment afficher une barre de recherche pour votre site
+        "potentialAction": {
+            "@type": "SearchAction",
+            "target": {
+                "@type": "EntryPoint",
+                "urlTemplate": url_for('produits', _external=True) + "?q={search_term_string}"
+            },
+            "query-input": "required name=search_term_string"
+        }
     }
 
     faq_jsonld = {
@@ -1777,53 +1787,62 @@ def admin_logout():
     flash("Vous avez été déconnecté.", "success")
     return redirect(url_for('admin_login'))
 
+# ... (à la place de votre fonction sitemap() actuelle) ...
 @app.route('/sitemap.xml')
 def sitemap():
-    pages = [
-        {"loc": url_for('home', _external=True), "priority": "1.0", "changefreq": "daily"},
-        {"loc": url_for('produits', _external=True), "priority": "0.8", "changefreq": "weekly"},
-        {"loc": url_for('contact', _external=True), "priority": "0.5", "changefreq": "yearly"},
-        # Suppression de la référence à 'privacy' qui n'existe pas
-    ]
-    produits = fetch_products()
+    """
+    Génère un sitemap.xml dynamique et complet à partir de la base de données.
+    """
+    pages = []
+    now = datetime.now(timezone.utc).strftime('%Y-%m-%d')
+
+    # Pages statiques
+    static_pages = ['home', 'produits', 'contact']
+    for page_name in static_pages:
+        pages.append({
+            "loc": url_for(page_name, _external=True),
+            "lastmod": now,
+            "changefreq": "weekly",
+            "priority": "0.8" if page_name != 'home' else "1.0"
+        })
+
+    # Pages des produits (dynamiques)
+    produits = Product.query.order_by(Product.id.desc()).all()
     for produit in produits:
-        # Si tu as la date : produit.get('last_modified', None) ou autre champ
-        lastmod = produit.get('last_modified') if 'last_modified' in produit else None
         entry = {
-            "loc": url_for('product_detail', slug=slugify(produit['name']), _external=True),
-            "priority": "0.6",
-            "changefreq": "weekly"
+            "loc": url_for('product_detail', slug=produit.slug, _external=True),
+            "changefreq": "monthly",
+            "priority": "0.7"
         }
-        if lastmod:
-            entry['lastmod'] = lastmod  # Format ISO 8601 recommandé : "2025-06-20"
+        # Si vous ajoutez une colonne `updated_at` à votre modèle Product,
+        # vous pourrez l'utiliser ici pour une meilleure précision.
+        # entry['lastmod'] = produit.updated_at.strftime('%Y-%m-%d')
         pages.append(entry)
 
-    sitemap_xml = [
-        '<?xml version="1.0" encoding="UTF-8"?>',
-        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
-    ]
-    for page in pages:
-        sitemap_xml.append("<url>")
-        sitemap_xml.append(f"<loc>{page['loc']}</loc>")
-        if 'lastmod' in page:
-            sitemap_xml.append(f"<lastmod>{page['lastmod']}</lastmod>")
-        sitemap_xml.append(f"<changefreq>{page['changefreq']}</changefreq>")
-        sitemap_xml.append(f"<priority>{page['priority']}</priority>")
-        sitemap_xml.append("</url>")
-    sitemap_xml.append("</urlset>")
-    return Response("\n".join(sitemap_xml), mimetype="application/xml")
+    # Génération du XML
+    sitemap_xml_content = render_template('sitemap.xml', pages=pages)
+    return Response(sitemap_xml_content, mimetype="application/xml")
 
 
+# ... (à la place de votre fonction robots_txt() actuelle) ...
 @app.route('/robots.txt')
 def robots_txt():
+    """
+    Génère un fichier robots.txt propre et sécurisé.
+    """
     lines = [
         "User-agent: *",
-        "Disallow: /admin",
-        "Disallow: /k4d3t",
-        "Disallow: /admin/",
-        "Disallow: /k4d3t/",
-        "Disallow: /settings/",
         "Allow: /",
+        "",
+        "# Pages d'administration à ne pas indexer",
+        "Disallow: /k4d3t/",
+        "Disallow: /admin/",
+        "Disallow: /settings/",
+        "",
+        "# Fichiers sensibles",
+        "Disallow: /*login",
+        "Disallow: /*logout",
+        "",
         f"Sitemap: {url_for('sitemap', _external=True)}"
     ]
     return Response("\n".join(lines), mimetype="text/plain")
