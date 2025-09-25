@@ -83,3 +83,12 @@ class Announcement(db.Model):
     date = db.Column(db.DateTime, nullable=False)
     active = db.Column(db.Boolean, default=True)
     type = db.Column(db.String(64), default="general")  # exemple : promo, info, etc.
+ 
+class AbandonedCart(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    email = db.Column(db.String(150), nullable=False, index=True)
+    customer_name = db.Column(db.String(150), nullable=True)
+    cart_content = db.Column(db.JSON, nullable=False) # Stocke les produits du panier
+    total_price = db.Column(db.Float, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.now(timezone.utc))
+    status = db.Column(db.String(50), default='abandoned') # ex: 'abandoned', 'recovered', 'contacted'
