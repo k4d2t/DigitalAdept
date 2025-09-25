@@ -26,11 +26,11 @@
                 <p>Affichez vos offres et annonces aux clients ici.</p>
             </section>
         </a>
-        <!-- CORRECTION ICI -->
-        <a href="#" class="tile-link" style="opacity: 0.6; cursor: not-allowed;" title="Bientôt disponible">
-            <section >
-                <h2>Messagerie</h2>
-                <p>Gérez les messages et les relances de paniers.</p>
+        <!-- CORRECTION ICI : La tuile est maintenant fonctionnelle -->
+        <a href="{{ url_for('admin_marketing') }}" class="tile-link">
+            <section>
+                <h2>Marketing</h2>
+                <p>Gérez les relances de paniers abandonnés.</p>
             </section>
         </a>
         <a href="{{ url_for('admin_comments_page') }}" class="tile-link">
