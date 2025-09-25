@@ -84,7 +84,16 @@ class Announcement(db.Model):
     date = db.Column(db.DateTime, nullable=False)
     active = db.Column(db.Boolean, default=True)
     type = db.Column(db.String(64), default="general")  # exemple : promo, info, etc.
- 
+    
+class DownloadLink(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    product_id = db.Column(db.Integer, db.ForeignKey('product.id'), nullable=False)
+    cart_id = db.Column(db.Integer, db.ForeignKey('abandoned_cart.id'), nullable=False)
+    token = db.Column(db.String(36), unique=True, nullable=False, index=True)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    expires_at = db.Column(db.DateTime, nullable=False)
+    download_count = db.Column(db.Integer, default=0)
+
 class AbandonedCart(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(150), nullable=False, index=True)
