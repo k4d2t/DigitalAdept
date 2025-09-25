@@ -824,7 +824,7 @@ def webhook():
                     # 3. Envoyer l'e-mail avec les liens uniques générés
                     if download_links_html:
                         email_subject = "Confirmation de votre commande et liens de téléchargement"
-                        email_body = f\"\"\"
+                        email_body = f"""
                         <html>
                             <body style="font-family: Arial, sans-serif; color: #333;">
                                 <div style="max-width: 600px; margin: auto; padding: 20px; border: 1px solid #eee; border-radius: 10px;">
@@ -839,7 +839,7 @@ def webhook():
                                 </div>
                             </body>
                         </html>
-                        \"\"\"
+                        """
                         threading.Thread(target=send_email, args=(cart.email, email_subject, email_body)).start()
 
             except Exception as e:
@@ -968,7 +968,36 @@ def callback():
         print("product_names:", product_names)
         print("user_products:", user_products)
         return render_template("download.html", products=[], message="Erreur technique, contactez le support.")
- 
+     
+# --- NOUVELLE ROUTE POUR LE TÉLÉCHARGEMENT SÉCURISÉ ---
+@app.route('/download/<token>')
+def download_file(token):
+    link = DownloadLink.query.filter_by(token=token).first()
+
+    # Vérifications de sécurité
+    if not link:
+        return "Lien invalide ou expiré.", 404
+    if link.expires_at < datetime.now(timezone.utc):
+        return "Ce lien de téléchargement a expiré.", 410 # 410 Gone
+    if link.download_count >= 5: # Limite de 5 téléchargements par lien
+        return "Vous avez atteint le nombre maximum de téléchargements pour ce lien.", 403
+
+    product = Product.query.get(link.product_id)
+    if not product or not product.resource_files:
+        return "Produit ou fichier associé introuvable.", 404
+
+    # Incrémenter le compteur de téléchargement
+    link.download_count += 1
+    db.session.commit()
+
+    # Logique pour servir le fichier (exemple avec une redirection vers un fichier stocké)
+    # Pour l'instant, on redirige vers le premier file_id trouvé.
+    file_id_to_serve = product.resource_files[0].file_id
+    
+    # Ici, vous mettriez la logique pour envoyer le fichier depuis Telegram en utilisant le file_id
+    # Pour l'instant, on retourne un message placeholder.
+    return f"Redirection vers le téléchargement du produit '{product.name}'... (file_id: {file_id_to_serve})"
+    
 @cache.cached(timeout=120)
 @app.route("/callbacktest")
 def callbacktest():
@@ -1072,36 +1101,6 @@ def callbacktest():
         "message": None
         })
         return render_template("download.html", products=[], message="Erreur technique, contactez le support.") 
-        
-# --- NOUVELLE ROUTE POUR LE TÉLÉCHARGEMENT SÉCURISÉ ---
-@app.route('/download/<token>')
-def download_file(token):
-    link = DownloadLink.query.filter_by(token=token).first()
-
-    # Vérifications de sécurité
-    if not link:
-        return "Lien invalide ou expiré.", 404
-    if link.expires_at < datetime.now(timezone.utc):
-        return "Ce lien de téléchargement a expiré.", 410 # 410 Gone
-    if link.download_count >= 5: # Limite de 5 téléchargements par lien
-        return "Vous avez atteint le nombre maximum de téléchargements pour ce lien.", 403
-
-    product = Product.query.get(link.product_id)
-    if not product or not product.resource_files:
-        return "Produit ou fichier associé introuvable.", 404
-
-    # Incrémenter le compteur de téléchargement
-    link.download_count += 1
-    db.session.commit()
-
-    # Logique pour servir le fichier (exemple avec une redirection vers un fichier stocké)
-    # Pour l'instant, on redirige vers le premier file_id trouvé.
-    file_id_to_serve = product.resource_files[0].file_id
-    
-    # Ici, vous mettriez la logique pour envoyer le fichier depuis Telegram en utilisant le file_id
-    # Pour l'instant, on retourne un message placeholder.
-    return f"Redirection vers le téléchargement du produit '{product.name}'... (file_id: {file_id_to_serve})"
-
 # --- Authentification pour le tableau de bord ---
 app.secret_key = 'r5Ik9KbKouxeI1uxXtvHLNCvSHAsciBF4cWUcBkMk0g'  # Assurez-vous de stocker la clé de manière sécurisée
 
@@ -2106,17 +2105,20 @@ def remind_abandoned_cart(cart_id):
         return jsonify({"status": "error", "message": "Panier introuvable ou déjà traité"}), 404
 
     cart_items_html = "".join([f"<li><b>{item['name']}</b> ({item['price']} XOF)</li>" for item in cart.cart_content])
-    body_html = f\"\"\"
-    <html><body>
-        <h1>Votre panier vous attend !</h1>
-        <p>Bonjour {cart.customer_name or 'cher client'},</p>
-        <p>Nous avons remarqué que vous avez laissé ces articles dans votre panier :</p>
-        <ul>{cart_items_html}</ul>
-        <p><b>Total : {cart.total_price} XOF</b></p>
-        <p><a href="{url_for('produits', _external=True)}">Finaliser ma commande</a></p>
-    </body></html>
-    \"\"\"
-    
+    body_html = f""" 
+    <html>
+        <body>
+            <h1>Votre panier vous attend !</h1>
+            <p>Bonjour {cart.customer_name or 'cher client'},</p>
+            <p>Nous avons remarqué que vous avez laissé ces articles dans votre panier :</p>
+            <ul>{cart_items_html}</ul>
+            <p><b>Total : {cart.total_price} XOF</b></p>
+            <p><a href="{url_for('produits', _external=True)}">Finaliser ma commande</a></p>
+        </body>
+    </html>
+    """ 
+      
+ 
     email_sent = send_email(cart.email, "Vous avez oublié quelque chose...", body_html)
 
     if email_sent:
