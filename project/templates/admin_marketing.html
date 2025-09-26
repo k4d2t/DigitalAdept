@@ -8,21 +8,21 @@
         <a href="{{ url_for('admin_dashboard') }}">Retour au dashboard</a>
     </nav>
     
-    <div class="actions" style="justify-content: flex-start; margin-top: 2em;">
-        <button id="remindAllBtn" class="cta">Relancer tout</button>
+    <div class="actions" style="justify-content: flex-start; margin-top: 2em; margin-bottom: 1em;">
+        <button id="remindAllBtn" class="cta">Lancer les relances automatiques</button>
     </div>
     
-    <div id="relaunch-summary" style="margin-top: 1em; font-weight: bold;"></div>
+    <div id="relaunch-summary" style="margin-top: 1em; font-weight: bold; min-height: 20px;"></div>
 
     {% if carts %}
     <table class="marketing-table-responsive">
         <thead>
             <tr>
                 <th>Date</th>
-                <th>Nom du client</th>
-                <th>Email</th>
-                <th>N° WhatsApp</th>
+                <th>Client</th>
+                <th>Email / WhatsApp</th>
                 <th>Total</th>
+                <th>Relances</th>
                 <th>Actions</th>
             </tr>
         </thead>
@@ -30,12 +30,18 @@
             {% for cart in carts %}
             <tr id="cart-row-{{ cart.id }}">
                 <td data-label="Date">{{ cart.created_at.strftime('%d-%m-%Y %H:%M') }}</td>
-                <td data-label="Nom">{{ cart.customer_name or 'N/A' }}</td>
-                <td data-label="Email">{{ cart.email }}</td>
-                <td data-label="N° WhatsApp">{{ cart.whatsapp_number or 'N/A' }}</td>
+                <td data-label="Client">{{ cart.customer_name or 'N/A' }}</td>
+                <td data-label="Contact">
+                    {{ cart.email }}<br>
+                    <small>{{ cart.whatsapp_number or 'Pas de numéro' }}</small>
+                </td>
                 <td data-label="Total">{{ cart.total_price }} XOF</td>
+                <td data-label="Relances">
+                    {{ cart.relaunch_count }} envoyé(s)<br>
+                    <small>Dernière: {{ cart.last_relaunch_at.strftime('%d/%m %Hh%M') if cart.last_relaunch_at else 'Jamais' }}</small>
+                </td>
                 <td data-label="Actions">
-                    <button class="cta remind-btn" data-id="{{ cart.id }}">Relancer</button>
+                    <button class="cta remind-btn" data-id="{{ cart.id }}">Forcer 1 relance</button>
                 </td>
             </tr>
             {% endfor %}
@@ -48,7 +54,7 @@
 
 <script>
 document.addEventListener("DOMContentLoaded", () => {
-    // Relance individuelle
+    // Relance individuelle (manuelle)
     document.querySelectorAll('.remind-btn').forEach(button => {
         button.addEventListener('click', () => {
             const cartId = button.dataset.id;
@@ -58,54 +64,48 @@ document.addEventListener("DOMContentLoaded", () => {
             fetch(`/api/marketing/remind/${cartId}`, { method: 'POST' })
                 .then(res => res.json())
                 .then(data => {
+                    showNotification(data.message, data.status === 'success' ? 'success' : 'error');
                     if (data.status === 'success') {
-                        showNotification(data.message, 'success');
-                        document.getElementById(`cart-row-${cartId}`).style.display = 'none';
+                        // Optionnel : recharger pour voir les stats à jour
+                        setTimeout(() => window.location.reload(), 1500);
                     } else {
-                        showNotification(data.message, 'error');
                         button.disabled = false;
-                        button.textContent = 'Relancer';
+                        button.textContent = 'Forcer 1 relance';
                     }
                 })
                 .catch(() => {
                     showNotification('Erreur réseau.', 'error');
                     button.disabled = false;
-                    button.textContent = 'Relancer';
+                    button.textContent = 'Forcer 1 relance';
                 });
         });
     });
 
-    // Relance de masse
+    // Relance de masse (automatisée)
     const remindAllBtn = document.getElementById('remindAllBtn');
-    const summaryDiv = document.getElementById('relaunch-summary');
     
     if (remindAllBtn) {
         remindAllBtn.addEventListener('click', () => {
             ConfirmModal(
-                "Vous allez relancer tous les paniers abandonnés, dans la limite de votre quota quotidien. Continuer ?",
-                "Oui, relancer",
+                "Lancer la séquence de relances pour tous les paniers éligibles ? Le système respectera les limites et intervalles que vous avez configurés.",
+                "Oui, lancer",
                 "Annuler",
                 () => {
                     remindAllBtn.disabled = true;
-                    remindAllBtn.textContent = 'Relance en cours...';
-                    summaryDiv.textContent = '';
+                    remindAllBtn.textContent = 'Vérification...';
 
                     fetch('/api/marketing/remind/all', { method: 'POST' })
                         .then(res => res.json())
                         .then(data => {
-                            if (data.status === 'success' || data.status === 'info') {
-                                showNotification(data.message, data.status);
-                                summaryDiv.textContent = data.message;
-                                // Recharger la page pour mettre à jour la liste
+                            showNotification(data.message, (data.status === 'success' || data.status === 'info') ? 'success' : 'error');
+                            if (data.status === 'success') {
                                 setTimeout(() => window.location.reload(), 2000);
-                            } else {
-                                showNotification(data.message || 'Une erreur est survenue.', 'error');
                             }
                         })
                         .catch(() => showNotification('Erreur réseau.', 'error'))
                         .finally(() => {
                             remindAllBtn.disabled = false;
-                            remindAllBtn.textContent = 'Relancer tout';
+                            remindAllBtn.textContent = 'Lancer les relances automatiques';
                         });
                 }
             );
