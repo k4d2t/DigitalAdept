@@ -2139,6 +2139,65 @@ def remind_abandoned_cart(cart_id):
     else:
         return jsonify({"status": "error", "message": "Erreur lors de l'envoi de l'e-mail."}), 500
 
+DAILY_EMAIL_LIMIT = 300
+
+@app.route('/api/marketing/remind/all', methods=['POST'])
+def remind_all_abandoned_carts():
+    if not session.get('admin_logged_in'):
+        return jsonify({"status": "error", "message": "Non autorisé"}), 403
+
+    try:
+        # 1. Compter les emails envoyés dans les dernières 24h
+        twenty_four_hours_ago = datetime.now(timezone.utc) - timedelta(hours=24)
+        sent_today_count = EmailSendLog.query.filter(EmailSendLog.sent_at >= twenty_four_hours_ago).count()
+
+        remaining_sends = DAILY_EMAIL_LIMIT - sent_today_count
+        if remaining_sends <= 0:
+            return jsonify({"status": "info", "message": f"Limite quotidienne de {DAILY_EMAIL_LIMIT} e-mails atteinte. Revenez demain."}), 429
+
+        # 2. Récupérer les paniers à relancer, dans la limite restante
+        carts_to_remind = AbandonedCart.query.filter_by(status='abandoned').limit(remaining_sends).all()
+
+        if not carts_to_remind:
+            return jsonify({"status": "info", "message": "Aucun panier abandonné à relancer."}), 200
+
+        sent_count = 0
+        failed_count = 0
+
+        # 3. Envoyer les e-mails
+        for cart in carts_to_remind:
+            cart_items_html = "".join([f"<li><b>{item['name']}</b> ({item['price']} XOF)</li>" for item in cart.cart_content])
+            body_html = f"""
+            <html><body>
+                <h1>Votre panier vous attend !</h1>
+                <p>Bonjour {cart.customer_name or 'cher client'},</p>
+                <p>Nous avons remarqué que vous avez laissé ces articles dans votre panier :</p>
+                <ul>{cart_items_html}</ul>
+                <p><b>Total : {cart.total_price} XOF</b></p>
+                <p><a href="{url_for('produits', _external=True)}">Finaliser ma commande</a></p>
+            </body></html>
+            """
+            
+            if send_email(cart.email, "Vous avez oublié quelque chose...", body_html):
+                cart.status = 'contacted'
+                db.session.add(EmailSendLog(recipient_email=cart.email))
+                sent_count += 1
+            else:
+                failed_count += 1
+        
+        db.session.commit()
+
+        message = f"{sent_count} relance(s) envoyée(s) avec succès."
+        if failed_count > 0:
+            message += f" {failed_count} ont échoué."
+
+        return jsonify({"status": "success", "message": message})
+
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f"Erreur lors de la relance de masse : {e}")
+        return jsonify({"status": "error", "message": "Une erreur serveur est survenue."}), 500
+
 if __name__ == '__main__':
     with app.app_context():
         # Cette ligne va créer toutes les tables définies dans models.py si elles n'existent pas
