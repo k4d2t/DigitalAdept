@@ -1902,3 +1902,78 @@ color: var(--text);
         transform: translateY(0);
     }
 }
+
+/* --- RESPONSIVE MARKETING TABLE --- */
+.marketing-table-responsive {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1.5em;
+}
+
+.marketing-table-responsive th,
+.marketing-table-responsive td {
+    padding: 0.8em 1em;
+    text-align: left;
+}
+
+.marketing-table-responsive th {
+    background-color: var(--primary-dark);
+    color: white;
+}
+
+.marketing-table-responsive tbody tr {
+    border-bottom: 1px solid var(--contact-border);
+}
+
+.marketing-table-responsive tbody tr:nth-child(even) {
+    background-color: rgba(0,0,0,0.05);
+}
+
+/* Styles pour mobile (en dessous de 768px) */
+@media (max-width: 768px) {
+    .marketing-table-responsive thead {
+        display: none; /* Cache les en-têtes du tableau */
+    }
+
+    .marketing-table-responsive tr {
+        display: block;
+        margin-bottom: 1.5em;
+        border: 1px solid var(--contact-border);
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        background: var(--contact-card-bg);
+    }
+
+    .marketing-table-responsive td {
+        display: block;
+        text-align: right; /* Aligne le contenu à droite */
+        position: relative;
+        padding-left: 50%; /* Laisse de la place pour le label */
+        border-bottom: 1px solid var(--contact-border);
+    }
+
+    .marketing-table-responsive td:last-child {
+        border-bottom: none;
+    }
+
+    .marketing-table-responsive td::before {
+        content: attr(data-label); /* Utilise l'attribut data-label comme titre */
+        position: absolute;
+        left: 10px;
+        width: 45%;
+        padding-right: 10px;
+        white-space: nowrap;
+        text-align: left;
+        font-weight: bold;
+        color: var(--primary-dark);
+    }
+
+    /* Centre les boutons d'action sur mobile */
+    .marketing-table-responsive td[data-label="Actions"] {
+        text-align: center;
+        padding-left: 0;
+    }
+     .marketing-table-responsive td[data-label="Actions"]::before {
+        display: none; /* Cache le label pour les actions */
+    }
+}
