@@ -102,6 +102,7 @@ def add_common_headers(response):
 # Configuration Railway/PostgreSQL
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get("DATABASE_URL")
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SQLALCHEMY_POOL_PRE_PING'] = True  
 
 # Initialisation SQLAlchemy
 db.init_app(app)
