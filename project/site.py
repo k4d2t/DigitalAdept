@@ -2101,7 +2101,7 @@ def remind_abandoned_cart(cart_id):
     if not session.get('admin_logged_in'):
         return jsonify({"status": "error", "message": "Non autorisé"}), 403
 
-    cart = AbandonedCart.query.get(cart_id)
+    cart = db.session.get(AbandonedCart, cart_id)
     if not cart or cart.status != 'abandoned':
         return jsonify({"status": "error", "message": "Panier introuvable ou déjà traité"}), 404
 
