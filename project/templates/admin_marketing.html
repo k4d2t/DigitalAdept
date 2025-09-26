@@ -1,85 +1,116 @@
 {% extends "admin_base.html" %}
-
-{% block admin_title %}
-    Marketing - Paniers Abandonnés
-{% endblock %}
+{% block admin_title %}Marketing{% endblock %}
 
 {% block admin_content %}
-<div class="users-page"> <!-- On réutilise le style de la page des utilisateurs pour la cohérence -->
-    <h1>Marketing : Paniers Abandonnés</h1>
+<div class="dashboard">
+    <h1>Marketing - Paniers Abandonnés</h1>
     <nav class="admin-nav">
-        <a href="{{ url_for('admin_dashboard') }}">Retour au tableau de bord</a>
+        <a href="{{ url_for('admin_dashboard') }}">Retour au dashboard</a>
     </nav>
+    
+    <div class="actions" style="justify-content: flex-start; margin-top: 2em;">
+        <button id="remindAllBtn" class="cta">Relancer tout</button>
+    </div>
+    
+    <div id="relaunch-summary" style="margin-top: 1em; font-weight: bold;"></div>
 
     {% if carts %}
-    <table style="margin-top: 2em;">
+    <table class="marketing-table-responsive">
         <thead>
             <tr>
-                <th>Client</th>
-                <th>Email</th>
-                <th>Contenu du Panier</th>
-                <th>Total</th>
                 <th>Date</th>
+                <th>Nom du client</th>
+                <th>Email</th>
+                <th>N° WhatsApp</th>
+                <th>Total</th>
                 <th>Actions</th>
             </tr>
         </thead>
         <tbody>
             {% for cart in carts %}
             <tr id="cart-row-{{ cart.id }}">
-                <td>{{ cart.customer_name or 'N/A' }}</td>
-                <td>{{ cart.email }}</td>
-                <td>
-                    <ul style="padding-left: 15px; margin: 0;">
-                        {% for item in cart.cart_content %}
-                            <li>{{ item.name }} ({{ item.price }} XOF)</li>
-                        {% endfor %}
-                    </ul>
-                </td>
-                <td>{{ cart.total_price }} XOF</td>
-                <td>{{ cart.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
-                <td>
-                    <button class="cta remind-btn" data-cart-id="{{ cart.id }}">Relancer</button>
+                <td data-label="Date">{{ cart.created_at.strftime('%d-%m-%Y %H:%M') }}</td>
+                <td data-label="Nom">{{ cart.customer_name or 'N/A' }}</td>
+                <td data-label="Email">{{ cart.email }}</td>
+                <td data-label="N° WhatsApp">{{ cart.whatsapp_number or 'N/A' }}</td>
+                <td data-label="Total">{{ cart.total_price }} XOF</td>
+                <td data-label="Actions">
+                    <button class="cta remind-btn" data-id="{{ cart.id }}">Relancer</button>
                 </td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
     {% else %}
-    <div style="text-align: center; padding: 3em; background: var(--contact-card-bg); border-radius: 1rem; margin-top: 2em;">
-        <h2>Félicitations !</h2>
-        <p>Il n'y a aucun panier abandonné pour le moment.</p>
-    </div>
+    <p style="text-align: center; margin-top: 2em;">Aucun panier abandonné pour le moment.</p>
     {% endif %}
 </div>
 
 <script>
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener("DOMContentLoaded", () => {
+    // Relance individuelle
     document.querySelectorAll('.remind-btn').forEach(button => {
-        button.addEventListener('click', (e) => {
-            const cartId = e.target.dataset.cartId;
-            e.target.disabled = true;
-            e.target.textContent = 'Envoi...';
+        button.addEventListener('click', () => {
+            const cartId = button.dataset.id;
+            button.disabled = true;
+            button.textContent = 'Envoi...';
 
             fetch(`/api/marketing/remind/${cartId}`, { method: 'POST' })
                 .then(res => res.json())
                 .then(data => {
                     if (data.status === 'success') {
-                        showNotification('Email de relance envoyé avec succès !', 'success');
-                        // On change le statut du bouton et de la ligne
-                        e.target.textContent = 'Relancé';
-                        e.target.style.backgroundColor = '#4CAF50'; // Vert
-                        document.getElementById(`cart-row-${cartId}`).style.opacity = '0.5';
+                        showNotification(data.message, 'success');
+                        document.getElementById(`cart-row-${cartId}`).style.display = 'none';
                     } else {
-                        throw new Error(data.message || 'Erreur inconnue');
+                        showNotification(data.message, 'error');
+                        button.disabled = false;
+                        button.textContent = 'Relancer';
                     }
                 })
-                .catch(err => {
-                    showNotification(`Erreur: ${err.message}`, 'error');
-                    e.target.disabled = false;
-                    e.target.textContent = 'Relancer';
+                .catch(() => {
+                    showNotification('Erreur réseau.', 'error');
+                    button.disabled = false;
+                    button.textContent = 'Relancer';
                 });
         });
     });
+
+    // Relance de masse
+    const remindAllBtn = document.getElementById('remindAllBtn');
+    const summaryDiv = document.getElementById('relaunch-summary');
+    
+    if (remindAllBtn) {
+        remindAllBtn.addEventListener('click', () => {
+            ConfirmModal(
+                "Vous allez relancer tous les paniers abandonnés, dans la limite de votre quota quotidien. Continuer ?",
+                "Oui, relancer",
+                "Annuler",
+                () => {
+                    remindAllBtn.disabled = true;
+                    remindAllBtn.textContent = 'Relance en cours...';
+                    summaryDiv.textContent = '';
+
+                    fetch('/api/marketing/remind/all', { method: 'POST' })
+                        .then(res => res.json())
+                        .then(data => {
+                            if (data.status === 'success' || data.status === 'info') {
+                                showNotification(data.message, data.status);
+                                summaryDiv.textContent = data.message;
+                                // Recharger la page pour mettre à jour la liste
+                                setTimeout(() => window.location.reload(), 2000);
+                            } else {
+                                showNotification(data.message || 'Une erreur est survenue.', 'error');
+                            }
+                        })
+                        .catch(() => showNotification('Erreur réseau.', 'error'))
+                        .finally(() => {
+                            remindAllBtn.disabled = false;
+                            remindAllBtn.textContent = 'Relancer tout';
+                        });
+                }
+            );
+        });
+    }
 });
 </script>
 {% endblock %}
