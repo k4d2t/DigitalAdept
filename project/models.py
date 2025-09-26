@@ -95,6 +95,7 @@ class AbandonedCart(db.Model):
     status = db.Column(db.String(20), default='abandoned')
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     last_contact_date = db.Column(db.DateTime)
+    whatsapp_number = db.Column(db.String(50), nullable=True)
 
 class DownloadLink(db.Model):
     __tablename__ = 'download_links'
@@ -105,3 +106,8 @@ class DownloadLink(db.Model):
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     expires_at = db.Column(db.DateTime, nullable=False)
     download_count = db.Column(db.Integer, default=0)
+
+class EmailSendLog(db.Model):
+    __tablename__ = 'email_send_logs'
+    id = db.Column(db.Integer, primary_key=True)
+    sent_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
