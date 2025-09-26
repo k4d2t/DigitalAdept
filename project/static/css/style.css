@@ -639,7 +639,7 @@ z-index: 1000;
 
 [data-theme="dark"] .featured-title {
     color: #fff;
-    text-shadow: 0 0 8px #fff, 0 0 18px #4fc3f7, 0 0 22px #fff;
+    text-shadow: 0 0 8px #fff0,0 0 18px #4fc3f7,0 0 22px #ffffff4a;
 }
 .featured-list {
     display: flex;
