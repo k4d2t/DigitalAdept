@@ -1316,6 +1316,30 @@ def export_logs():
     log_action("export_logs_success", {"username": session.get('username')})  # Enregistrer l'export réussi
     return send_file(csv_file, as_attachment=True)
 
+# Dans project/site.py
+# AJOUTEZ CETTE NOUVELLE ROUTE
+
+@app.route('/k4d3t/relaunch-settings', methods=['GET', 'POST'])
+def admin_relaunch_settings():
+    if not session.get('admin_logged_in') or session.get('role') != 'super_admin':
+        flash("Accès non autorisé.", "error")
+        return redirect(url_for('admin_dashboard'))
+
+    if request.method == 'POST':
+        # Sauvegarde des données du formulaire
+        for key, value in request.form.items():
+            setting = SiteSetting.query.filter_by(key=key).first()
+            if setting:
+                setting.value = value
+            else:
+                db.session.add(SiteSetting(key=key, value=value))
+        db.session.commit()
+        flash("Paramètres de relance mis à jour.", "success")
+        return redirect(url_for('admin_relaunch_settings'))
+
+    # Affichage de la page avec les valeurs actuelles
+    settings = {s.key: s.value for s in SiteSetting.query.all()}
+    return render_template('admin_relaunch_settings.html', settings=settings)
 
 @app.route('/k4d3t/settings/users/delete/<username>', methods=['POST'])
 def delete_user(username):
