@@ -102,7 +102,11 @@ def add_common_headers(response):
 # Configuration Railway/PostgreSQL
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get("DATABASE_URL")
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SQLALCHEMY_POOL_PRE_PING'] = True  
+aapp.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+    "pool_pre_ping": True,
+    "pool_recycle": 300,  # recycle connexions toutes les 5 min
+}
+
 
 # Initialisation SQLAlchemy
 db.init_app(app)
