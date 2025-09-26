@@ -2223,6 +2223,28 @@ def remind_all_abandoned_carts():
         logging.error(f"Erreur lors de la relance de masse : {e}")
         return jsonify({"status": "error", "message": "Une erreur serveur est survenue."}), 500
 
+# Clé secrète pour le cron job (gardez-la secrète)
+CRON_SECRET_KEY = os.environ.get('CRON_SECRET_KEY', 'une-cle-tres-secrete-par-defaut')
+
+@app.route(f'/cron/trigger-relaunch/{CRON_SECRET_KEY}', methods=['POST'])
+def trigger_relaunch_job():
+    """
+    Cette route est destinée à être appelée par un cron job (tâche planifiée).
+    Elle exécute la même logique que le bouton "Relancer tout".
+    """
+    logging.info("Cron job de relance déclenché.")
+    
+    # On appelle directement la fonction de relance de masse
+    response = remind_all_abandoned_carts()
+    
+    # On log le résultat
+    try:
+        data = response.get_json()
+        logging.info(f"Résultat du cron job : {data.get('message')}")
+    except Exception as e:
+        logging.error(f"Erreur lors de la lecture du résultat du cron job : {e}")
+        
+    return response
 
 if __name__ == '__main__':
     with app.app_context():
