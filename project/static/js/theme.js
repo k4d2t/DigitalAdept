@@ -608,30 +608,30 @@ window.initProductPage = function () {
                 return cart.reduce((acc, item) => acc + (parseFloat(item.price) * (item.quantity || 1)), 0);
             }
 
-            // FONCTION A UTILISER POUR TOUT PAIEMENT (panier ou achat direct)
+                        // FONCTION A UTILISER POUR TOUT PAIEMENT (panier ou achat direct)
             function redirectToPayment(amount, cart) {
-                PaymentInfoModal(({ nom_client, email }) => { // On ne récupère plus numero_send ici
+                PaymentInfoModal(({ nom_client, email, whatsapp }) => { // On récupère bien les 3 champs ici
                     const checkoutData = {
                         totalPrice: getTotalPrice(cart),
                         article: getArticleObject(cart),
                         cart: cart,
                         email: email,
                         nom_client: nom_client,
-                        // numero_send n'est plus nécessaire ici
+                        whatsapp: whatsapp // <--- CORRECTION : On ajoute le numéro WhatsApp aux données
                     };
             
                     // Étape 1 : Préparer le checkout (sauvegarde du panier abandonné)
                     fetch("/api/checkout/prepare", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify(checkoutData)
+                        body: JSON.stringify(checkoutData) // checkoutData est maintenant complet
                     })
                     .then(res => {
                         if (!res.ok) throw new Error('La préparation du paiement a échoué.');
                         return res.json();
                     })
                     .then(prepareData => {
-                        // Étape 2 : On continue vers le paiement une fois le panier sauvegardé
+                        // Étape 2 : On continue vers le paiement avec les données formatées pour MoneyFusion
                         const paymentData = {
                             totalPrice: checkoutData.totalPrice,
                             article: checkoutData.article,
@@ -640,8 +640,9 @@ window.initProductPage = function () {
                                 orderId: `cart_${prepareData.cart_id}`,
                                 products: cart.map(item => item.name)
                             }],
-                            // numeroSend n'est plus envoyé, MoneyFusion devrait le demander si nécessaire
                             nomclient: nom_client,
+                            // On peut ajouter le numéro WhatsApp ici aussi si MoneyFusion le permet dans ce champ
+                            // numeroSend: whatsapp, 
                             return_url: window.location.origin + "/callback",
                             webhook_url: window.location.origin + "/webhook"
                         };
@@ -655,9 +656,10 @@ window.initProductPage = function () {
                     .then(res => res.json())
                     .then(paymentResponse => {
                         if (paymentResponse.pay_url) {
-                            localStorage.removeItem("cart");
+                            localStorage.removeItem("cart"); // On vide le panier seulement si le paiement est initié
                             window.location.href = paymentResponse.pay_url;
                         } else {
+                            // Affiche une erreur claire si MoneyFusion refuse la transaction
                             throw new Error(paymentResponse.error || "Erreur lors de la création du lien de paiement.");
                         }
                     })
@@ -665,6 +667,9 @@ window.initProductPage = function () {
                         showNotification("Erreur technique : " + err.message, "error");
                         console.error(err);
                     });
+                }, () => {
+                    // Fonction optionnelle en cas d'annulation de la modale
+                    showNotification("Paiement annulé.", "info");
                 });
             }
 
