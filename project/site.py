@@ -2064,36 +2064,41 @@ def reset_database_secure():
     # Redirige vers la page des paramètres
     return redirect(url_for('admin_settings'))
 
-import smtplib
-from email.mime.multipart import MIMEMultipart
-from email.mime.text import MIMEText
-
+# Nouvelle fonction à ajouter
 def send_email(receiver_email, subject, html_body):
-    """Fonction centralisée pour envoyer des e-mails."""
+    """Fonction centralisée pour envoyer des e-mails via l'API Brevo."""
+    api_key = os.environ.get('BREVO_API_KEY')
     sender_email = os.environ.get('MAIL_USERNAME')
-    password = os.environ.get('MAIL_PASSWORD')
-    smtp_server = os.environ.get('MAIL_SERVER')
-    smtp_port = int(os.environ.get('MAIL_PORT', 587))
 
-    if not all([sender_email, password, smtp_server]):
-        logging.error("Configuration email (MAIL_USERNAME, MAIL_PASSWORD, MAIL_SERVER) manquante.")
+    if not api_key or not sender_email:
+        logging.error("Configuration email (BREVO_API_KEY, MAIL_USERNAME) manquante.")
         return False
 
-    try:
-        message = MIMEMultipart("alternative")
-        message["Subject"] = subject
-        message["From"] = f"Digital Adept <{sender_email}>"
-        message["To"] = receiver_email
-        message.attach(MIMEText(html_body, "html"))
+    api_url = "https://api.brevo.com/v3/smtp/email"
+    
+    headers = {
+        "accept": "application/json",
+        "api-key": api_key,
+        "content-type": "application/json"
+    }
+    
+    payload = {
+        "sender": {"email": sender_email, "name": "Digital Adept"},
+        "to": [{"email": receiver_email}],
+        "subject": subject,
+        "htmlContent": html_body
+    }
 
-        with smtplib.SMTP(smtp_server, smtp_port) as server:
-            server.starttls()
-            server.login(sender_email, password)
-            server.sendmail(sender_email, receiver_email, message.as_string())
-        logging.info(f"Email envoyé avec succès à {receiver_email}")
+    try:
+        response = requests.post(api_url, json=payload, headers=headers, timeout=15)
+        response.raise_for_status()  # Lève une exception pour les erreurs HTTP (4xx ou 5xx)
+        
+        logging.info(f"Email envoyé via API à {receiver_email}. Statut: {response.status_code}")
         return True
-    except Exception as e:
-        logging.error(f"Erreur lors de l'envoi de l'email à {receiver_email}: {e}")
+    except requests.exceptions.RequestException as e:
+        logging.error(f"Erreur lors de l'envoi de l'email via API à {receiver_email}: {e}")
+        if e.response is not None:
+            logging.error(f"Détail de la réponse de l'API Brevo: {e.response.text}")
         return False
 
 @app.route('/api/marketing/remind/<int:cart_id>', methods=['POST'])
