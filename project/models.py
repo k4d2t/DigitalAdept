@@ -1,4 +1,4 @@
-from flask_sqlalchemy import SQLAlchemy
+ifrom flask_sqlalchemy import SQLAlchemy
 from datetime import datetime, timezone
 
 db = SQLAlchemy()
@@ -82,7 +82,7 @@ class Announcement(db.Model):
     type = db.Column(db.String(50), default='info')
     video_url = db.Column(db.String(255))
     btn_label = db.Column(db.String(50))
-    btn_url = dbColumn(db.String(255))
+    btn_url = db.Column(db.String(255))
 
 class AbandonedCart(db.Model):
     __tablename__ = 'abandoned_carts'
