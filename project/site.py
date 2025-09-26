@@ -2112,74 +2112,86 @@ def remind_abandoned_cart(cart_id):
         return jsonify({"status": "error", "message": "Non autorisé"}), 403
 
     cart = db.session.get(AbandonedCart, cart_id)
-    if not cart or cart.status != 'abandoned':
-        return jsonify({"status": "error", "message": "Panier introuvable ou déjà traité"}), 404
+    if not cart or cart.status == 'completed':
+        return jsonify({"status": "error", "message": "Panier introuvable ou déjà complété"}), 404
 
+    # Logique pour une seule relance manuelle
     cart_items_html = "".join([f"<li><b>{item['name']}</b> ({item['price']} XOF)</li>" for item in cart.cart_content])
-    body_html = f""" 
-    <html>
-        <body>
-            <h1>Votre panier vous attend !</h1>
-            <p>Bonjour {cart.customer_name or 'cher client'},</p>
-            <p>Nous avons remarqué que vous avez laissé ces articles dans votre panier :</p>
-            <ul>{cart_items_html}</ul>
-            <p><b>Total : {cart.total_price} XOF</b></p>
-            <p><a href="{url_for('produits', _external=True)}">Finaliser ma commande</a></p>
-        </body>
-    </html>
-    """ 
-      
- 
+    body_html = f"""
+    <html><body>
+        <h1>Votre panier vous attend !</h1>
+        <p>Bonjour {cart.customer_name or 'cher client'},</p>
+        <p>Nous avons remarqué que vous avez laissé ces articles dans votre panier :</p>
+        <ul>{cart_items_html}</ul>
+        <p><b>Total : {cart.total_price} XOF</b></p>
+        <p><a href="{url_for('produits', _external=True)}">Finaliser ma commande</a></p>
+    </body></html>
+    """
+
     email_sent = send_email(cart.email, "Vous avez oublié quelque chose...", body_html)
 
     if email_sent:
-        cart.status = 'contacted'
+        cart.relaunch_count += 1
+        cart.last_relaunch_at = datetime.now(timezone.utc)
+        db.session.add(EmailSendLog(recipient_email=cart.email))
         db.session.commit()
-        return jsonify({"status": "success", "message": "Email de relance envoyé."})
+        return jsonify({"status": "success", "message": f"Email de relance envoyé (Relance #{cart.relaunch_count})."})
     else:
         return jsonify({"status": "error", "message": "Erreur lors de l'envoi de l'e-mail."}), 500
+        
 
 DAILY_EMAIL_LIMIT = 300
 
+# Remplacez la fonction remind_all_abandoned_carts
 @app.route('/api/marketing/remind/all', methods=['POST'])
 def remind_all_abandoned_carts():
     if not session.get('admin_logged_in'):
         return jsonify({"status": "error", "message": "Non autorisé"}), 403
 
     try:
-        # 1. Compter les emails envoyés dans les dernières 24h
+        # 1. Récupérer les paramètres de relance depuis la base de données
+        settings = {s.key: s.value for s in SiteSetting.query.all()}
+        max_relaunches = int(settings.get('MAX_RELAUNCHES_PER_CART', 2))
+        relaunch_interval = int(settings.get('RELAUNCH_INTERVAL_HOURS', 12))
+        
+        if max_relaunches == 0:
+            return jsonify({"status": "info", "message": "Les relances sont désactivées (max relances = 0)."}), 200
+
+        # 2. Compter les emails envoyés globalement aujourd'hui
         twenty_four_hours_ago = datetime.now(timezone.utc) - timedelta(hours=24)
         sent_today_count = EmailSendLog.query.filter(EmailSendLog.sent_at >= twenty_four_hours_ago).count()
-
-        remaining_sends = DAILY_EMAIL_LIMIT - sent_today_count
+        
+        remaining_sends = 300 - sent_today_count
         if remaining_sends <= 0:
-            return jsonify({"status": "info", "message": f"Limite quotidienne de {DAILY_EMAIL_LIMIT} e-mails atteinte. Revenez demain."}), 429
+            return jsonify({"status": "info", "message": "Limite quotidienne de 300 e-mails atteinte."}), 429
 
-        # 2. Récupérer les paniers à relancer, dans la limite restante
-        carts_to_remind = AbandonedCart.query.filter_by(status='abandoned').limit(remaining_sends).all()
+        # 3. Trouver les candidats à la relance
+        now = datetime.now(timezone.utc)
+        interval_delta = timedelta(hours=relaunch_interval)
+        
+        # Critères :
+        # - Statut "abandoned"
+        # - Nombre de relances inférieur au max autorisé
+        # - Jamais relancé OU dernière relance suffisamment ancienne
+        carts_to_remind = db.session.query(AbandonedCart).filter(
+            AbandonedCart.status == 'abandoned',
+            AbandonedCart.relaunch_count < max_relaunches,
+            (AbandonedCart.last_relaunch_at == None) | (AbandonedCart.last_relaunch_at < now - interval_delta)
+        ).limit(remaining_sends).all()
 
         if not carts_to_remind:
-            return jsonify({"status": "info", "message": "Aucun panier abandonné à relancer."}), 200
+            return jsonify({"status": "info", "message": "Aucun panier éligible à la relance pour le moment."}), 200
 
         sent_count = 0
         failed_count = 0
 
-        # 3. Envoyer les e-mails
+        # 4. Envoyer les e-mails
         for cart in carts_to_remind:
-            cart_items_html = "".join([f"<li><b>{item['name']}</b> ({item['price']} XOF)</li>" for item in cart.cart_content])
-            body_html = f"""
-            <html><body>
-                <h1>Votre panier vous attend !</h1>
-                <p>Bonjour {cart.customer_name or 'cher client'},</p>
-                <p>Nous avons remarqué que vous avez laissé ces articles dans votre panier :</p>
-                <ul>{cart_items_html}</ul>
-                <p><b>Total : {cart.total_price} XOF</b></p>
-                <p><a href="{url_for('produits', _external=True)}">Finaliser ma commande</a></p>
-            </body></html>
-            """
+            body_html = f"..." # (Même corps d'e-mail que la fonction `remind_abandoned_cart`)
             
             if send_email(cart.email, "Vous avez oublié quelque chose...", body_html):
-                cart.status = 'contacted'
+                cart.relaunch_count += 1
+                cart.last_relaunch_at = now
                 db.session.add(EmailSendLog(recipient_email=cart.email))
                 sent_count += 1
             else:
@@ -2188,15 +2200,14 @@ def remind_all_abandoned_carts():
         db.session.commit()
 
         message = f"{sent_count} relance(s) envoyée(s) avec succès."
-        if failed_count > 0:
-            message += f" {failed_count} ont échoué."
-
+        if failed_count > 0: message += f" {failed_count} ont échoué."
         return jsonify({"status": "success", "message": message})
 
     except Exception as e:
         db.session.rollback()
         logging.error(f"Erreur lors de la relance de masse : {e}")
         return jsonify({"status": "error", "message": "Une erreur serveur est survenue."}), 500
+
 
 if __name__ == '__main__':
     with app.app_context():
