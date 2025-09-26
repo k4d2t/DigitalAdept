@@ -1,0 +1,65 @@
+{% extends "admin_base.html" %}
+
+{% block admin_title %}
+    Paramètres de Relance
+{% endblock %}
+
+{% block admin_content %}
+<div class="settings-page">
+    <h1>Stratégie de Relance des Paniers</h1>
+    <nav class="admin-nav">
+        <a href="{{ url_for('admin_settings') }}">Retour aux paramètres</a>
+    </nav>
+
+    <form method="POST" class="settings-form">
+        <div class="form-group">
+            <label for="MAX_RELAUNCHES_PER_CART">Nombre max de relances par panier</label>
+            <input type="number" id="MAX_RELAUNCHES_PER_CART" name="MAX_RELAUNCHES_PER_CART" value="{{ settings.get('MAX_RELAUNCHES_PER_CART', '2') }}" min="0">
+            <small>Nombre total de fois qu'un e-mail de relance sera envoyé pour un même panier. Mettre 0 pour désactiver.</small>
+        </div>
+
+        <div class="form-group">
+            <label for="RELAUNCH_INTERVAL_HOURS">Intervalle entre les relances (en heures)</label>
+            <input type="number" id="RELAUNCH_INTERVAL_HOURS" name="RELAUNCH_INTERVAL_HOURS" value="{{ settings.get('RELAUNCH_INTERVAL_HOURS', '12') }}" min="1">
+            <small>Temps minimum à attendre avant d'envoyer la relance suivante pour un même panier.</small>
+        </div>
+
+        <button type="submit" class="cta">Sauvegarder les Paramètres</button>
+    </form>
+</div>
+
+<style>
+    .settings-form {
+        max-width: 700px;
+        margin: 2em auto;
+        padding: 2em;
+        background: var(--contact-card-bg);
+        border-radius: 12px;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+    }
+    .form-group {
+        margin-bottom: 1.5em;
+    }
+    .form-group label {
+        display: block;
+        font-weight: bold;
+        margin-bottom: 0.5em;
+        color: var(--text);
+    }
+    .form-group input {
+        width: 100%;
+        padding: 0.8em;
+        border: 1px solid var(--contact-input-border);
+        border-radius: 6px;
+        background: var(--contact-input-bg);
+        color: var(--text);
+        box-sizing: border-box;
+    }
+    .form-group small {
+        display: block;
+        margin-top: 0.5em;
+        font-size: 0.9em;
+        color: #888;
+    }
+</style>
+{% endblock %}
