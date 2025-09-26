@@ -759,7 +759,6 @@ def payer():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# AJOUTEZ CETTE NOUVELLE ROUTE
 @app.route('/api/checkout/prepare', methods=['POST'])
 def prepare_checkout():
     data = request.json
@@ -767,6 +766,7 @@ def prepare_checkout():
     cart_items = data.get('cart')
     nom_client = data.get('nom_client')
     total_price = data.get('totalPrice')
+    whatsapp = data.get('whatsapp') # <--- Nouvelle ligne
 
     if not email or not cart_items:
         return jsonify({"error": "Email et contenu du panier sont requis."}), 400
@@ -776,7 +776,8 @@ def prepare_checkout():
         email=email,
         customer_name=nom_client,
         cart_content=cart_items,
-        total_price=total_price
+        total_price=total_price,
+        whatsapp_number=whatsapp  # <--- Nouvelle ligne
     )
     db.session.add(abandoned_cart)
     db.session.commit()
