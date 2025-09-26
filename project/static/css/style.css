@@ -2469,7 +2469,7 @@ display: none;
     font-size: 1.23em;
     font-weight: 800;
     margin-bottom: 1.5em;
-    text-shadow: 0 0 12px #4fd8ff, 0 0 22px #1976d2;
+    text-shadow: 0 0 12px #4fd8ff00, 0 0 22px #1976d2;
     letter-spacing: 0.01em;
 }
 .faq-list {
@@ -2499,7 +2499,7 @@ display: none;
     padding: 1em 0 0.12em 0;
     outline: none;
     letter-spacing: 0.01em;
-    text-shadow: 0 0 7px #4fd8ff, 0 0 12px #1976d2;
+    text-shadow: 0 0 7px #4fd8ff00, 0 0 12px #1976d2;
     position: relative;
     transition: color .13s;
     box-shadow: none !important;
