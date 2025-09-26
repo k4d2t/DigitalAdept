@@ -1166,22 +1166,13 @@ def admin_dashboard():
     log_action("access_dashboard", {"role": session.get('role')})
     return render_template('admin_dashboard.html', role=session.get('role'))
 
-@app.route('/k4d3t/settings', methods=['GET', 'POST'])
+@app.route('/k4d3t/settings', methods=['GET'])
 def admin_settings():
     if not session.get('admin_logged_in') or session.get('role') != 'super_admin':
         flash("Accès non autorisé.", "error")
         return redirect(url_for('admin_dashboard'))
-    if request.method == 'POST':
-        for key, value in request.form.items():
-            setting = SiteSetting.query.filter_by(key=key).first()
-            if setting:
-                setting.value = value
-            else:
-                db.session.add(SiteSetting(key=key, value=value))
-        db.session.commit()
-        flash("Paramètres mis à jour.", "success")
-    settings = {s.key: s.value for s in SiteSetting.query.all()}
-    return render_template('admin_settings.html', settings=settings)
+    # Affiche simplement la page de navigation des paramètres, sans charger de données.
+    return render_template('admin_settings.html')
 
 
 @app.route('/k4d3t/settings/users', methods=['GET', 'POST'])
