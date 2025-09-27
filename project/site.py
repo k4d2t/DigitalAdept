@@ -963,7 +963,7 @@ def download_file(token):
 
     context['product'] = product
     context['download_urls'] = download_urls
-    return render_template("download.html", **context))   
+    return render_template("download.html", **context)  
 
 
 @cache.cached(timeout=300)
