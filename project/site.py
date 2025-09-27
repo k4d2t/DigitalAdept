@@ -996,8 +996,17 @@ def download_file(token):
     # Vérifications de sécurité
     if not link:
         return "Lien invalide ou expiré.", 404
-    if link.expires_at < datetime.now(timezone.utc):
+
+    # CORRECTION : Gère les dates "naïves" et "aware"
+    now_utc = datetime.now(timezone.utc)
+    expires_at = link.expires_at
+    if expires_at.tzinfo is None:
+        # Si la date est "naive", on la considère comme UTC
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+
+    if expires_at < now_utc:
         return "Ce lien de téléchargement a expiré.", 410 # 410 Gone
+    
     if link.download_count >= 5: # Limite de 5 téléchargements par lien
         return "Vous avez atteint le nombre maximum de téléchargements pour ce lien.", 403
 
