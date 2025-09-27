@@ -84,12 +84,10 @@ document.addEventListener('DOMContentLoaded', () => {
             navigator.clipboard.writeText(valueToCopy).then(() => {
                 const feedback = e.currentTarget.closest('.contact-cell').querySelector('.copy-feedback');
                 feedback.classList.add('visible');
-                setTimeout(() => {
-                    feedback.classList.remove('visible');
-                }, 1500);
+                // L'animation CSS gère la disparition
             }).catch(err => {
                 console.error('Erreur de copie:', err);
-                showNotification('Erreur de copie', 'error');
+                // On n'affiche plus de notification globale d'erreur pour éviter la confusion
             });
         });
     });
