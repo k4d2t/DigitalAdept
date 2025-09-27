@@ -734,30 +734,43 @@ def messages():
 @app.route("/payer", methods=["POST"])
 def payer():
     """
-    Reçoit paymentData du frontend,
-    crée la demande MoneyFusion côté serveur,
-    et renvoie l’URL de paiement.
+    Reçoit les données du frontend, les transmet à MoneyFusion et renvoie la réponse.
     """
     data = request.json
     MONEYFUSION_API_URL = "https://www.pay.moneyfusion.net/Digital_Adept/a5f4d44ad70069fa/pay/"
+    
+    # Log pour voir ce qu'on envoie (utile pour le débogage)
+    logging.info(f"Payload envoyé à MoneyFusion: {data}")
+
     try:
-        r = requests.post(MONEYFUSION_API_URL, json=data)
-        print("Réponse brute MoneyFusion:", r.status_code, repr(r.text))
-        try:
-            res = r.json()
-        except Exception as e:
-            print("Erreur JSON decode:", e)
-            print("Texte brut reçu:", r.text)
-            return jsonify({"error": "Réponse MoneyFusion non valide", "details": r.text}), 400
-        # On attend un champ "statut" True et "url" pour le paiement
-        if res.get("statut") and res.get("url"):
-            # On renvoie l'URL de paiement et le token (pour le callback)
-            return jsonify({"pay_url": res["url"], "token": res.get("token")})
-        return jsonify({"error": res.get("message")}), 400
-        print("Erreur dans /payer:", e)
-        return jsonify({"error": str(e)}), 500
+        response = requests.post(MONEYFUSION_API_URL, json=data, timeout=15)
+        
+        # Log de la réponse brute
+        logging.info(f"Réponse brute de MoneyFusion: {response.status_code} '{response.text}'")
+
+        response.raise_for_status()  # Lève une exception pour les erreurs HTTP (4xx, 5xx)
+        response_data = response.json()
+
+        # Si MoneyFusion renvoie un statut "false"
+        if not response_data.get("statut"):
+            return jsonify({"error": response_data.get("message", "Erreur inconnue de l'API de paiement.")}), 400
+        
+        # Si tout est OK, on renvoie la réponse complète de MoneyFusion
+        return jsonify(response_data), 200
+
+    except requests.exceptions.Timeout:
+        logging.error("Timeout en contactant MoneyFusion.")
+        return jsonify({"error": "Le service de paiement a mis trop de temps à répondre."}), 504
+    except requests.exceptions.RequestException as e:
+        logging.error(f"Erreur de connexion à MoneyFusion: {e}")
+        return jsonify({"error": "Impossible de contacter le service de paiement."}), 503
+    except json.JSONDecodeError:
+        logging.error(f"Réponse non-JSON de MoneyFusion: {response.text}")
+        return jsonify({"error": "Réponse invalide du service de paiement."}), 502
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        logging.error(f"Erreur inattendue dans /payer: {e}")
+        return jsonify({"error": "Une erreur serveur interne est survenue."}), 500
+
 
 @app.route('/api/checkout/prepare', methods=['POST'])
 def prepare_checkout():
