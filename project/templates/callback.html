@@ -5,22 +5,57 @@
 {% block content %}
 <div class="downloads-page" style="padding-top: 4em; text-align: center;">
     <div class="downloads-header">
-        <h1>Paiement reçu !</h1>
+        <h1>🚀 Paiement reçu !</h1>
         <p style="font-size: 1.2em; max-width: 600px; margin: auto;">
             Votre commande est en cours de finalisation.
         </p>
         <p style="margin-top: 2em;">
             Vous allez recevoir un <strong>e-mail contenant vos liens de téléchargement sécurisés</strong> dans quelques instants.
         </p>
-        <p>
-            Pensez à vérifier votre dossier de courriers indésirables (spam).
+        
+        <!-- PHRASE MISE EN AVANT -->
+        <p style="background: #ffc107; color: #333; padding: 0.8em; border-radius: 8px; font-weight: bold; max-width: 500px; margin: 1.5em auto;">
+            Pensez à vérifier votre dossier de courriers indésirables (spam) !
         </p>
+
+        <!-- BOUTON POUR OUVRIR LA MESSAGERIE -->
+        <a href="mailto:" class="btn btn-secondary" style="margin-top: 1em;">
+            Accéder à ma messagerie
+        </a>
+        
         {% if transaction_token %}
-            <p style="font-size: 0.9em; color: #888; margin-top: 3em;">
-                Votre référence de transaction : {{ transaction_token }}
-            </p>
+            <div id="copy-container" style="margin-top: 3em;">
+                <p style="font-size: 0.9em; color: #888;">
+                    Votre référence de transaction : 
+                    <span id="token-to-copy" style="font-family: monospace; background: #eee; padding: 2px 5px; border-radius: 4px; cursor: pointer;" title="Cliquez pour copier">{{ transaction_token }}</span>
+                </p>
+                <span id="copy-feedback" style="display: none; color: #4caf50; font-weight: bold;">Copié !</span>
+            </div>
         {% endif %}
+        
         <a href="{{ url_for('home') }}" class="btn-back" style="margin-top: 2em;">Retour à l'accueil</a>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const tokenSpan = document.getElementById('token-to-copy');
+    const feedbackSpan = document.getElementById('copy-feedback');
+
+    if (tokenSpan) {
+        tokenSpan.addEventListener('click', () => {
+            navigator.clipboard.writeText(tokenSpan.textContent).then(() => {
+                if (feedbackSpan) {
+                    feedbackSpan.style.display = 'inline';
+                    setTimeout(() => {
+                        feedbackSpan.style.display = 'none';
+                    }, 2000);
+                }
+            }).catch(err => {
+                console.error('Erreur de copie :', err);
+            });
+        });
+    }
+});
+</script>
 {% endblock %}
