@@ -5,7 +5,7 @@
 {% block content %}
 <div class="downloads-page" style="padding-top: 4em; text-align: center;">
     <div class="downloads-header">
-        <h1>Paiement reçu !</h1>
+        <h1>🚀 Paiement reçu !</h1>
         <p style="font-size: 1.2em; max-width: 600px; margin: auto;">
             Votre commande est en cours de finalisation.
         </p>
@@ -13,13 +13,12 @@
             Vous allez recevoir un <strong>e-mail contenant vos liens de téléchargement sécurisés</strong> dans quelques instants.
         </p>
         
-        <!-- PHRASE MISE EN AVANT -->
         <p style="background: #ffc107; color: #333; padding: 0.8em; border-radius: 8px; font-weight: bold; max-width: 500px; margin: 1.5em auto; box-shadow: 0 4px 15px rgba(255, 193, 7, 0.4);">
             Pensez à vérifier votre dossier de courriers indésirables (spam) !
         </p>
 
-        <!-- BOUTON POUR OUVRIR LA MESSAGERIE -->
-        <a href="mailto:" class="btn btn-secondary" style="margin-top: 1em;">
+        <!-- CORRECTION : Style pour supprimer le soulignement -->
+        <a href="mailto:" class="btn btn-secondary" style="margin-top: 1em; text-decoration: none;">
             Ouvrir ma messagerie
         </a>
         
@@ -33,7 +32,7 @@
             </div>
         {% endif %}
         
-        <a href="{{ url_for('home') }}" class="btn-back" style="margin-top: 2em;">Retour à l'accueil</a>
+        <a href="{{ url_for('home') }}" class="btn-back" style="margin-top: 2em; text-decoration: none;">Retour à l'accueil</a>
     </div>
 </div>
 
