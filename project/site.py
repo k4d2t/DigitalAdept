@@ -888,42 +888,74 @@ def callback():
     return render_template("callback.html", **context)
      
 # --- NOUVELLE ROUTE POUR LE TÉLÉCHARGEMENT SÉCURISÉ ---
+def get_telegram_file_link(file_id):
+    """
+    Récupère le lien de téléchargement temporaire d'un fichier depuis l'API Telegram.
+    Ces liens sont généralement valables 1 heure.
+    """
+    token = os.environ.get('MESSAGES_BOT_TOKEN')
+    if not token:
+        logging.error("Token du bot Telegram (MESSAGES_BOT_TOKEN) manquant.")
+        return None
+    
+    url = f"https://api.telegram.org/bot{token}/getFile"
+    try:
+        response = requests.post(url, json={"file_id": file_id}, timeout=10)
+        response.raise_for_status()
+        data = response.json()
+        
+        if data.get("ok"):
+            file_path = data["result"]["file_path"]
+            # Construit l'URL complète de téléchargement du fichier
+            return f"https://api.telegram.org/file/bot{token}/{file_path}"
+    except requests.exceptions.RequestException as e:
+        logging.error(f"Erreur API Telegram pour getFile (file_id: {file_id}): {e}")
+    return None
+
 @app.route('/download/<token>')
 def download_file(token):
     link = DownloadLink.query.filter_by(token=token).first()
 
-    # Vérifications de sécurité
     if not link:
-        return "Lien invalide ou expiré.", 404
+        # Si le lien n'a jamais existé
+        return render_template("download_expired.html", message="Ce lien de téléchargement est invalide."), 404
 
-    # CORRECTION : Gère les dates "naïves" et "aware"
+    # Vérification de l'expiration (sans limite de nombre de clics)
     now_utc = datetime.now(timezone.utc)
-    expires_at = link.expires_at
-    if expires_at.tzinfo is None:
-        # Si la date est "naive", on la considère comme UTC
-        expires_at = expires_at.replace(tzinfo=timezone.utc)
-
-    if expires_at < now_utc:
-        return "Ce lien de téléchargement a expiré.", 410 # 410 Gone
-    
-    if link.download_count >= 5: # Limite de 5 téléchargements par lien
-        return "Vous avez atteint le nombre maximum de téléchargements pour ce lien.", 403
+    if link.expires_at < now_utc:
+        # Si le lien a expiré
+        return render_template("download_expired.html", message="Ce lien de téléchargement a expiré depuis le " + link.expires_at.strftime('%d/%m/%Y')), 410
 
     product = Product.query.get(link.product_id)
     if not product or not product.resource_files:
-        return "Produit ou fichier associé introuvable.", 404
+        return "Produit ou fichiers associés introuvables.", 404
 
-    # Incrémenter le compteur de téléchargement
+    # --- LOGIQUE POUR GÉRER PLUSIEURS FICHIERS ---
+    # Incrémente le compteur de téléchargement juste pour le suivi, sans bloquer
     link.download_count += 1
     db.session.commit()
-
-    # Logique pour servir le fichier (exemple avec une redirection vers un fichier stocké)
-    # Pour l'instant, on redirige vers le premier file_id trouvé.
-    file_id_to_serve = product.resource_files[0].file_id
     
-    # Ici, vous mettriez la logique pour envoyer le fichier depuis Telegram en utilisant le file_id
-    # Pour l'instant, on retourne un message placeholder.
-    return f"Redirection vers le téléchargement du produit '{product.name}'... (file_id: {file_id_to_serve})"
+    # On génère une liste de liens de téléchargement temporaires pour chaque fichier du produit
+    download_urls = []
+    for i, resource_file in enumerate(product.resource_files):
+        temp_link = get_telegram_file_link(resource_file.file_id)
+        if temp_link:
+            # Pour les produits avec un seul fichier, on nomme simplement "Télécharger"
+            file_name = product.name if len(product.resource_files) == 1 else f"{product.name} - Partie {i + 1}"
+            download_urls.append({
+                "name": file_name,
+                "url": temp_link
+            })
+
+    if not download_urls:
+        return render_template("download_expired.html", message="Impossible de générer les liens de téléchargement. Veuillez contacter le support."), 500
+
+    # On passe les liens à un nouveau template `download_page.html`
+    context = get_seo_context(
+        meta_title=f"Téléchargement de {product.name}",
+        meta_robots="noindex, nofollow"
+    )
+    return render_template("download_page.html", product=product, download_urls=download_urls, **context)
     
 @cache.cached(timeout=120)
 @app.route("/callbacktest")
