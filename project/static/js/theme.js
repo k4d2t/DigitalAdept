@@ -605,48 +605,54 @@ window.initProductPage = function () {
 
             // Fonction utilitaire pour le prix total
             function getTotalPrice(cart) {
-                return cart.reduce((acc, item) => acc + (parseFloat(item.price) * (item.quantity || 1)), 0);
+                return cart.reduce((acc, item) => acc + (Number(item.price || 0) * Number(item.quantity || 1)), 0);
             }
 
                         // FONCTION A UTILISER POUR TOUT PAIEMENT (panier ou achat direct)
             function redirectToPayment(amount, cart) {
-                PaymentInfoModal(({ nom_client, email, whatsapp }) => { // On récupère bien les 3 champs ici
+                PaymentInfoModal(({ nom_client, email, whatsapp }) => {
+                    // Étape 1 : Préparer les données pour notre propre backend (panier abandonné)
                     const checkoutData = {
                         totalPrice: getTotalPrice(cart),
-                        article: getArticleObject(cart),
                         cart: cart,
                         email: email,
                         nom_client: nom_client,
-                        whatsapp: whatsapp // <--- CORRECTION : On ajoute le numéro WhatsApp aux données
+                        whatsapp: whatsapp
                     };
             
-                    // Étape 1 : Préparer le checkout (sauvegarde du panier abandonné)
+                    // On sauvegarde d'abord le panier abandonné
                     fetch("/api/checkout/prepare", {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify(checkoutData) // checkoutData est maintenant complet
+                        body: JSON.stringify(checkoutData)
                     })
                     .then(res => {
                         if (!res.ok) throw new Error('La préparation du paiement a échoué.');
                         return res.json();
                     })
                     .then(prepareData => {
-                        // Étape 2 : On continue vers le paiement avec les données formatées pour MoneyFusion
+                        // Étape 2 : Construire le payload EXACT pour MoneyFusion
+                        
+                        // Formatage du champ 'article' selon la doc
+                        const articleObject = {};
+                        cart.forEach(item => {
+                            articleObject[item.name] = Number(item.price) * (item.quantity || 1);
+                        });
+            
                         const paymentData = {
-                            totalPrice: checkoutData.totalPrice,
-                            article: checkoutData.article,
+                            totalPrice: getTotalPrice(cart),
+                            article: [articleObject], // <--- CORRECTION CRUCIALE : Un seul objet dans un tableau
+                            numeroSend: whatsapp.trim(),
+                            nomclient: nom_client.trim(),
                             personal_Info: [{
-                                userId: nom_client,
-                                orderId: `cart_${prepareData.cart_id}`,
-                                products: cart.map(item => item.name)
+                                userId: nom_client, // Utiliser le nom du client comme identifiant
+                                orderId: `cart_${prepareData.cart_id}` // Lier le paiement à notre panier
                             }],
-                            nomclient: nom_client,
-                            // On peut ajouter le numéro WhatsApp ici aussi si MoneyFusion le permet dans ce champ
-                            // numeroSend: whatsapp, 
                             return_url: window.location.origin + "/callback",
                             webhook_url: window.location.origin + "/webhook"
                         };
-                        
+            
+                        // Étape 3 : Envoyer les données à notre route /payer qui relaiera à MoneyFusion
                         return fetch("/payer", {
                             method: "POST",
                             headers: { "Content-Type": "application/json" },
@@ -655,20 +661,19 @@ window.initProductPage = function () {
                     })
                     .then(res => res.json())
                     .then(paymentResponse => {
-                        if (paymentResponse.pay_url) {
-                            localStorage.removeItem("cart"); // On vide le panier seulement si le paiement est initié
-                            window.location.href = paymentResponse.pay_url;
+                        // La doc utilise 'url', pas 'pay_url'
+                        if (paymentResponse.url) { 
+                            localStorage.removeItem("cart");
+                            window.location.href = paymentResponse.url; // <--- CORRECTION : Utiliser 'url'
                         } else {
-                            // Affiche une erreur claire si MoneyFusion refuse la transaction
                             throw new Error(paymentResponse.error || "Erreur lors de la création du lien de paiement.");
                         }
                     })
                     .catch(err => {
                         showNotification("Erreur technique : " + err.message, "error");
-                        console.error(err);
+                        console.error("Erreur dans le flux de paiement :", err);
                     });
                 }, () => {
-                    // Fonction optionnelle en cas d'annulation de la modale
                     showNotification("Paiement annulé.", "info");
                 });
             }
