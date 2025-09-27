@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 
 db = SQLAlchemy()
 
+# ... (Les modèles User, SiteSetting, Product, etc. ne changent pas) ...
 class User(db.Model):
     __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
@@ -70,14 +71,14 @@ class Comment(db.Model):
     product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
     comment = db.Column(db.Text, nullable=False)
     rating = db.Column(db.Integer, nullable=False)
-    date = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    date = db.Column(db.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)) # <-- CORRECTION
     is_read = db.Column(db.Boolean, default=False)
 
 class Announcement(db.Model):
     __tablename__ = 'announcements'
     id = db.Column(db.Integer, primary_key=True)
     content = db.Column(db.Text, nullable=False)
-    date = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    date = db.Column(db.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)) # <-- CORRECTION
     active = db.Column(db.Boolean, default=True)
     type = db.Column(db.String(50), default='info')
     video_url = db.Column(db.String(255))
@@ -93,9 +94,9 @@ class AbandonedCart(db.Model):
     cart_content = db.Column(db.JSON, nullable=False)
     total_price = db.Column(db.Float, nullable=False)
     status = db.Column(db.String(50), default='abandoned')
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)) # <-- CORRECTION
     relaunch_count = db.Column(db.Integer, default=0)
-    last_relaunch_at = db.Column(db.DateTime, nullable=True)
+    last_relaunch_at = db.Column(db.DateTime(timezone=True), nullable=True) # <-- CORRECTION
     downloads = db.relationship('DownloadLink', backref='cart', lazy=True, cascade="all, delete-orphan")
 
 class DownloadLink(db.Model):
@@ -104,12 +105,12 @@ class DownloadLink(db.Model):
     product_id = db.Column(db.Integer, db.ForeignKey('products.id'), nullable=False)
     cart_id = db.Column(db.Integer, db.ForeignKey('abandoned_carts.id'), nullable=False)
     token = db.Column(db.String(255), unique=True, nullable=False)
-    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
-    expires_at = db.Column(db.DateTime, nullable=False)
+    created_at = db.Column(db.DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)) # <-- CORRECTION
+    expires_at = db.Column(db.DateTime(timezone=True), nullable=False) # <-- CORRECTION
     download_count = db.Column(db.Integer, default=0)
 
 class EmailSendLog(db.Model):
     __tablename__ = 'email_send_logs'
     id = db.Column(db.Integer, primary_key=True)
-    sent_at = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    sent_at = db.Column(db.DateTime(timezone=True), nullable=False, default=lambda: datetime.now(timezone.utc)) # <-- CORRECTION
     recipient_email = db.Column(db.String(255), nullable=False)
