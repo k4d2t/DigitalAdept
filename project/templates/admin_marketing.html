@@ -62,7 +62,7 @@
                     <td data-label="Date">{{ cart.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
                     <td data-label="Relances">{{ cart.relaunch_count }}</td>
                     <td data-label="Actions">
-                        <button class="btn btn-secondary remind-btn" data-cart-id="{{ cart.id }}">Relancer</button>
+                        <button class="remind-btn" data-cart-id="{{ cart.id }}">Relancer</button>
                     </td>
                 </tr>
                 {% else %}
@@ -86,8 +86,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 feedback.classList.add('visible');
                 // L'animation CSS gère la disparition
             }).catch(err => {
-                console.error('Erreur de copie:', err);
-                // On n'affiche plus de notification globale d'erreur pour éviter la confusion
+                console.error('Erreur de copie :', err);
+                // On n'affiche plus de notification globale pour ne pas perturber l'utilisateur
             });
         });
     });
@@ -108,6 +108,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     } else {
                         showNotification(data.message, 'error');
                         e.target.textContent = 'Échec';
+                        e.target.disabled = false;
                     }
                 });
         });
