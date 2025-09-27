@@ -1930,7 +1930,7 @@ color: var(--text);
     background-color: rgba(0,0,0,0.05);
 }
 
-/* --- STYLES POUR LES ACTIONS DE CONTACT DANS LE TABLEAU MARKETING --- */
+/* --- STYLES POUR LES ACTIONS DE CONTACT (ICÔNES SVG) --- */
 
 .contact-cell {
     position: relative;
@@ -2000,24 +2000,25 @@ color: var(--text);
     100% { opacity: 0; transform: translateY(5px); }
 }
 
-/* CORRECTION STYLE BOUTON RELANCER */
+/* --- NOUVEAU STYLE POUR LE BOUTON "RELANCER" --- */
 .remind-btn {
     background: var(--contact-btn-bg);
     color: var(--contact-btn-text);
-    border: none;
+    border: 1.5px solid var(--contact-btn-bg-hover);
     border-radius: .5em;
     padding: .6em 1em;
     font-weight: bold;
     font-size: 0.9em;
     cursor: pointer;
     box-shadow: 0 2px 10px #6a60a92c;
-    transition: background .14s, color .13s, box-shadow .14s;
+    transition: all 0.2s ease-in-out;
 }
 
 .remind-btn:hover {
     background: var(--contact-btn-bg-hover);
     color: #fff;
     box-shadow: 0 4px 22px #00fff755, 0 2px 8px #6a60a930;
+    transform: translateY(-2px);
 }
 
 .remind-btn:disabled {
@@ -2025,6 +2026,8 @@ color: var(--text);
     color: #666;
     cursor: not-allowed;
     box-shadow: none;
+    border-color: #ccc;
+    transform: none;
 }
 
 
@@ -2047,6 +2050,7 @@ color: var(--text);
         display: block;
         text-align: right;
         position: relative;
+        padding: 0.8em 1em;
         padding-left: 50%;
         border-bottom: 1px solid var(--contact-border);
     }
@@ -2068,13 +2072,7 @@ color: var(--text);
     }
 
     .marketing-table-responsive td[data-label="Contact"] {
-        padding-left: 10px;
-        text-align: right; /* Aligne les icônes à droite sur mobile */
-    }
-
-    .marketing-table-responsive td[data-label="Contact"]::before {
-        content: attr(data-label);
-        display: inline-block;
+        text-align: right;
     }
 
     .marketing-table-responsive td[data-label="Actions"] {
