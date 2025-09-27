@@ -1,114 +1,112 @@
 {% extends "admin_base.html" %}
-{% block admin_title %}Marketing{% endblock %}
+
+{% block title %}Marketing - Relance Paniers{% endblock %}
 
 {% block admin_content %}
-<div class="dashboard">
-    <h1>Marketing - Paniers Abandonnés</h1>
-    <nav class="admin-nav">
-        <a href="{{ url_for('admin_dashboard') }}">Retour au dashboard</a>
-    </nav>
-    
-    <div class="actions" style="justify-content: flex-start; margin-top: 2em; margin-bottom: 1em;">
-        <button id="remindAllBtn" class="cta">Lancer les relances automatiques</button>
-    </div>
-    
-    <div id="relaunch-summary" style="margin-top: 1em; font-weight: bold; min-height: 20px;"></div>
+<div class="admin-page-container" style="padding: 2rem;">
+    <h1 style="text-align: center; color: var(--primary-dark);">Marketing - Paniers Abandonnés</h1>
+    <p style="text-align: center; color: var(--text); max-width: 700px; margin: 0 auto 2rem auto;">
+        Cette section liste tous les paniers qui n'ont pas abouti à un achat. Vous pouvez déclencher manuellement une relance par e-mail pour un client spécifique.
+    </p>
 
-    {% if carts %}
-    <table class="marketing-table-responsive">
-        <thead>
-            <tr>
-                <th>Date</th>
-                <th>Client</th>
-                <th>Email / WhatsApp</th>
-                <th>Total</th>
-                <th>Relances</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for cart in carts %}
-            <tr id="cart-row-{{ cart.id }}">
-                <td data-label="Date">{{ cart.created_at.strftime('%d-%m-%Y %H:%M') }}</td>
-                <td data-label="Client">{{ cart.customer_name or 'N/A' }}</td>
-                <td data-label="Contact">
-                    {{ cart.email }}<br>
-                    <small>{{ cart.whatsapp_number or 'Pas de numéro' }}</small>
-                </td>
-                <td data-label="Total">{{ cart.total_price }} XOF</td>
-                <td data-label="Relances">
-                    {{ cart.relaunch_count }} envoyé(s)<br>
-                    <small>Dernière: {{ cart.last_relaunch_at.strftime('%d/%m %Hh%M') if cart.last_relaunch_at else 'Jamais' }}</small>
-                </td>
-                <td data-label="Actions">
-                    <button class="cta remind-btn" data-id="{{ cart.id }}">Forcer 1 relance</button>
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    {% else %}
-    <p style="text-align: center; margin-top: 2em;">Aucun panier abandonné pour le moment.</p>
-    {% endif %}
+    <div class="actions" style="margin-bottom: 2rem;">
+        <button id="remindAllBtn" class="cta">Relancer tous les paniers éligibles</button>
+        <a href="{{ url_for('admin_relaunch_settings') }}" class="cta">Paramètres de relance</a>
+    </div>
+
+    <div style="overflow-x: auto;">
+        <!-- CORRECTION : Ajout de la classe "marketing-table-responsive" -->
+        <table class="marketing-table-responsive">
+            <thead>
+                <tr>
+                    <th>Client</th>
+                    <th>Email / WhatsApp</th>
+                    <th>Contenu du Panier</th>
+                    <th>Total</th>
+                    <th>Statut</th>
+                    <th>Date</th>
+                    <th>Relances</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for cart in carts %}
+                <tr>
+                    <!-- CORRECTION : Ajout des attributs data-label -->
+                    <td data-label="Client">{{ cart.customer_name or 'N/A' }}</td>
+                    <td data-label="Contact">{{ cart.email }}<br><small>{{ cart.whatsapp_number or '' }}</small></td>
+                    <td data-label="Contenu">
+                        <ul>
+                            {% for item in cart.cart_content %}
+                                <li>{{ item.name }} ({{ item.price }} XOF)</li>
+                            {% endfor %}
+                        </ul>
+                    </td>
+                    <td data-label="Total">{{ cart.total_price }} XOF</td>
+                    <td data-label="Statut">{{ cart.status }}</td>
+                    <td data-label="Date">{{ cart.created_at.strftime('%d/%m/%Y %H:%M') }}</td>
+                    <td data-label="Relances">{{ cart.relaunch_count }}</td>
+                    <td data-label="Actions">
+                        <button class="btn btn-secondary remind-btn" data-cart-id="{{ cart.id }}">Relancer</button>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="8" style="text-align: center;">Aucun panier abandonné pour le moment.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 </div>
 
 <script>
-document.addEventListener("DOMContentLoaded", () => {
-    // Relance individuelle (manuelle)
+document.addEventListener('DOMContentLoaded', () => {
+    // Relance individuelle
     document.querySelectorAll('.remind-btn').forEach(button => {
-        button.addEventListener('click', () => {
-            const cartId = button.dataset.id;
-            button.disabled = true;
-            button.textContent = 'Envoi...';
+        button.addEventListener('click', (e) => {
+            const cartId = e.target.getAttribute('data-cart-id');
+            e.target.disabled = true;
+            e.target.textContent = 'Envoi...';
 
             fetch(`/api/marketing/remind/${cartId}`, { method: 'POST' })
                 .then(res => res.json())
                 .then(data => {
-                    showNotification(data.message, data.status === 'success' ? 'success' : 'error');
                     if (data.status === 'success') {
-                        // Optionnel : recharger pour voir les stats à jour
-                        setTimeout(() => window.location.reload(), 1500);
+                        showNotification(data.message, 'success');
+                        e.target.textContent = 'Relancé';
                     } else {
-                        button.disabled = false;
-                        button.textContent = 'Forcer 1 relance';
+                        showNotification(data.message, 'error');
+                        e.target.textContent = 'Échec';
                     }
                 })
                 .catch(() => {
                     showNotification('Erreur réseau.', 'error');
-                    button.disabled = false;
-                    button.textContent = 'Forcer 1 relance';
+                    e.target.textContent = 'Relancer';
+                    e.target.disabled = false;
                 });
         });
     });
 
-    // Relance de masse (automatisée)
+    // Relance de masse
     const remindAllBtn = document.getElementById('remindAllBtn');
-    
     if (remindAllBtn) {
         remindAllBtn.addEventListener('click', () => {
-            ConfirmModal(
-                "Lancer la séquence de relances pour tous les paniers éligibles ? Le système respectera les limites et intervalles que vous avez configurés.",
-                "Oui, lancer",
-                "Annuler",
-                () => {
-                    remindAllBtn.disabled = true;
-                    remindAllBtn.textContent = 'Vérification...';
+            remindAllBtn.disabled = true;
+            remindAllBtn.textContent = 'Lancement des relances...';
 
-                    fetch('/api/marketing/remind/all', { method: 'POST' })
-                        .then(res => res.json())
-                        .then(data => {
-                            showNotification(data.message, (data.status === 'success' || data.status === 'info') ? 'success' : 'error');
-                            if (data.status === 'success') {
-                                setTimeout(() => window.location.reload(), 2000);
-                            }
-                        })
-                        .catch(() => showNotification('Erreur réseau.', 'error'))
-                        .finally(() => {
-                            remindAllBtn.disabled = false;
-                            remindAllBtn.textContent = 'Lancer les relances automatiques';
-                        });
-                }
-            );
+            fetch('/api/marketing/remind/all', { method: 'POST' })
+                .then(res => res.json())
+                .then(data => {
+                    showNotification(data.message, data.status === 'success' ? 'success' : 'info');
+                    remindAllBtn.textContent = 'Relancer tous les paniers éligibles';
+                    remindAllBtn.disabled = false;
+                })
+                .catch(() => {
+                    showNotification('Erreur lors de la relance de masse.', 'error');
+                    remindAllBtn.textContent = 'Relancer tous les paniers éligibles';
+                    remindAllBtn.disabled = false;
+                });
         });
     }
 });
