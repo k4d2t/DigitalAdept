@@ -632,17 +632,20 @@ window.initProductPage = function () {
                     })
                     .then(prepareData => {
                         // Étape 2 : Construire le payload EXACT pour MoneyFusion
-                        
+            
                         // Formatage du champ 'article' selon la doc
                         const articleObject = {};
                         cart.forEach(item => {
                             articleObject[item.name] = Number(item.price) * (item.quantity || 1);
                         });
             
+                        // CORRECTION : S'assurer que numeroSend est toujours une chaîne, même si vide.
+                        const numeroClient = (whatsapp || "").trim();
+            
                         const paymentData = {
                             totalPrice: getTotalPrice(cart),
-                            article: [articleObject], // <--- CORRECTION CRUCIALE : Un seul objet dans un tableau
-                            numeroSend: whatsapp.trim(),
+                            article: [articleObject], // Format correct : [ { "produit": prix } ]
+                            numeroSend: numeroClient, // Champ obligatoire, maintenant toujours présent
                             nomclient: nom_client.trim(),
                             personal_Info: [{
                                 userId: nom_client, // Utiliser le nom du client comme identifiant
@@ -661,12 +664,12 @@ window.initProductPage = function () {
                     })
                     .then(res => res.json())
                     .then(paymentResponse => {
-                        // La doc utilise 'url', pas 'pay_url'
+                        // La doc utilise 'url' pour la redirection
                         if (paymentResponse.url) { 
                             localStorage.removeItem("cart");
-                            window.location.href = paymentResponse.url; // <--- CORRECTION : Utiliser 'url'
+                            window.location.href = paymentResponse.url;
                         } else {
-                            throw new Error(paymentResponse.error || "Erreur lors de la création du lien de paiement.");
+                            throw new Error(paymentResponse.error || "Erreur inconnue lors de la création du lien de paiement.");
                         }
                     })
                     .catch(err => {
