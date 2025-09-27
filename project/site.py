@@ -915,22 +915,26 @@ def get_telegram_file_link(file_id):
 @app.route('/download/<token>')
 def download_file(token):
     link = DownloadLink.query.filter_by(token=token).first()
+    context = get_seo_context(
+        meta_title="Votre téléchargement",
+        meta_robots="noindex, nofollow"
+    )
 
     if not link:
-        # Si le lien n'a jamais existé
-        return render_template("download_expired.html", message="Ce lien de téléchargement est invalide."), 404
+        context['error_message'] = "Ce lien de téléchargement est invalide ou n'existe plus."
+        return render_template("download.html", **context), 404
 
-    # Vérification de l'expiration (sans limite de nombre de clics)
+    # Vérification de l'expiration (SANS limite de nombre de clics)
     now_utc = datetime.now(timezone.utc)
     if link.expires_at < now_utc:
-        # Si le lien a expiré
-        return render_template("download_expired.html", message="Ce lien de téléchargement a expiré depuis le " + link.expires_at.strftime('%d/%m/%Y')), 410
+        context['error_message'] = f"Ce lien de téléchargement a expiré le {link.expires_at.strftime('%d/%m/%Y')}."
+        return render_template("download.html", **context), 410
 
     product = Product.query.get(link.product_id)
     if not product or not product.resource_files:
-        return "Produit ou fichiers associés introuvables.", 404
+        context['error_message'] = "Le produit associé à ce lien est introuvable."
+        return render_template("download.html", **context), 404
 
-    # --- LOGIQUE POUR GÉRER PLUSIEURS FICHIERS ---
     # Incrémente le compteur de téléchargement juste pour le suivi, sans bloquer
     link.download_count += 1
     db.session.commit()
@@ -948,15 +952,15 @@ def download_file(token):
             })
 
     if not download_urls:
-        return render_template("download_expired.html", message="Impossible de générer les liens de téléchargement. Veuillez contacter le support."), 500
+        context['error_message'] = "Impossible de générer les liens de téléchargement pour le moment. Veuillez contacter le support."
+        return render_template("download.html", **context), 500
 
-    # On passe les liens à un nouveau template `download_page.html`
-    context = get_seo_context(
-        meta_title=f"Téléchargement de {product.name}",
-        meta_robots="noindex, nofollow"
-    )
-    return render_template("download_page.html", product=product, download_urls=download_urls, **context)
-    
+    # On passe les données au template
+    context['product'] = product
+    context['download_urls'] = download_urls
+    return render_template("download.html", **context)   
+
+
 @cache.cached(timeout=120)
 @app.route("/callbacktest")
 def callbacktest():
