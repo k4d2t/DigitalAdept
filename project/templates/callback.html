@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block title %}Paiement en cours de validation{% endblock %}
+
+{% block content %}
+<div class="downloads-page" style="padding-top: 4em; text-align: center;">
+    <div class="downloads-header">
+        <h1>Paiement reçu !</h1>
+        <p style="font-size: 1.2em; max-width: 600px; margin: auto;">
+            Votre commande est en cours de finalisation.
+        </p>
+        <p style="margin-top: 2em;">
+            Vous allez recevoir un <strong>e-mail contenant vos liens de téléchargement sécurisés</strong> dans quelques instants.
+        </p>
+        <p>
+            Pensez à vérifier votre dossier de courriers indésirables (spam).
+        </p>
+        {% if transaction_token %}
+            <p style="font-size: 0.9em; color: #888; margin-top: 3em;">
+                Votre référence de transaction : {{ transaction_token }}
+            </p>
+        {% endif %}
+        <a href="{{ url_for('home') }}" class="btn-back" style="margin-top: 2em;">Retour à l'accueil</a>
+    </div>
+</div>
+{% endblock %}
