@@ -925,19 +925,14 @@ def download_file(token):
         context['error_message'] = "Ce lien de téléchargement est invalide ou n'existe plus."
         return render_template("download.html", **context), 404
 
-    # --- CORRECTION DU BUG DE DATE ---
     now_utc = datetime.now(timezone.utc)
     expires_at_aware = link.expires_at
-
-    # Si la date de la BDD est "naive" (sans fuseau horaire), on la rend "aware" en lui disant qu'elle est en UTC.
     if expires_at_aware.tzinfo is None:
         expires_at_aware = expires_at_aware.replace(tzinfo=timezone.utc)
 
-    # La comparaison est maintenant sûre
     if expires_at_aware < now_utc:
         context['error_message'] = f"Ce lien de téléchargement a expiré le {expires_at_aware.strftime('%d/%m/%Y')}."
         return render_template("download.html", **context), 410
-    # --- FIN DE LA CORRECTION ---
 
     product = Product.query.get(link.product_id)
     if not product or not product.resource_files:
@@ -946,25 +941,36 @@ def download_file(token):
 
     link.download_count += 1
     db.session.commit()
-    
-    download_urls = []
-    for i, resource_file in enumerate(product.resource_files):
+
+    # --- OPTIMISATION : Requêtes parallèles vers Telegram ---
+    download_urls = [None] * len(product.resource_files)
+    threads = []
+
+    def fetch_link(index, resource_file):
         temp_link = get_telegram_file_link(resource_file.file_id)
         if temp_link:
-            file_name = product.name if len(product.resource_files) == 1 else f"{product.name} - Partie {i + 1}"
-            download_urls.append({
-                "name": file_name,
-                "url": temp_link
-            })
+            file_name = product.name if len(product.resource_files) == 1 else f"{product.name} - Partie {index + 1}"
+            download_urls[index] = {"name": file_name, "url": temp_link}
 
-    if not download_urls:
-        context['error_message'] = "Impossible de générer les liens de téléchargement. Veuillez contacter le support."
+    for i, resource_file in enumerate(product.resource_files):
+        thread = threading.Thread(target=fetch_link, args=(i, resource_file))
+        threads.append(thread)
+        thread.start()
+
+    for thread in threads:
+        thread.join() # On attend que toutes les requêtes finissent
+
+    # Filtrer les résultats None si une requête a échoué
+    final_download_urls = [url for url in download_urls if url is not None]
+    # --- FIN DE L'OPTIMISATION ---
+
+    if not final_download_urls:
+        context['error_message'] = "Impossible de générer les liens de téléchargement pour le moment. Veuillez contacter le support."
         return render_template("download.html", **context), 500
 
     context['product'] = product
-    context['download_urls'] = download_urls
-    return render_template("download.html", **context)  
-
+    context['download_urls'] = final_download_urls
+    return render_template("download.html", **context)
 
 @cache.cached(timeout=300)
 @app.route("/callbacktest")
