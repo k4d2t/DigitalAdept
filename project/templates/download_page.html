@@ -1,28 +1,55 @@
 {% extends "base.html" %}
 
-{% block title %}Vos Téléchargements{% endblock %}
+{% block title %}
+    {% if error_message %}
+        Lien invalide
+    {% else %}
+        Vos téléchargements
+    {% endif %}
+{% endblock %}
 
 {% block content %}
 <div class="downloads-page" style="padding-top: 4em; text-align: center;">
-    <div class="downloads-header">
-        <h1>Vos fichiers pour "{{ product.name }}"</h1>
-        <p style="font-size: 1.2em; max-width: 600px; margin: auto;">
-            Cliquez sur les liens ci-dessous pour télécharger chaque partie de votre produit.
-        </p>
-    </div>
-
-    <div class="download-links-container" style="margin-top: 3em;">
-        {% for link in download_urls %}
-            <a href="{{ link.url }}" class="btn btn-primary" style="margin: 0.5em;" download>
-                Télécharger "{{ link.name }}"
-            </a>
-        {% endfor %}
-    </div>
-
-    <p style="margin-top: 3em; font-size: 0.9em; color: #888;">
-        Ces liens sont valables 7 jours.
-    </p>
     
-    <a href="{{ url_for('home') }}" class="btn-back" style="margin-top: 2em;">Retour à l'accueil</a>
+    {% if error_message %}
+        <!-- CAS 1 : Le lien a expiré ou est invalide -->
+        <div class="downloads-header">
+            <h1>😕 Oups, ce lien n'est plus valide</h1>
+            <p style="font-size: 1.2em; max-width: 600px; margin: auto; color: #ff6b6b;">
+                {{ error_message }}
+            </p>
+            <p style="margin-top: 2em;">
+                Si vous pensez qu'il s'agit d'une erreur, n'hésitez pas à nous contacter.
+            </p>
+            <a href="{{ url_for('contact') }}" class="btn btn-secondary" style="margin-top: 1em;">
+                Contacter le support
+            </a>
+        </div>
+
+    {% else %}
+        <!-- CAS 2 : Le lien est valide, on affiche les boutons de téléchargement -->
+        <div class="downloads-header">
+            <h1>Vos fichiers pour "{{ product.name }}"</h1>
+            <p style="font-size: 1.2em; max-width: 600px; margin: auto;">
+                Cliquez sur les liens ci-dessous pour télécharger chaque partie de votre produit.
+            </p>
+        </div>
+
+        <div class="download-links-container" style="margin-top: 3em;">
+            {% for link in download_urls %}
+                <a href="{{ link.url }}" class="btn btn-primary" style="margin: 0.5em;" download>
+                    Télécharger "{{ link.name }}"
+                </a>
+            {% endfor %}
+        </div>
+
+        <p style="margin-top: 3em; font-size: 0.9em; color: #888;">
+            Ces liens sont valables 7 jours et les fichiers sont hébergés de manière sécurisée.
+        </p>
+        
+        <a href="{{ url_for('home') }}" class="btn-back" style="margin-top: 2em;">Retour à l'accueil</a>
+
+    {% endif %}
+
 </div>
 {% endblock %}
