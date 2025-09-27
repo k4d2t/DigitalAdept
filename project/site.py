@@ -871,122 +871,21 @@ def webhook():
 @app.route("/callback")
 def callback():
     """
-    Affiche la page de téléchargement après paiement.
-    - MoneyFusion doit renvoyer ici avec ?token=xxxx dans le return_url.
-    - On va demander à l’API MoneyFusion le détail de la transaction avec ce token.
-    - On affiche les produits achetés à partir des infos du paiement.
+    Page de retour générique après le paiement.
+    Le traitement réel est géré par le webhook. Cette page informe simplement l'utilisateur.
     """
-    token = request.args.get("token")
-    produits = PRODUIT_CACHE
+    # On peut récupérer le token pour l'afficher à l'utilisateur s'il a besoin de contacter le support
+    transaction_token = request.args.get("token")
 
-    # Si pas de token, impossible de savoir quoi donner
-    if not token:
-        print("DEBUG CALLBACK:", {
-        "token": token,
-        "produits envoyés": user_products if 'user_products' in locals() else [],
-        "message": message if 'message' in locals() else None
-        })
-        print("product_names:", product_names)
-        print("user_products:", user_products)
-        return render_template("download.html", products=[], message="Erreur, paiement introuvable")
+    context = get_seo_context(
+        meta_title="Paiement en cours de validation - Digital Adept™",
+        meta_description="Votre paiement est en cours de validation. Vous recevrez vos produits par e-mail dans quelques instants.",
+        meta_robots="noindex, nofollow" # On ne veut pas que cette page soit indexée
+    )
+    # On passe le token au template, au cas où
+    context['transaction_token'] = transaction_token 
 
-    # Appelle MoneyFusion pour vérifier le paiement
-    try:
-        r = requests.get(f"https://www.pay.moneyfusion.net/paiementNotif/{token}")
-        res = r.json()
-        print("Réponse MoneyFusion callback:", res)
-        if not res.get("statut") or "data" not in res:
-            print("DEBUG CALLBACK:", {
-            "token": token,
-            "produits envoyés": user_products if 'user_products' in locals() else [],
-            "message": message if 'message' in locals() else None
-            })
-            print("product_names:", product_names)
-            print("user_products:", user_products)
-            return render_template("download.html", products=[], message="Erreur, paiement introuvable")
-
-        data = res["data"]
-
-        # On vérifie si le paiement est bien complété
-        if data.get("statut") != "paid":
-            print("DEBUG CALLBACK:", {
-            "token": token,
-            "produits envoyés": user_products if 'user_products' in locals() else [],
-            "message": message if 'message' in locals() else None
-            })
-            print("product_names:", product_names)
-            print("user_products:", user_products)
-            attente_msg = (
-                "Votre paiement est en cours de validation par MoneyFusion… "
-                "Merci de patienter quelques secondes, la page va se recharger automatiquement. "
-                "Si rien ne s'affiche après 2 minutes, contactez le support avec votre numéro de transaction."
-            )
-            return render_template("download.html", products=[], message=attente_msg)
-
-        # On récupère les noms des produits achetés depuis le paiement (dans "article" ou similaire)
-        # Ici, on suppose que tu as envoyé les noms dans personal_Info ou un champ custom, sinon adapte
-        product_names = []
-        # Si tu as stocké le nom dans personal_Info (à adapter à la structure reçue)
-        if "personal_Info" in data and isinstance(data["personal_Info"], list):
-            # Ex : [{"userId": 1, "orderId": 123, "products": ["Sac", "Chaussure"]}]
-            if "products" in data["personal_Info"][0]:
-                product_names = data["personal_Info"][0]["products"]
-        # Sinon, ici tu pourrais stocker dans un autre champ lors du POST initial (à adapter à ton besoin)
-
-        # Si pas de produits précisés, on propose tout ce qui est disponible (mieux de restreindre !)
-        if not product_names:
-            user_products = [
-                {
-                    "id": produit["id"],
-                    "name": produit["name"],
-                    "file_id": produit.get("resource_file_id"),
-                }
-                for produit in produits
-                if produit.get("resource_file_id")
-            ]
-        else:
-            user_products = [
-                {
-                    "name": produit["name"],
-                    "file_id": produit.get("resource_file_id"),
-                    "id": produit["id"]
-                }
-                for produit in produits
-                if produit.get("name") in product_names
-            ]
-
-        if not user_products:
-            print("DEBUG CALLBACK:", {
-            "token": token,
-            "produits envoyés": user_products if 'user_products' in locals() else [],
-            "message": message if 'message' in locals() else None
-            })
-
-            print("product_names:", product_names)
-            print("user_products:", user_products)
-            return render_template("download.html", products=[], message="Erreur, Veuillez nous contacter")
-
-        # Affiche la page de téléchargement avec les bons produits
-        print("DEBUG CALLBACK:", {
-        "token": token,
-        "produits envoyés": user_products if 'user_products' in locals() else [],
-        "message": message if 'message' in locals() else None
-        })
-
-        print("product_names:", product_names)
-        print("user_products:", user_products)
-        return render_template("download.html", products=user_products, message=None)
-
-    except Exception as e:
-        print("DEBUG CALLBACK:", {
-        "token": token,
-        "produits envoyés": user_products if 'user_products' in locals() else [],
-        "message": message if 'message' in locals() else None
-        })
-
-        print("product_names:", product_names)
-        print("user_products:", user_products)
-        return render_template("download.html", products=[], message="Erreur technique, contactez le support.")
+    return render_template("callback.html", **context)
      
 # --- NOUVELLE ROUTE POUR LE TÉLÉCHARGEMENT SÉCURISÉ ---
 @app.route('/download/<token>')
