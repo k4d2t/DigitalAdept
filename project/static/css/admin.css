@@ -1982,24 +1982,23 @@ color: var(--text);
 /* --- STYLES POUR LES ACTIONS DE CONTACT DANS LE TABLEAU MARKETING --- */
 
 .contact-cell {
-    position: relative; /* Nécessaire pour le positionnement du feedback */
-    vertical-align: middle; /* Centre verticalement les icônes */
+    position: relative;
 }
 
 .contact-actions {
     display: flex;
     align-items: center;
-    gap: 0.7rem; /* Espacement un peu plus grand entre les icônes */
+    gap: 0.7rem; /* Espacement entre les icônes */
 }
 
 .contact-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 36px;   /* Taille légèrement augmentée */
+    width: 36px;
     height: 36px;
     border-radius: 50%;
-    border: 1.5px solid var(--primary-dark); /* Bordure visible */
+    border: 1.5px solid var(--primary-dark);
     background-color: transparent;
     color: var(--primary);
     cursor: pointer;
@@ -2028,10 +2027,10 @@ color: var(--text);
 .copy-feedback {
     display: none;
     position: absolute;
-    bottom: -22px; /* Se positionne juste sous la cellule */
+    bottom: -22px;
     left: 10px;
     font-size: 0.8em;
-    color: #4CAF50; /* Vert succès */
+    color: #4CAF50;
     background: var(--dark-bg);
     padding: 2px 6px;
     border-radius: 4px;
