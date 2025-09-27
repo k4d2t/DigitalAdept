@@ -433,7 +433,7 @@ def shuffle_filter(seq):
     return seq
 
 # --- Routes produits ---
-@cache.cached(timeout=120)
+@cache.cached(timeout=300)
 @app.route('/')
 def home():
     produits = Product.query.all()
@@ -550,7 +550,7 @@ def home():
         }
     )
     return render_template('home.html', **context)
-@cache.cached(timeout=120)
+@cache.cached(timeout=300)
 @app.route('/produits')
 def produits():
     produits = Product.query.all()
@@ -575,7 +575,7 @@ def produits():
     )
     return render_template('produits.html', **context)
     
-@cache.cached(timeout=120)
+@cache.cached(timeout=300)
 @app.route('/produit/<slug>')
 def product_detail(slug):
     # On cherche le produit en base via le slug
@@ -694,7 +694,7 @@ def get_product_comments(product_id):
         }
     return jsonify([comment_to_dict(comment) for comment in comments])
     
-@cache.cached(timeout=120)
+@cache.cached(timeout=300)
 @app.route('/contact')
 def contact():
     context = get_seo_context(
@@ -867,7 +867,7 @@ def webhook():
     
     return "", 200
     
-@cache.cached(timeout=120)
+@cache.cached(timeout=300)
 @app.route("/callback")
 def callback():
     """
@@ -961,7 +961,7 @@ def download_file(token):
     return render_template("download.html", **context)   
 
 
-@cache.cached(timeout=120)
+@cache.cached(timeout=300)
 @app.route("/callbacktest")
 def callbacktest():
     """
@@ -1088,7 +1088,7 @@ def save_data(data):
 def is_super_admin():
     return session.get('role') == 'super_admin'
     
-@cache.cached(timeout=120)
+@cache.cached(timeout=300)
 @app.route('/k4d3t', methods=['GET', 'POST'])
 def admin_login():
     if session.get('admin_logged_in'):
@@ -1109,7 +1109,7 @@ def admin_login():
 
     return render_template('admin_login.html')
     
-@cache.cached(timeout=120)
+@cache.cached(timeout=300)
 @app.route('/k4d3t/dashboard')
 def admin_dashboard():
     """
@@ -1233,7 +1233,7 @@ def get_logs():
         log_action("view_logs_failed", {"username": session.get('username')})  # Enregistrer l'échec de l'accès aux logs
         return jsonify([])  # Retourne une liste vide si aucun log
 
-@cache.cached(timeout=120)
+@cache.cached(timeout=300)
 @app.route('/settings/logs/view', methods=['GET'])
 def view_logs():
     """Affiche la page HTML pour le journal d'activité."""
@@ -1340,7 +1340,7 @@ def get_products():
         }
     return jsonify([to_dict(prod) for prod in products])
     
-@cache.cached(timeout=120)
+@cache.cached(timeout=300)
 @app.route('/admin/products/page', methods=['GET'])
 def admin_products_page():
     """
@@ -1404,7 +1404,7 @@ def telegram_webhook():
     return '', 200
 
 # --- PAGE ADMIN ---
-@cache.cached(timeout=120)
+@cache.cached(timeout=300)
 @app.route('/admin/telegram-files', methods=['GET'])
 def admin_telegram_files():
     """
@@ -1428,7 +1428,7 @@ def api_telegram_files():
     # Renvoie les fichiers Telegram reçus via webhook, les plus récents d'abord
     return jsonify(list(TELEGRAM_FILES)[::-1])
     
-@cache.cached(timeout=120)
+@cache.cached(timeout=300)
 @app.route('/admin/products/manage', methods=['GET'])
 def admin_products_manage():
     """
@@ -1557,7 +1557,7 @@ def update_product(product_id):
     return jsonify({"message": "Produit mis à jour avec succès"}), 200
 
 import json
-@cache.cached(timeout=120)
+@cache.cached(timeout=300)
 @app.route('/admin/products/add', methods=['GET'])
 def admin_products_add():
     """
@@ -1771,7 +1771,7 @@ def api_announcements_active():
         logging.error(f"Erreur API GET annonces actives: {e}")
         return jsonify({"error": "Erreur serveur"}), 500
     
-@cache.cached(timeout=120)
+@cache.cached(timeout=300)
 @app.route('/admin/announcements', methods=['GET'])
 def admin_announcements():
     if not session.get('admin_logged_in'):
@@ -1833,7 +1833,7 @@ def api_announcements_delete(id):
     cache.delete_memoized(api_announcements_active) # Invalider le cache
     return jsonify({"message": "Annonce supprimée"})
     
-@cache.cached(timeout=120)
+@cache.cached(timeout=300)
 @app.route('/admin/comments')
 def admin_comments_page():
     if not session.get('admin_logged_in'):
@@ -1981,7 +1981,7 @@ def robots_txt():
         f"Sitemap: {url_for('sitemap', _external=True)}"
     ]
     return Response("\n".join(lines), mimetype="text/plain")
-@cache.cached(timeout=120)
+@cache.cached(timeout=300)
 @app.errorhandler(404)
 def page_not_found(e):
     context = get_seo_context(
@@ -1993,7 +1993,7 @@ def page_not_found(e):
         )
     )
     return render_template("404.html", **context), 404
-@cache.cached(timeout=120)
+@cache.cached(timeout=300)
 @app.errorhandler(500)
 def server_error(e):
     logging.error(f"500 Internal Server Error: {request.path}", exc_info=True)
