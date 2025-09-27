@@ -15,7 +15,7 @@
     </div>
 
     <div style="overflow-x: auto;">
-        <!-- CORRECTION : Ajout de la classe "marketing-table-responsive" -->
+        <!-- Ajout de la classe "marketing-table-responsive" pour le style mobile -->
         <table class="marketing-table-responsive">
             <thead>
                 <tr>
@@ -32,9 +32,17 @@
             <tbody>
                 {% for cart in carts %}
                 <tr>
-                    <!-- CORRECTION : Ajout des attributs data-label -->
+                    <!-- Les attributs data-label sont pour l'affichage mobile -->
                     <td data-label="Client">{{ cart.customer_name or 'N/A' }}</td>
-                    <td data-label="Contact">{{ cart.email }}<br><small>{{ cart.whatsapp_number or '' }}</small></td>
+                    
+                    <!-- CORRECTION PRINCIPALE ICI : On utilise cart.whatsapp_number -->
+                    <td data-label="Contact">
+                        {{ cart.email }}
+                        {% if cart.whatsapp_number %}
+                            <br><small>WhatsApp: {{ cart.whatsapp_number }}</small>
+                        {% endif %}
+                    </td>
+                    
                     <td data-label="Contenu">
                         <ul>
                             {% for item in cart.cart_content %}
