@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+
+{% block title %}Vos Téléchargements{% endblock %}
+
+{% block content %}
+<div class="downloads-page" style="padding-top: 4em; text-align: center;">
+    <div class="downloads-header">
+        <h1>Vos fichiers pour "{{ product.name }}"</h1>
+        <p style="font-size: 1.2em; max-width: 600px; margin: auto;">
+            Cliquez sur les liens ci-dessous pour télécharger chaque partie de votre produit.
+        </p>
+    </div>
+
+    <div class="download-links-container" style="margin-top: 3em;">
+        {% for link in download_urls %}
+            <a href="{{ link.url }}" class="btn btn-primary" style="margin: 0.5em;" download>
+                Télécharger "{{ link.name }}"
+            </a>
+        {% endfor %}
+    </div>
+
+    <p style="margin-top: 3em; font-size: 0.9em; color: #888;">
+        Ces liens sont valables 7 jours.
+    </p>
+    
+    <a href="{{ url_for('home') }}" class="btn-back" style="margin-top: 2em;">Retour à l'accueil</a>
+</div>
+{% endblock %}
