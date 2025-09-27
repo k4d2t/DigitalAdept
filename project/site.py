@@ -912,6 +912,7 @@ def get_telegram_file_link(file_id):
         logging.error(f"Erreur API Telegram pour getFile (file_id: {file_id}): {e}")
     return None
 
+
 @app.route('/download/<token>')
 def download_file(token):
     link = DownloadLink.query.filter_by(token=token).first()
@@ -924,27 +925,32 @@ def download_file(token):
         context['error_message'] = "Ce lien de téléchargement est invalide ou n'existe plus."
         return render_template("download.html", **context), 404
 
-    # Vérification de l'expiration (SANS limite de nombre de clics)
+    # --- CORRECTION DU BUG DE DATE ---
     now_utc = datetime.now(timezone.utc)
-    if link.expires_at < now_utc:
-        context['error_message'] = f"Ce lien de téléchargement a expiré le {link.expires_at.strftime('%d/%m/%Y')}."
+    expires_at_aware = link.expires_at
+
+    # Si la date de la BDD est "naive" (sans fuseau horaire), on la rend "aware" en lui disant qu'elle est en UTC.
+    if expires_at_aware.tzinfo is None:
+        expires_at_aware = expires_at_aware.replace(tzinfo=timezone.utc)
+
+    # La comparaison est maintenant sûre
+    if expires_at_aware < now_utc:
+        context['error_message'] = f"Ce lien de téléchargement a expiré le {expires_at_aware.strftime('%d/%m/%Y')}."
         return render_template("download.html", **context), 410
+    # --- FIN DE LA CORRECTION ---
 
     product = Product.query.get(link.product_id)
     if not product or not product.resource_files:
         context['error_message'] = "Le produit associé à ce lien est introuvable."
         return render_template("download.html", **context), 404
 
-    # Incrémente le compteur de téléchargement juste pour le suivi, sans bloquer
     link.download_count += 1
     db.session.commit()
     
-    # On génère une liste de liens de téléchargement temporaires pour chaque fichier du produit
     download_urls = []
     for i, resource_file in enumerate(product.resource_files):
         temp_link = get_telegram_file_link(resource_file.file_id)
         if temp_link:
-            # Pour les produits avec un seul fichier, on nomme simplement "Télécharger"
             file_name = product.name if len(product.resource_files) == 1 else f"{product.name} - Partie {i + 1}"
             download_urls.append({
                 "name": file_name,
@@ -952,13 +958,12 @@ def download_file(token):
             })
 
     if not download_urls:
-        context['error_message'] = "Impossible de générer les liens de téléchargement pour le moment. Veuillez contacter le support."
+        context['error_message'] = "Impossible de générer les liens de téléchargement. Veuillez contacter le support."
         return render_template("download.html", **context), 500
 
-    # On passe les données au template
     context['product'] = product
     context['download_urls'] = download_urls
-    return render_template("download.html", **context)   
+    return render_template("download.html", **context))   
 
 
 @cache.cached(timeout=300)
