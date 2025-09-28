@@ -42,25 +42,20 @@
         {% if produits and produits|length > 0 %}
           {% for produit in produits %}
         <a
-          class="product-card {% if produit.badges %}has-promo{% endif %}"
+          class="product-card {% if produit.old_price and produit.old_price > produit.price %}has-promo{% endif %}"
           href="/produit/{{ produit.slug }}"
           data-category="{{ produit.category }}">
-          {% if produit.badges %}
-            {% for badge in produit.badges %}
-              <span class="product-badge badge-{{ badge.type|lower }}">{{ badge.text }}</span>
-            {% endfor %}
-          {% endif %}
-
-              <!-- BADGES AUTOMATIQUES ET MANUELS -->
+          
+          <!-- BADGES AUTOMATIQUES ET MANUELS -->
           <div class="product-badges-container">
               {# Badge PROMO automatique #}
-              {% if p.old_price and p.old_price > p.price %}
-                  {% set discount = ((p.old_price - p.price) / p.old_price * 100) | round | int %}
+              {% if produit.old_price and produit.old_price > produit.price %}
+                  {% set discount = ((produit.old_price - produit.price) / produit.old_price * 100) | round | int %}
                   <span class="product-badge badge-promo">{{ discount }}% OFF</span>
               {% endif %}
       
               {# Autres badges manuels #}
-              {% for badge in p.badges %}
+              {% for badge in produit.badges %}
                   <span class="product-badge badge-{{ badge.type|lower }}">{{ badge.text }}</span>
               {% endfor %}
           </div>
