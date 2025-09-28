@@ -78,6 +78,12 @@
     <!-- Product Information Section -->
     <div class="product-details">
       <div class="product-badges">
+        {# Badge PROMO automatique #}
+        {% if produit.old_price and produit.old_price > produit.price %}
+            {% set discount = ((produit.old_price - produit.price) / produit.old_price * 100) | round | int %}
+            <span class="badge badge-promo">{{ discount }}% OFF</span>
+        {% endif %}
+        {# Autres badges manuels #}
         {% for badge in produit.badges %}
           <span class="badge badge-{{ badge.type|lower }}">{{ badge.text }}</span>
         {% endfor %}
