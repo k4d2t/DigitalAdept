@@ -208,9 +208,22 @@
     max-width: 1200px;
     margin: 0 auto;
     }
-</style>
+    /* CORRECTION : Style pour la modale pour éviter les scrollbars */
+    .custom-modal-content {
+        width: 90%;
+        max-width: 800px; /* Limite la largeur maximale */
+    }
 
+</style>
 <script>
+// CORRECTION : Déclaration de la fonction pour fermer la modale dans la portée globale
+function closeProductModal() {
+    const modal = document.getElementById("productEditModal");
+    if (modal) {
+        modal.style.display = "none";
+    }
+}
+
 document.addEventListener("DOMContentLoaded", () => {
     const form = document.getElementById("productEditForm");
     const imageInput = document.getElementById("productImages");
@@ -396,7 +409,6 @@ document.addEventListener("DOMContentLoaded", () => {
         reader.readAsDataURL(file);
     }
     
-    // --- CORRIGÉ : Fonctions pour gérer les badges avec la liste déroulante ---
     function addBadge(badge = { type: 'info', text: '' }) {
         const badgeDiv = document.createElement("div");
         badgeDiv.className = "dynamic-form-row";
@@ -495,7 +507,6 @@ document.addEventListener("DOMContentLoaded", () => {
         formData.append("category", document.getElementById("productCategory").value);
         formData.append("featured", document.getElementById("productFeatured").checked);
 
-        // --- CORRIGÉ : Récupération des données depuis la nouvelle structure de badge ---
         const badges = Array.from(badgesContainer.children).map(div => ({ 
             type: div.querySelector(".badge-type-select").value, 
             text: div.querySelector(".badge-text-input").value 
@@ -528,10 +539,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 showNotification("Erreur lors de la mise à jour du produit.", "error");
                 console.error(error);
             });
-    }
-
-    function closeProductModal() {
-        document.getElementById("productEditModal").style.display = "none";
     }
 
     function initializeRichTextEditor() {
