@@ -717,7 +717,7 @@ z-index: 1000;
     position: absolute;
     top: 0.8em;
     left: 0.8em;
-    right: 0.8em;
+    /* right: 0.8em; */ /* Supprimé pour permettre l'expansion */
     display: flex;
     flex-direction: column;
     align-items: flex-start;
