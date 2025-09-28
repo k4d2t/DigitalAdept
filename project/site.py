@@ -436,7 +436,12 @@ def shuffle_filter(seq):
 @cache.cached(timeout=300)
 @app.route('/')
 def home():
-    produits = Product.query.all()
+    # --- OPTIMISATION : Chargement anticipé des relations ---
+    produits = Product.query.options(
+        joinedload(Product.images),
+        joinedload(Product.badges)
+    ).all()
+    
     produits_vedette = [p for p in produits if p.featured]
 
     # --- JSON-LD AMÉLIORÉ POUR LE SITE WEB ---
@@ -553,7 +558,12 @@ def home():
 @cache.cached(timeout=300)
 @app.route('/produits')
 def produits():
-    produits = Product.query.all()
+    # --- OPTIMISATION : Chargement anticipé des relations ---
+    produits = Product.query.options(
+        joinedload(Product.images),
+        joinedload(Product.badges)
+    ).all()
+    
     context = get_seo_context(
         meta_title="Tous les produits - Digital Adept™",
         meta_description="Liste complète de tous les produits digitaux, logiciels, ebooks et services disponibles.",
@@ -578,8 +588,14 @@ def produits():
 @cache.cached(timeout=300)
 @app.route('/produit/<slug>')
 def product_detail(slug):
-    # On cherche le produit en base via le slug
-    produit = Product.query.filter_by(slug=slug).first()
+    # --- OPTIMISATION : Chargement anticipé de TOUTES les relations nécessaires ---
+    produit = Product.query.options(
+        joinedload(Product.images),
+        joinedload(Product.badges),
+        joinedload(Product.faqs),
+        joinedload(Product.comments) # On charge même les commentaires en avance
+    ).filter_by(slug=slug).first()
+    # --- FIN OPTIMISATION ---
     if not produit:
         context = get_seo_context(
             meta_title="Produit introuvable - Digital Adept™",
@@ -1684,7 +1700,7 @@ def delete_product_image(product_id):
     if not session.get('admin_logged_in'):
         return jsonify({"error": "Non autorisé"}), 403
 
-    from sqlalchemy.orm.exc import NoResultFound
+    from sqlalchemy.orm.exc import NoResultFound, joinedload
 
     data = request.get_json()
     image_url = data.get('imageUrl')
@@ -2194,26 +2210,25 @@ def remind_all_abandoned_carts():
 
 @app.route('/api/marketing/clear-all', methods=['POST'])
 def clear_all_abandoned_carts():
-    """Supprime TOUS les paniers abandonnés et leurs liens de téléchargement associés."""
+    """Supprime TOUS les paniers abandonnés et leurs liens de téléchargement associés de manière optimisée."""
     if not session.get('admin_logged_in'):
         return jsonify({"status": "error", "message": "Non autorisé"}), 403
 
     try:
-        # Récupère tous les paniers à supprimer
-        carts_to_delete = AbandonedCart.query.all()
-        num_deleted = len(carts_to_delete)
+        # Récupère uniquement les IDs des paniers à supprimer, ce qui est plus léger en mémoire.
+        cart_ids_to_delete = [c.id for c in AbandonedCart.query.with_entities(AbandonedCart.id).all()]
+        num_deleted = len(cart_ids_to_delete)
 
         if num_deleted == 0:
             return jsonify({"status": "success", "message": "La liste est déjà vide."})
 
-        # Pour chaque panier, supprime d'abord les liens de téléchargement associés
-        for cart in carts_to_delete:
-            DownloadLink.query.filter_by(cart_id=cart.id).delete()
+        # --- OPTIMISATION MAJEURE ---
+        # Supprime tous les liens de téléchargement associés en UNE SEULE requête.
+        db.session.query(DownloadLink).filter(DownloadLink.cart_id.in_(cart_ids_to_delete)).delete(synchronize_session=False)
 
-        # Ensuite, supprime les paniers eux-mêmes
-        # Utiliser une boucle pour supprimer est plus sûr avec les relations complexes
-        for cart in carts_to_delete:
-            db.session.delete(cart)
+        # Supprime tous les paniers en UNE SEULE requête.
+        db.session.query(AbandonedCart).filter(AbandonedCart.id.in_(cart_ids_to_delete)).delete(synchronize_session=False)
+        # --- FIN DE L'OPTIMISATION ---
 
         db.session.commit()
         
@@ -2223,7 +2238,7 @@ def clear_all_abandoned_carts():
         return jsonify({"status": "success", "message": message})
     except Exception as e:
         db.session.rollback()
-        logging.error(f"Erreur lors de la suppression de tous les paniers abandonnés : {e}")
+        logging.error(f"Erreur lors de la suppression optimisée des paniers : {e}")
         return jsonify({"status": "error", "message": "Une erreur serveur est survenue."}), 500
 
 # Clé secrète pour le cron job (gardez-la secrète)
