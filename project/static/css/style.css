@@ -1556,18 +1556,55 @@ z-index: 10001;
     max-width: 500px;
 }
 
-.product-rating{
-    margin-bottom: 0.3em;
+/* --- NOUVEAU : Système de notation interactif --- */
+.product-rating {
+    display: flex;
+    align-items: center;
+    gap: 0.8em;
+    margin-bottom: 1em;
+}
+.stars-interactive {
+    display: flex;
+    gap: 0.1em;
+}
+.star-btn {
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: 1.8em;
+    color: #bdbdbd;
+    cursor: pointer;
+    transition: color 0.2s, transform 0.1s;
+}
+.star-btn:hover {
+    color: #FFD600;
+    transform: scale(1.15);
+}
+.star-btn.filled {
+    color: #FFD600;
+    text-shadow: 0 0 8px #FFD600;
+}
+.product-rating.voted .star-btn {
+    cursor: default;
+}
+.product-rating.voted .star-btn:hover {
+    transform: none;
+}
+.rating-summary {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5em;
+    font-size: 1em;
+}
+.rating-value {
+    font-weight: bold;
+    color: var(--primary-dark);
+}
+.review-count {
+    font-size: 0.9em;
+    color: #81868a;
 }
 
-.product-rating .stars{
-    font-size: 2em;
-    text-shadow: var(--neon);
-}
-
-.product-rating .rating-value{
-    font-size: 1.5em;
-}
 
 /* --- CORRIGÉ : Section des badges sur la page produit --- */
 .product-badges-detailed {
