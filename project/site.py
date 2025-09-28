@@ -2191,6 +2191,28 @@ def remind_all_abandoned_carts():
         logging.error(f"Erreur lors de la relance de masse : {e}")
         return jsonify({"status": "error", "message": "Une erreur serveur est survenue."}), 500
 
+
+@app.route('/api/marketing/clear-all', methods=['POST'])
+def clear_all_abandoned_carts():
+    """Supprime TOUS les paniers abandonnés de la base de données."""
+    if not session.get('admin_logged_in'):
+        return jsonify({"status": "error", "message": "Non autorisé"}), 403
+
+    try:
+        # Compte le nombre de lignes à supprimer
+        num_deleted = db.session.query(AbandonedCart).delete()
+        db.session.commit()
+        
+        message = f"{num_deleted} panier(s) abandonné(s) ont été supprimés."
+        log_action("clear_abandoned_carts", {"count": num_deleted, "user": session.get('username')})
+        
+        return jsonify({"status": "success", "message": message})
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f"Erreur lors de la suppression de tous les paniers abandonnés : {e}")
+        return jsonify({"status": "error", "message": "Une erreur serveur est survenue."}), 500
+
+
 # Clé secrète pour le cron job (gardez-la secrète)
 CRON_SECRET_KEY = os.environ.get('CRON_SECRET_KEY', 'une-cle-tres-secrete-par-defaut')
 
