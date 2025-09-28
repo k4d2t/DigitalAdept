@@ -21,6 +21,7 @@ from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 import random
 from jinja2.runtime import Undefined
+from sqlalchemy.orm import joinedload
 import logging
 from flask_sqlalchemy import SQLAlchemy
 from models import *
@@ -1700,7 +1701,7 @@ def delete_product_image(product_id):
     if not session.get('admin_logged_in'):
         return jsonify({"error": "Non autorisé"}), 403
 
-    from sqlalchemy.orm.exc import NoResultFound, joinedload
+    from sqlalchemy.orm.exc import NoResultFound
 
     data = request.get_json()
     image_url = data.get('imageUrl')
