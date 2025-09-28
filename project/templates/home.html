@@ -18,15 +18,15 @@
     {% for produit in produits_vedette %}
     <a class="product-card" href="/produit/{{ produit.slug }}">
 
-      <!-- BADGES AUTOMATIQUES ET MANUELS -->
+      <!-- BADGES CORRIGÉS -->
       <div class="product-badges-container">
-          {# Badge PROMO automatique #}
+          {# Badge PROMO automatique si ancien prix existe #}
           {% if produit.old_price and produit.old_price > produit.price %}
               {% set discount = ((produit.old_price - produit.price) / produit.old_price * 100) | round | int %}
               <span class="product-badge badge-promo">{{ discount }}% OFF</span>
           {% endif %}
 
-          {# Autres badges manuels #}
+          {# Boucle sur les badges manuels du produit #}
           {% for badge in produit.badges %}
               <span class="product-badge badge-{{ badge.type|lower }}">{{ badge.text }}</span>
           {% endfor %}
