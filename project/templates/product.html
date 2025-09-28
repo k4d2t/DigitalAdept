@@ -91,30 +91,17 @@
       </div>
 
       <h1 class="product-title">{{ produit.name }}</h1>
-        
-        <!-- NOUVEAU : Système de notation dynamique -->
-        <div id="product-rating-interactive" class="product-rating" data-product-id="{{ produit.id }}" data-initial-rating="{{ rating|default(0) }}" data-initial-reviews="{{ reviews_count|default(0) }}">
-            <div class="stars-interactive">
-                {% for i in range(1, 6) %}
-                    <button class="star-btn" data-value="{{ i }}" aria-label="Noter {{ i }} sur 5">☆</button>
-                {% endfor %}
-            </div>
-            <div class="rating-summary">
-                <span class="rating-value">
-                    {% if reviews_count > 0 %}
-                        {{ rating }}/5
-                    {% else %}
-                        (Non noté)
-                    {% endif %}
-                </span>
-                <span class="review-count">
-                    {% if reviews_count > 0 %}
-                        – {{ reviews_count }} avis
-                    {% endif %}
-                </span>
-            </div>
-        </div>
-
+        {% if rating %}
+          <div class="product-rating">
+            <span class="stars" data-stars="{{ rating or 0 }}"></span>
+            <span class="rating-value">({{ rating }} étoiles)</span>
+          </div>
+        {% else %}
+          <div class="product-rating">
+            <span class="stars" data-stars="0"></span>
+            <span class="rating-value">(Non noté)</span>
+          </div>
+        {% endif %}
       <div class="product-price-detailed">
         <span class="current-price">{{ produit.price }} {{ produit.currency }}</span>
         {% if produit.old_price %}
@@ -313,81 +300,4 @@
     <a href="/produits" class="btn btn-back"> Retour aux produits</a>
   </div>
 </section>
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const ratingContainer = document.getElementById('product-rating-interactive');
-    if (!ratingContainer) return;
-
-    const stars = ratingContainer.querySelectorAll('.star-btn');
-    const ratingValueEl = ratingContainer.querySelector('.rating-value');
-    const reviewCountEl = ratingContainer.querySelector('.review-count');
-    const productId = ratingContainer.dataset.productId;
-    const initialRating = parseFloat(ratingContainer.dataset.initialRating);
-    let hasVoted = localStorage.getItem('voted_' + productId);
-
-    function updateStars(rating) {
-        stars.forEach(star => {
-            const starValue = parseInt(star.dataset.value);
-            if (starValue <= rating) {
-                star.textContent = '★';
-                star.classList.add('filled');
-            } else {
-                star.textContent = '☆';
-                star.classList.remove('filled');
-            }
-        });
-    }
-
-    function setVotedState() {
-        ratingContainer.classList.add('voted');
-        stars.forEach(star => star.disabled = true);
-        localStorage.setItem('voted_' + productId, 'true');
-    }
-
-    // Initial state
-    updateStars(Math.round(initialRating));
-    if (hasVoted) {
-        setVotedState();
-    }
-
-    stars.forEach(star => {
-        star.addEventListener('mouseover', () => {
-            if (hasVoted) return;
-            updateStars(star.dataset.value);
-        });
-
-        star.addEventListener('mouseout', () => {
-            if (hasVoted) return;
-            updateStars(Math.round(initialRating));
-        });
-
-        star.addEventListener('click', () => {
-            if (hasVoted) return;
-            const newRating = star.dataset.value;
-
-            fetch(`/api/produit/${productId}/rate`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ rating: newRating })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.average_rating !== undefined) {
-                    ratingValueEl.textContent = `${data.average_rating.toFixed(1)}/5`;
-                    reviewCountEl.textContent = `– ${data.reviews_count} avis`;
-                    updateStars(Math.round(data.average_rating));
-                    setVotedState();
-                    showNotification('Merci pour votre vote !', 'success');
-                } else {
-                    showNotification(data.error || 'Erreur lors de la notation.', 'error');
-                }
-            })
-            .catch(() => {
-                showNotification('Erreur réseau. Veuillez réessayer.', 'error');
-            });
-        });
-    });
-});
-</script>
 {% endblock %}
