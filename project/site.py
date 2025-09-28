@@ -717,11 +717,11 @@ def rate_product(product_id):
     if not produit:
         return jsonify({"error": "Produit introuvable."}), 404
 
-    # On enregistre la note comme un commentaire sans texte
+    # CORRECTION: On utilise une chaîne vide au lieu de None pour respecter la contrainte NOT NULL
     new_rating = Comment(
         product_id=product_id,
         rating=int(rating),
-        comment=None,  # Pas de texte pour un simple vote
+        comment="",  # Correction ici
         date=datetime.now(timezone.utc)
     )
     db.session.add(new_rating)
@@ -2312,4 +2312,3 @@ if __name__ == '__main__':
     # Le reste du code pour lancer le serveur
     port = int(os.environ.get('PORT', 5005))
     app.run(host='0.0.0.0', port=port)
-
