@@ -549,7 +549,7 @@ window.initProductPage = function () {
                     </label>
                     <label>
                         Numéro WhatsApp :
-                        <input type="tel" id="payment-whatsapp" placeholder="Pour le suivi de commande (optionnel)">
+                        <input type="tel" id="payment-whatsapp" placeholder="Pour le suivi de commande" required>
                     </label>
                     <div class="customModal-buttons">
                         <button class="customModal-yes">Valider et Payer</button>
