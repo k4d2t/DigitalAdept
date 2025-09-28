@@ -2005,6 +2005,17 @@ color: var(--text);
     transform: none;
 }
 
+/* --- STYLES POUR LE BOUTON DANGER --- */
+.cta.cta-danger {
+    background: var(--red-dark, #c0392b);
+    color: white;
+    box-shadow: var(--neon-red);
+}
+
+.cta.cta-danger:hover {
+    background: var(--red, #e74c3c);
+    box-shadow: var(--neon-red-hover);
+}
 
 /* --- AJUSTEMENTS POUR LE MODE TUILLES SUR MOBILE --- */
 @media (max-width: 768px) {
