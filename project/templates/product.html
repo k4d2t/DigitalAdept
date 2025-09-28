@@ -77,14 +77,14 @@
 
     <!-- Product Information Section -->
     <div class="product-details">
-      <!-- CORRIGÉ : Conteneur des badges sur la page produit -->
+      <!-- BADGES CORRIGÉS -->
       <div class="product-badges-detailed">
-        {# Badge PROMO automatique #}
+        {# Badge PROMO automatique si ancien prix existe #}
         {% if produit.old_price and produit.old_price > produit.price %}
             {% set discount = ((produit.old_price - produit.price) / produit.old_price * 100) | round | int %}
             <span class="badge badge-promo">{{ discount }}% OFF</span>
         {% endif %}
-        {# Autres badges manuels #}
+        {# Boucle sur les badges manuels du produit #}
         {% for badge in produit.badges %}
           <span class="badge badge-{{ badge.type|lower }}">{{ badge.text }}</span>
         {% endfor %}
@@ -102,7 +102,7 @@
             <div class="rating-summary">
                 <span class="rating-value">
                     {% if reviews_count > 0 %}
-                        {{ rating }}/5
+                        {{ "%.1f"|format(rating) }}/5
                     {% else %}
                         (Non noté)
                     {% endif %}
@@ -137,7 +137,6 @@
       <div class="product-meta">
         <div class="product-buttons">
             <!-- Bouton Acheter Maintenant -->
-          <!-- Bouton Acheter Maintenant -->
           <button class="btn btn-buy" data-name="{{ produit.name }}" data-price="{{ produit.price }}">
               Acheter maintenant
           </button>
@@ -168,11 +167,11 @@
   </div>
 
   <!-- FAQ Section -->
-  {% if produit.faq and produit.faq|length > 0 %}
+  {% if produit.faqs and produit.faqs|length > 0 %}
   <div class="product-faq">
     <h2>FAQ</h2>
     <div class="faq-container">
-      {% for faq in produit.faq %}
+      {% for faq in produit.faqs %}
       <div class="faq-item">
         <button class="faq-question">{{ faq.question }}</button>
         <div class="faq-answer">{{ faq.answer }}</div>
@@ -186,9 +185,9 @@
   <div class="comments-section">
     <h3>Commentaires</h3>
     <div class="comment-list">
-      {% for comment in comments %}
+      {% for comment in comments if comment.comment %}
         <div class="comment">
-          <div class="comment-date">{{ comment.date }}</div>
+          <div class="comment-date">{{ comment.date.strftime('%d/%m/%Y') }}</div>
           <div class="comment-content">{{ comment.comment }}</div>
           <div class="comment-rating">Note : {{ comment.rating }} ⭐</div>
         </div>
@@ -213,14 +212,19 @@
     <div class="discover-carousel" id="discoverCarousel">
       {% for p in produits|shuffle if p.id != produit.id %}
         <div class="carousel-item">
-          <a href="{{ url_for('product_detail', slug=slugify(p.name)) }}" class="product-card">
-            {% if p.badge %}
-              <span class="product-badge">{{ p.badge }}</span>
-            {% endif %}
-            {% if p.promo %}
-              <span class="product-badge badge-promo">{{ p.promo }}</span>
-            {% endif %}
-            <img src="{{ p.images[0] if p.images else url_for('static', filename='img/logo.webp') }}" alt="{{ p.name }}">
+          <a href="{{ url_for('product_detail', slug=p.slug) }}" class="product-card">
+            
+            <div class="product-badges-container">
+              {% if p.old_price and p.old_price > p.price %}
+                  {% set discount = ((p.old_price - p.price) / p.old_price * 100) | round | int %}
+                  <span class="product-badge badge-promo">{{ discount }}% OFF</span>
+              {% endif %}
+              {% for badge in p.badges %}
+                  <span class="product-badge badge-{{ badge.type|lower }}">{{ badge.text }}</span>
+              {% endfor %}
+            </div>
+
+            <img src="{{ p.images[0].url if p.images else url_for('static', filename='img/logo.webp') }}" alt="{{ p.name }}">
             <div class="product-info">
               <h3>{{ p.name }}</h3>
              <div class="product-desc">
@@ -323,7 +327,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const ratingValueEl = ratingContainer.querySelector('.rating-value');
     const reviewCountEl = ratingContainer.querySelector('.review-count');
     const productId = ratingContainer.dataset.productId;
-    const initialRating = parseFloat(ratingContainer.dataset.initialRating);
+    let initialRating = parseFloat(ratingContainer.dataset.initialRating); // Rendre modifiable
     let hasVoted = localStorage.getItem('voted_' + productId);
 
     function updateStars(rating) {
@@ -359,6 +363,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         star.addEventListener('mouseout', () => {
             if (hasVoted) return;
+            // Retourne à l'état de la note actuelle (arrondie)
             updateStars(Math.round(initialRating));
         });
 
@@ -374,6 +379,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(response => response.json())
             .then(data => {
                 if (data.average_rating !== undefined) {
+                    initialRating = data.average_rating; // Mettre à jour la note de référence
                     ratingValueEl.textContent = `${data.average_rating.toFixed(1)}/5`;
                     reviewCountEl.textContent = `– ${data.reviews_count} avis`;
                     updateStars(Math.round(data.average_rating));
