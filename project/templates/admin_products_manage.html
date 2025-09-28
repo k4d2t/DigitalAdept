@@ -195,7 +195,7 @@
 </style>
 
 <!-- ====================================================================== -->
-<!-- =================== SCRIPT JS MIS À JOUR (SEUL VRAI CHANGEMENT) ====== -->
+<!-- =================== SCRIPT JS MIS À JOUR (CORRIGÉ) =================== -->
 <!-- ====================================================================== -->
 <script>
 document.addEventListener("DOMContentLoaded", () => {
@@ -206,15 +206,16 @@ document.addEventListener("DOMContentLoaded", () => {
     const imagesContainer = document.getElementById("productImagesContainer");
     const badgesContainer = document.getElementById("productBadgesContainer");
     const faqContainer = document.getElementById("productFaqContainer");
-    let imagesField = []; // URLs des images existantes
+    let imagesField = [];
     let selectedEditFilesSet = new Set();
     let quill;
 
     // --- NOUVEAU : Variables pour la pagination ---
     let allProducts = [];
     let currentPage = 1;
-    const itemsPerPage = 6; // Vous pouvez changer cette valeur
+    const itemsPerPage = 6;
 
+    // --- CORRIGÉ : L'initialisation de Quill est bien ici ---
     initializeRichTextEditor();
 
     form.setAttribute("enctype", "multipart/form-data");
@@ -228,12 +229,31 @@ document.addEventListener("DOMContentLoaded", () => {
 
     document.getElementById("addBadgeButton").addEventListener("click", addBadge);
     document.getElementById("addFaqButton").addEventListener("click", addFaq);
-
+    
     // --- MODIFIÉ : La recherche déclenche maintenant le re-rendu ---
     document.getElementById('adminProductSearch').addEventListener('input', function(){
-        currentPage = 1; // Revenir à la première page à chaque nouvelle recherche
+        currentPage = 1;
         renderProducts();
     });
+
+    // --- NOUVEAU : Fonction pour générer les boutons de pagination ---
+    function renderPagination(totalItems) {
+        const totalPages = Math.ceil(totalItems / itemsPerPage);
+        const paginationContainer = document.getElementById('adminPagination');
+        paginationContainer.innerHTML = '';
+        if (totalPages <= 1) return;
+
+        for (let i = 1; i <= totalPages; i++) {
+            const btn = document.createElement('button');
+            btn.textContent = i;
+            btn.className = 'admin-pagination-btn' + (i === currentPage ? ' active' : '');
+            btn.onclick = () => {
+                currentPage = i;
+                renderProducts();
+            };
+            paginationContainer.appendChild(btn);
+        }
+    }
 
     // --- NOUVEAU : Fonction pour afficher les produits de la page actuelle ---
     function renderProducts() {
@@ -242,17 +262,16 @@ document.addEventListener("DOMContentLoaded", () => {
         
         const searchTerm = document.getElementById('adminProductSearch').value.trim().toLowerCase();
         const filteredProducts = allProducts.filter(p => p.name.toLowerCase().includes(searchTerm));
-
         const paginatedProducts = filteredProducts.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
         if (paginatedProducts.length === 0) {
-            grid.innerHTML = "<p>Aucun produit trouvé.</p>";
+            grid.innerHTML = "<p>Aucun produit ne correspond à votre recherche.</p>";
         } else {
             paginatedProducts.forEach((product) => {
                 const card = document.createElement("div");
                 card.className = "product-card";
                 card.setAttribute("data-id", product.id);
-
+                
                 // --- MODIFIÉ : Ajout de l'aperçu de l'image ---
                 const imageUrl = product.images.length > 0 ? product.images[0] : 'https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/img/default.jpg';
                 card.innerHTML = `
@@ -273,10 +292,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 });
                 card.querySelector(".delete-button").addEventListener("click", (event) => {
                     event.stopPropagation();
-                    ConfirmModal(
-                        `Supprimer "${product.name}" ?`, "Oui, supprimer", "Non",
-                        () => deleteProduct(product.id)
-                    );
+                    ConfirmModal(`Supprimer "${product.name}" ?`, "Oui, supprimer", "Non", () => deleteProduct(product.id));
                 });
                 grid.appendChild(card);
             });
@@ -284,67 +300,33 @@ document.addEventListener("DOMContentLoaded", () => {
         renderPagination(filteredProducts.length);
     }
     
-    // --- NOUVEAU : Fonction pour générer les boutons de pagination ---
-    function renderPagination(totalItems) {
-        const totalPages = Math.ceil(totalItems / itemsPerPage);
-        const paginationContainer = document.getElementById('adminPagination');
-        paginationContainer.innerHTML = '';
-        if (totalPages <= 1) return;
-
-        for (let i = 1; i <= totalPages; i++) {
-            const btn = document.createElement('button');
-            btn.textContent = i;
-            btn.className = 'admin-pagination-btn' + (i === currentPage ? ' active' : '');
-            btn.onclick = () => {
-                currentPage = i;
-                renderProducts(); // Re-rendu de la grille pour la nouvelle page
-            };
-            paginationContainer.appendChild(btn);
-        }
-    }
-
     // --- MODIFIÉ : La fonction loadProducts charge les données et lance le rendu initial ---
     function loadProducts() {
         fetch("/admin/products")
             .then((response) => response.json())
             .then((products) => {
-                allProducts = products.sort((a, b) => b.id - a.id); // Stocke tous les produits
+                allProducts = products.sort((a, b) => b.id - a.id);
                 currentPage = 1;
-                renderProducts(); // Affiche la première page
+                renderProducts();
             })
             .catch((error) => console.error("Erreur lors du chargement des produits :", error));
     }
 
-    // Supprimer un produit (Modifié pour recharger la liste)
+    // --- MODIFIÉ : La fonction de suppression recharge la liste ---
     function deleteProduct(productId) {
         fetch(`/admin/products/manage/${productId}`, { method: "DELETE" })
             .then((response) => {
                 if (response.ok) {
                     showNotification("Produit supprimé avec succès !", "success");
-                    loadProducts(); // Recharge toute la liste
+                    loadProducts(); // Recharge la liste
                 } else {
                     showNotification("Erreur lors de la suppression du produit.", "error");
                 }
             })
             .catch((error) => console.error("Erreur lors de la suppression du produit :", error));
     }
-    
-    // Le reste de votre code reste identique, j'ai juste ajouté la fonction `renderProductPicture`
-    // que vous aviez déjà validée pour l'affichage des images.
-    
-    // ... (fonctions handleFileSelection, displayImagePreview, addBadge, addFaq, etc. inchangées) ...
-    function handleFileSelection(event) { /* ... votre code ... */ }
-    function displayImagePreview(file) { /* ... votre code ... */ }
-    function addBadge() { /* ... votre code ... */ }
-    function addFaq() { /* ... votre code ... */ }
-    function addBadgeWithData(badge) { /* ... votre code ... */ }
-    function addFaqWithData(faq) { /* ... votre code ... */ }
-    function renderResourceFileIdInputs(fileIds = []) { /* ... votre code ... */ }
-    function initializeRichTextEditor() { /* ... votre code ... */ }
-    function setupImageDeletion() { /* ... votre code ... */ }
-    function closeProductModal() { /* ... votre code ... */ }
 
-    // --- INCHANGÉ : Les fonctions ci-dessous utilisent les bons IDs de votre formulaire ---
+    // --- PATCH Rendu featured + resource_file_id + images ---
     function openProductModal(productId) {
         fetch(`/admin/products/manage/${productId}`)
             .then((response) => response.json())
@@ -358,7 +340,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 document.getElementById("productSku").value = product.sku || "";
                 document.getElementById("productCategory").value = product.category;
                 document.getElementById("productFeatured").checked = !!product.featured;
-                
                 let fileIds = product.resource_files ? product.resource_files.map(f => f.file_id) : [];
                 if (!Array.isArray(fileIds)) fileIds = [fileIds];
                 if (fileIds.length === 0) fileIds = [""];
@@ -371,7 +352,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 product.faq.forEach((faq) => addFaqWithData(faq));
 
                 imagesContainer.innerHTML = "";
-                imagesField = [...product.images];
+                imagesField = [...product.images]; // URLs des images déjà existantes
                 imagesField.forEach((imageUrl) => displayExistingImage(imageUrl));
 
                 document.getElementById("productEditModal").style.display = "block";
@@ -381,18 +362,173 @@ document.addEventListener("DOMContentLoaded", () => {
             .catch((error) => console.error("Erreur lors de l'ouverture de la modale :", error));
     }
 
+    // --- VOS FONCTIONS ORIGINALES, CONSERVÉES À L'IDENTIQUE ---
+    function handleFileSelection(event) {
+        const files = event.target.files;
+        if (files.length > 0) {
+            Array.from(files).forEach((file) => {
+                if (!selectedEditFilesSet.has(file.name)) {
+                    displayImagePreview(file);
+                    selectedEditFilesSet.add(file.name);
+                }
+            });
+            const fileNames = Array.from(selectedEditFilesSet).join(", ");
+            fileUploadStatus.textContent = `Fichiers sélectionnés : ${fileNames}`;
+        } else {
+            fileUploadStatus.textContent = "Aucun fichier sélectionné";
+        }
+    }
+
+    function displayImagePreview(file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const imageWrapper = document.createElement("div");
+            imageWrapper.className = "image-wrapper";
+            imageWrapper.innerHTML = `
+                <img src="${e.target.result}" alt="${file.name}" class="preview-image">
+                <span class="remove-image">&times;</span>
+            `;
+            imageWrapper.querySelector(".remove-image").addEventListener("click", () => {
+                selectedEditFilesSet.delete(file.name);
+                imageWrapper.remove();
+                fileUploadStatus.textContent = selectedEditFilesSet.size
+                    ? `Fichiers sélectionnés : ${Array.from(selectedEditFilesSet).join(", ")}`
+                    : "Aucun fichier sélectionné";
+            });
+            imagesContainer.appendChild(imageWrapper);
+        };
+        reader.readAsDataURL(file);
+    }
+
+    function addBadge() {
+        const badgeDiv = document.createElement("div");
+        badgeDiv.innerHTML = `
+            <label>Type :</label>
+            <input type="text" placeholder="Type">
+            <label>Contenu :</label>
+            <input type="text" placeholder="Contenu">
+            <button type="button" onclick="this.parentElement.remove()">Supprimer</button>
+        `;
+        badgesContainer.appendChild(badgeDiv);
+    }
+
+    function addFaq() {
+        const faqDiv = document.createElement("div");
+        faqDiv.innerHTML = `
+            <label>Question :</label>
+            <input type="text" placeholder="Question">
+            <label>Réponse :</label>
+            <textarea placeholder="Réponse"></textarea>
+            <button type="button" onclick="this.parentElement.remove()">Supprimer</button>
+        `;
+        faqContainer.appendChild(faqDiv);
+    }
+    
+    function addBadgeWithData(badge) {
+        const badgeDiv = document.createElement("div");
+        badgeDiv.innerHTML = `
+            <label>Type :</label>
+            <input type="text" value="${badge.type}" placeholder="Type">
+            <label>Contenu :</label>
+            <input type="text" value="${badge.text}" placeholder="Contenu">
+            <button type="button" onclick="this.parentElement.remove()">Supprimer</button>
+        `;
+        badgesContainer.appendChild(badgeDiv);
+    }
+
+    function addFaqWithData(faq) {
+        const faqDiv = document.createElement("div");
+        faqDiv.innerHTML = `
+            <label>Question :</label>
+            <input type="text" value="${faq.question}" placeholder="Question">
+            <label>Réponse :</label>
+            <textarea placeholder="Réponse">${faq.answer}</textarea>
+            <button type="button" onclick="this.parentElement.remove()">Supprimer</button>
+        `;
+        faqContainer.appendChild(faqDiv);
+    }
+
+    const resourceFileIdsContainerEdit = document.getElementById("resourceFileIdsContainerEdit");
+    const addResourceFileIdBtnEdit = document.getElementById("addResourceFileIdBtnEdit");
+
+    function renderResourceFileIdInputs(fileIds = []) {
+        resourceFileIdsContainerEdit.innerHTML = "";
+        if (fileIds.length === 0) fileIds = [""];
+        fileIds.forEach((fileId, idx) => {
+            const row = document.createElement("div");
+            row.className = "resource-file-id-row";
+            row.innerHTML = `
+                <input type="text" name="resource_file_id[]" value="${fileId || ""}" placeholder="ID du fichier de ressource">
+                <button type="button" class="remove-file-id-btn"${fileIds.length === 1 ? ' style="display:none;"' : ""}>–</button>
+                <br><br>
+            `;
+            row.querySelector(".remove-file-id-btn").addEventListener("click", () => row.remove());
+            resourceFileIdsContainerEdit.appendChild(row);
+        });
+    }
+
+    addResourceFileIdBtnEdit.addEventListener("click", () => {
+        renderResourceFileIdInputs(Array.from(resourceFileIdsContainerEdit.querySelectorAll("input[name='resource_file_id[]']")).map(i => i.value).concat([""]));
+    });
+
+    function renderProductPicture(url, alt = "Image produit") {
+        let filename = url.split('/').pop();
+        let base = filename.split('.').slice(0, -1).join('.');
+        if (!base) { base = filename; }
+        return `<picture style="display:block; text-align:center; margin-bottom: 1em;"><img src="${url}" alt="${alt}" style="max-width:100%; height:120px; object-fit:cover; border-radius:8px; box-shadow:0 2px 8px #0003;" loading="lazy"></picture>`;
+    }
+
+    function displayExistingImage(imageUrl) {
+        const imageWrapper = document.createElement("div");
+        imageWrapper.className = "image-wrapper";
+        imageWrapper.style.position = 'relative';
+        imageWrapper.innerHTML = `
+            ${renderProductPicture(imageUrl, "Image existante")}
+            <span class="remove-image" style="position:absolute; top:4px; right:4px; cursor:pointer; background: #0008; color: #fff; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center;">&times;</span>
+        `;
+        imageWrapper.querySelector(".remove-image").addEventListener("click", function(event) {
+            event.stopPropagation();
+            fetch(`/admin/products/manage/${form.dataset.productId}/image/delete`, {
+                method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ imageUrl }),
+            })
+            .then((res) => res.json())
+            .then((result) => {
+                if (result.message) {
+                    showNotification("Image supprimée avec succès.", "success");
+                    imageWrapper.remove();
+                } else {
+                    showNotification("Erreur lors de la suppression de l'image.", "error");
+                }
+            });
+        });
+        imagesContainer.appendChild(imageWrapper);
+    }
+
     function updateProduct() {
         const productId = form.getAttribute("data-product-id");
         const formData = new FormData(form);
-        formData.set("description", quill.root.innerHTML); // Assurez-vous que la description Quill est bien ajoutée
-        // ... (le reste de votre logique de construction du formData)
-        
+        formData.set("description", quill.root.innerHTML); // Ajout de la description de Quill
+        formData.set("featured", document.getElementById("productFeatured").checked ? "true" : "false");
+        formData.set("badges", JSON.stringify(Array.from(badgesContainer.children).map((badgeDiv) => ({
+            type: badgeDiv.querySelector("input[placeholder='Type']").value,
+            text: badgeDiv.querySelector("input[placeholder='Contenu']").value,
+        }))));
+        formData.set("faq", JSON.stringify(Array.from(faqContainer.children).map((faqDiv) => ({
+            question: faqDiv.querySelector("input[placeholder='Question']").value,
+            answer: faqDiv.querySelector("textarea").value,
+        }))));
+        const fileIdInputs = resourceFileIdsContainerEdit.querySelectorAll("input[name='resource_file_id[]']");
+        const resource_file_ids = Array.from(fileIdInputs).map(input => input.value.trim()).filter(val => val !== "");
+        formData.set("resource_file_id", JSON.stringify(resource_file_ids));
+        const files = imageInput.files;
+        for (const file of files) { formData.append("images", file); }
+
         fetch(`/admin/products/manage/${productId}`, { method: "PUT", body: formData })
             .then((response) => response.json())
             .then(() => {
                 showNotification("Produit mis à jour avec succès !", "success");
                 closeProductModal();
-                loadProducts(); // Recharge la liste
+                loadProducts();
                 selectedEditFilesSet.clear();
             })
             .catch((error) => {
@@ -401,66 +537,54 @@ document.addEventListener("DOMContentLoaded", () => {
             });
     }
 
-    // --- Fonction UTILITAIRE pour afficher l'image (copiée de ma proposition précédente) ---
-    function renderProductPicture(url, alt = "Image produit") {
-        let filename = url.split('/').pop();
-        let base = filename.split('.').slice(0, -1).join('.');
-        if (!base) { // Fallback si l'URL n'a pas d'extension
-             base = filename;
-        }
-        return `
-        <picture style="display:block; text-align:center; margin-bottom: 1em;">
-            <img src="${url}"
-                alt="${alt}"
-                style="max-width:100%; height:120px; object-fit:cover; border-radius:8px; box-shadow:0 2px 8px #0003;"
-                loading="lazy">
-        </picture>
-        `;
+    const closeModalButton = document.querySelector(".custom-modal-close");
+    if (closeModalButton) { closeModalButton.addEventListener("click", closeProductModal); }
+
+    function closeProductModal() {
+        document.getElementById("productEditModal").style.display = "none";
     }
 
-    function displayExistingImage(imageUrl) {
-        const imageWrapper = document.createElement("div");
-        imageWrapper.className = "image-wrapper";
-        imageWrapper.style.position = 'relative';
-    
-        imageWrapper.innerHTML = `
-            ${renderProductPicture(imageUrl, "Image existante")}
-            <span class="remove-image" style="position:absolute; top:4px; right:4px; cursor:pointer; background: #0008; color: #fff; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center;">&times;</span>
-        `;
-    
-        const removeBtn = imageWrapper.querySelector(".remove-image");
-        removeBtn.addEventListener("click", function(event) {
-            event.stopPropagation();
-            ConfirmModal("Supprimer cette image ?", "Oui", "Non", () => {
-                 fetch(`/admin/products/manage/${form.dataset.productId}/image/delete`, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ imageUrl }),
+    // --- CORRIGÉ : Le contenu de cette fonction est maintenant présent ---
+    function initializeRichTextEditor() {
+        quill = new Quill("#productDescriptionEditor", {
+            theme: "snow",
+            modules: {
+                toolbar: [
+                    [{ 'header': [1, 2, 3, false] }], ['bold', 'italic', 'underline', 'strike'],
+                    [{ 'align': [] }], [{ 'color': [] }, { 'background': [] }],
+                    [{ 'script': 'sub'}, { 'script': 'super' }], ['blockquote', 'code-block'],
+                    [{ 'list': 'ordered' }, { 'list': 'bullet' }, { 'indent': '-1'}, { 'indent': '+1' }],
+                    ['link', 'image', 'video', 'formula'], ['clean'], [{ 'table': [] }]
+                ],
+                table: true, clipboard: { matchVisual: false }, history: { delay: 2000, maxStack: 500, userOnly: true }
+            }
+        });
+    }
+
+    function setupImageDeletion() {
+        imagesContainer.addEventListener("click", (event) => {
+            if (event.target.classList.contains("remove-image")) {
+                const imageWrapper = event.target.closest(".image-wrapper");
+                const imageUrl = imageWrapper.querySelector("img").src;
+                fetch(`/admin/products/manage/${form.dataset.productId}/image/delete`, {
+                    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ imageUrl }),
                 })
                 .then((res) => res.json())
                 .then((result) => {
                     if (result.message) {
-                        showNotification("Image supprimée.", "success");
+                        showNotification("Image supprimée avec succès.", "success");
                         imageWrapper.remove();
                     } else {
-                        showNotification(result.error || "Erreur suppression.", "error");
+                        showNotification("Erreur lors de la suppression de l'image.", "error");
                     }
                 });
-            });
+            }
         });
-        imagesContainer.appendChild(imageWrapper);
     }
-
-    // --- Les autres fonctions que vous avez définies sont conservées ici ---
-    // (addBadgeWithData, addFaqWithData, renderResourceFileIdInputs, etc.)
-    const resourceFileIdsContainerEdit = document.getElementById("resourceFileIdsContainerEdit");
-    const addResourceFileIdBtnEdit = document.getElementById("addResourceFileIdBtnEdit");
-    addResourceFileIdBtnEdit.addEventListener("click", () => {
-        renderResourceFileIdInputs(Array.from(resourceFileIdsContainerEdit.querySelectorAll("input[name='resource_file_id[]']")).map(i => i.value).concat([""]));
-    });
 
     // Lancement initial
     loadProducts();
+    setupImageDeletion();
 });
 </script>
 {% endblock %}
