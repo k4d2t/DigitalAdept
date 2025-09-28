@@ -15,6 +15,12 @@
     --red-dark: #c0392b;
     --red: #e74c3c;
     --neon-red-hover: 0 0 8px #e74c3c, 0 0 16px #c0392b;;
+    /* --- NOUVEAU : Couleurs pour les badges --- */
+    --badge-promo-bg: #ff2d55;
+    --badge-nouveau-bg: #4CAF50;
+    --badge-populaire-bg: #9c27b0;
+    --badge-exclusif-bg: #ff9800;
+    --badge-info-bg: #1976d2;
 }
 
 [data-theme="dark"] {
@@ -682,7 +688,7 @@ z-index: 1000;
     height: 290px ;
     max-height: 290px;
     object-fit: fill;
-    margin-top: 2.3em; /* espace pour les badges */
+    margin-top: 1em; /* Réduit pour laisser place au conteneur de badges */
     border-radius: 20px;
     margin-bottom: 0;
     box-shadow: 0 2px 14px #4fc3f71c;
@@ -700,85 +706,57 @@ z-index: 1000;
     }
     .product-card img {
         width : 250px;
-        height: 150px
-        margin-top: 2.5em;
+        height: 150px;
+        margin-top: 1em;
         object-fit: fill;
     }
 }
 
-.product-badge {
+/* --- CORRIGÉ : Conteneur de badges sur la carte produit --- */
+.product-badges-container {
     position: absolute;
+    top: 0.8em;
+    left: 0.8em;
+    right: 0.8em;
+    display: flex;
+    flex-direction: column; /* Empile les badges verticalement */
+    align-items: flex-start; /* Aligne à gauche par défaut */
+    gap: 0.5em; /* Espace entre les badges */
     z-index: 2;
-    top: 1em;
-    left: 1em;
-    background: #1976d2;
+    pointer-events: none; /* Pour ne pas gêner le clic sur la carte */
+}
+
+.product-badge {
     color: #fff;
-    font-size: 0.92em;
+    font-size: 0.9em;
     font-weight: 700;
-    padding: 0.37em 1.1em;
-    border-radius: 1.2em;
-    box-shadow: 0 2px 10px #0002;
-    letter-spacing: 0.03em;
-    max-width: 60%;
-    min-width: 0;
+    padding: 0.3em 0.9em;
+    border-radius: 1em;
+    box-shadow: 0 1px 6px #0003;
+    letter-spacing: 0.02em;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    display: block;
+    max-width: 100%;
 }
 
-/* Badge promo à droite, même top */
+/* --- CORRIGÉ : Couleurs spécifiques pour chaque type de badge --- */
 .product-badge.badge-promo {
-    left: auto;
-    right: 1em;
-    background: #ff2d55;
-    top: 1em;
+    background-color: var(--badge-promo-bg);
+    align-self: flex-end; /* Le badge promo va à droite */
 }
-
-/* Sur mobile, police plus petite et marges réduites */
-@media (max-width: 600px) {
-    .product-badge,
-    .product-badge.badge-promo {
-        font-size: 0.80em;
-        padding: 0.18em 0.7em;
-        top: 0.4em;
-        left: 0.4em;
-        right: 0.4em;
-        max-width: 68%;
-    }
-    .product-badge.badge-promo {
-        left: auto;
-        right: 0.4em;
-        top: 0.4em;
-    }
+.product-badge.badge-nouveau {
+    background-color: var(--badge-nouveau-bg);
 }
-
-.badge-promo {
-    top: 1em;
-    right: 1em;
-    left: auto;
-    background: #ff2d55;
+.product-badge.badge-populaire {
+    background-color: var(--badge-populaire-bg);
 }
-
-/* si deux badges, espace vertical sur mobile */
-@media (max-width: 500px) {
-    .product-badge {
-        font-size: .86em;
-        padding: 0.21em 0.8em;
-        max-width: 65%;
-        top: 0.6em;
-    }
-    .badge-promo {
-        top: 2.4em !important; /* décale le 2ème badge en dessous du premier */
-        right: 1em;
-    }
+.product-badge.badge-exclusif {
+    background-color: var(--badge-exclusif-bg);
 }
-
-.badge-main {
-    /* par défaut, déjà à top/left */
-    background: #1976d2;
+.product-badge.badge-info {
+    background-color: var(--badge-info-bg);
 }
-
 
 .product-info {
     flex: 1;
@@ -1589,30 +1567,40 @@ z-index: 10001;
     font-size: 1.5em;
 }
 
-.product-badges {
+/* --- CORRIGÉ : Section des badges sur la page produit --- */
+.product-badges-detailed {
     margin-bottom: 1em;
     display: flex;
-    gap: 0.5em;
+    flex-wrap: wrap; /* Permet aux badges de passer à la ligne */
+    gap: 0.7em; /* Espace entre les badges */
 }
+
 .badge {
     font-size: 0.9em;
     font-weight: bold;
-    padding: 0.3em 0.6em;
+    padding: 0.4em 0.8em;
     border-radius: 1em;
+    color: #fff;
     text-transform: uppercase;
 }
-.badge-limite {
-    background: #ff9800;
-    color: white;
+
+/* Couleurs spécifiques pour chaque type de badge */
+.badge.badge-promo {
+    background-color: var(--badge-promo-bg);
 }
-.badge-nouveau {
-    background: #4caf50;
-    color: white;
+.badge.badge-nouveau {
+    background-color: var(--badge-nouveau-bg);
 }
-.badge-solde {
-    background: #1976d2;
-    color: white;
+.badge.badge-populaire {
+    background-color: var(--badge-populaire-bg);
 }
+.badge.badge-exclusif {
+    background-color: var(--badge-exclusif-bg);
+}
+.badge.badge-info {
+    background-color: var(--badge-info-bg);
+}
+
 .product-title {
     font-size: 2rem;
     font-weight: bold;
