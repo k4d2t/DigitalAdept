@@ -17,25 +17,21 @@
   {% if produits_vedette and produits_vedette|length > 0 %}
     {% for produit in produits_vedette %}
     <a class="product-card" href="/produit/{{ produit.slug }}">
-      {% if produit.badges %}
-        {% for badge in produit.badges %}
-          <span class="product-badge badge-{{ badge.type|lower }}">{{ badge.text }}</span>
-        {% endfor %}
-      {% endif %}
 
-          <!-- BADGES AUTOMATIQUES ET MANUELS -->
-    <div class="product-badges-container">
-        {# Badge PROMO automatique #}
-        {% if p.old_price and p.old_price > p.price %}
-            {% set discount = ((p.old_price - p.price) / p.old_price * 100) | round | int %}
-            <span class="product-badge badge-promo">{{ discount }}% OFF</span>
-        {% endif %}
+      <!-- BADGES AUTOMATIQUES ET MANUELS -->
+      <div class="product-badges-container">
+          {# Badge PROMO automatique #}
+          {% if produit.old_price and produit.old_price > produit.price %}
+              {% set discount = ((produit.old_price - produit.price) / produit.old_price * 100) | round | int %}
+              <span class="product-badge badge-promo">{{ discount }}% OFF</span>
+          {% endif %}
 
-        {# Autres badges manuels #}
-        {% for badge in p.badges %}
-            <span class="product-badge badge-{{ badge.type|lower }}">{{ badge.text }}</span>
-        {% endfor %}
-    </div>
+          {# Autres badges manuels #}
+          {% for badge in produit.badges %}
+              <span class="product-badge badge-{{ badge.type|lower }}">{{ badge.text }}</span>
+          {% endfor %}
+      </div>
+
       {% set img = produit.images[0] if produit.images else (produit.image or 'default.jpg') %}
       {% if img is string %}   {% set url = img %} {% else %}   {% set url = img.url %} {% endif %} {% set base = url.split('/')[-1].rsplit('.', 1)[0] %}
       <picture>
