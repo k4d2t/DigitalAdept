@@ -10,398 +10,631 @@
     <nav class="admin-nav">
         <a href="{{ url_for('admin_products_page') }}">Retour</a>
     </nav>
-    <div class="admin-toolbar glassy-toolbar">
+    <div class="admin-toolbar glassy-toolbar" style="margin-bottom:1.2em;display:flex;justify-content:center;">
       <input type="search" id="adminProductSearch" class="admin-search-bar"
-             placeholder="Rechercher un produit par nom...">
+             placeholder="Rechercher un produit..." style="max-width:350px;">
     </div>
-    
+    <style>
+        .admin-toolbar.glassy-toolbar {
+            background: var(--toolbar-bg,rgba(34,34,50,0.36));
+            box-shadow: 0 2px 12px var(--toolbar-border,rgba(58,138,255,0.13)), var(--neon);
+            border-radius: 1.5em;
+            padding: 0.6em 1.3em;
+            margin: 0 auto 1.2em auto;
+            backdrop-filter: blur(8px);
+            border: 1.2px solid var(--toolbar-border,rgba(58,138,255,0.13));
+        }
+
+        .admin-search-bar {
+            width: 100%;
+            font-family: var(--toolbar-font, 'Google Sans', 'Roboto', Arial, sans-serif);
+            font-size: 1em;
+            padding: 0.7em 1.2em;
+            border-radius: 1.8em;
+            border: none;
+            background: transparent;
+            color: #fff;
+            box-shadow: 0 0 0 1.3px var(--accent-strong,#6ec0ff), 0 0 8px var(--accent-strong,#6ec0ff)33;
+            outline: none;
+            transition: box-shadow 0.2s, background 0.2s;
+            backdrop-filter: blur(3.5px);
+            margin: 0 0.7em;
+        }
+        .admin-search-bar::placeholder {
+            color: #cdd7ff;
+            opacity: 0.6;
+        }
+        .admin-search-bar:focus {
+            box-shadow: 0 0 0 2px var(--accent,#3a8aff), 0 0 12px var(--accent,#3a8aff)55, var(--neon);
+            background: rgba(80, 180, 255, 0.04);
+        }
+
+         .admin-pagination-bar {
+            display: flex;
+            gap: 0.6em;
+            justify-content: center;
+            margin-top: 1.5em;
+            flex-wrap: wrap;
+        }
+        .admin-pagination-btn {
+            background: var(--primary-dark, #1976d2);
+            color: #fff;
+            border-radius: 50%;
+            border: none;
+            width: 2.1em;
+            height: 2.1em;
+            font-weight: bold;
+            font-size: 1em;
+            margin: 0 0.18em;
+            transition: background 0.18s, color 0.18s;
+            box-shadow: var(--neon);
+            cursor: pointer;
+        }
+        .admin-pagination-btn.active,
+        .admin-pagination-btn:hover {
+            background: var(--primary, #4fc3f7);
+            color: #222;
+            box-shadow: var(--neon-hover);
+        }
+
+    </style>
     <div class="products-grid" id="productsGrid">
         <!-- Les cartes des produits seront générées ici par JavaScript -->
     </div>
-    <div id="adminPagination" class="admin-pagination-bar"></div>
+    <div id="adminPagination" class="admin-pagination-bar" style="display:flex;justify-content:center;margin-top:1.5em;gap:0.6em;"></div>
 </div>
 
-<!-- MODALE D'ÉDITION -->
 <div id="productEditModal" class="custom-modal">
     <div class="custom-modal-content">
         <span class="custom-modal-close" onclick="closeProductModal()">&times;</span>
         <h2>Modifier le Produit</h2>
         <form id="productEditForm" enctype="multipart/form-data">
             <!-- Nom -->
-            <label for="productNameEdit">Nom du Produit :</label>
-            <input type="text" id="productNameEdit" name="name" required>
+            <label for="productName">Nom du Produit :</label>
+            <input type="text" id="productName" name="name" required>
 
             <!-- Description courte -->
-            <label for="productShortDescriptionEdit">Description Courte :</label>
-            <input type="text" id="productShortDescriptionEdit" name="short_description">
+            <label for="productShortDescription">Description Courte :</label>
+            <input type="text" id="productShortDescription" name="short_description" required>
 
             <!-- Description enrichie -->
-            <label for="productDescriptionEditorEdit">Description :</label>
-            <div id="productDescriptionEditorEdit"></div>
+            <label for="productDescription">Description :</label>
+            <div id="productDescriptionEditor"></div> <!-- Quill.js pour l'édition enrichie -->
 
-            <!-- Prix & Ancien Prix -->
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="productPriceEdit">Prix :</label>
-                    <input type="number" id="productPriceEdit" name="price" required>
-                </div>
-                <div class="form-group">
-                    <label for="productOldPriceEdit">Ancien Prix :</label>
-                    <input type="number" id="productOldPriceEdit" name="old_price">
-                </div>
-            </div>
+            <!-- Prix -->
+            <label for="productPrice">Prix :</label>
+            <input type="number" id="productPrice" name="price" required>
 
-            <!-- Devise & Stock -->
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="productCurrencyEdit">Devise :</label>
-                    <select id="productCurrencyEdit" name="currency" required>
-                        <option value="XOF">XOF (Franc CFA)</option>
-                        <option value="USD">USD (Dollar)</option>
-                        <option value="EUR">EUR (Euro)</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label for="productStockEdit">Stock :</label>
-                    <input type="number" id="productStockEdit" name="stock" required>
-                </div>
-            </div>
-            
-            <!-- SKU & Catégorie -->
-            <div class="form-row">
-                <div class="form-group">
-                    <label for="productSkuEdit">SKU :</label>
-                    <input type="text" id="productSkuEdit" name="sku">
-                </div>
-                <div class="form-group">
-                    <label for="productCategoryEdit">Catégorie :</label>
-                    <input type="text" id="productCategoryEdit" name="category" required>
-                </div>
-            </div>
+            <!-- Ancien Prix -->
+            <label for="productOldPrice">Ancien Prix :</label>
+            <input type="number" id="productOldPrice" name="old_price">
 
-            <!-- Fichiers de ressource (multi) -->
-            <label>Resource File IDs (Telegram) :</label>
-            <div id="resourceFileIdsContainerEdit"></div>
-            <button type="button" id="addResourceFileIdBtnEdit" class="add-row-btn">+ Ajouter un File ID</button>
+            <!-- Devise -->
+            <label for="productCurrency">Devise :</label>
+            <select id="productCurrency" name="currency" required>
+                <option value="XOF">XOF (Franc CFA)</option>
+                <option value="USD">USD (Dollar)</option>
+                <option value="EUR">EUR (Euro)</option>
+            </select>
+
+            <!-- Stock -->
+            <label for="productStock">Stock :</label>
+            <input type="number" id="productStock" name="stock" required>
+
+            <!-- SKU -->
+            <label for="productSku">SKU :</label>
+            <input type="text" id="productSku" name="sku" required>
+
+            <!-- Catégorie -->
+            <label for="productCategory">Catégorie :</label>
+            <input type="text" id="productCategory" name="category" required>
+
+            <!-- Fichier de ressource (multi) -->
+            <label>Resource File IDs :</label>
+            <div id="resourceFileIdsContainerEdit">
+            <!-- Les champs seront générés dynamiquement -->
+            </div>
+            <button type="button" id="addResourceFileIdBtnEdit">+ Ajouter un File ID</button>
+             <br>
+              <br>
+
+            <!-- Fichier de ressource -->
+            <!--
+            <label for="productResourceFileId">Resource File ID :</label>
+            <input type="text" id="productResourceFileId" name="resource_file_id">-->
 
             <!-- Images -->
-            <label>Images :</label>
-            <div id="productImagesContainerEdit" class="images-preview-container"></div>
             <div class="custom-file-upload-container">
-                <input type="file" id="productImagesEdit" name="images" multiple accept="image/*" class="file-input-hidden">
-                <button type="button" id="customFileUploadButtonEdit">Ajouter des Images</button>
-                <span id="fileUploadStatusEdit"></span>
+                <label for="productImages">Images :</label>
+                <input type="file" id="productImages" name="images[]" multiple accept="image/*" class="file-input-hidden">
+                <button type="button" id="customFileUploadButton">Sélectionner des fichiers</button>
+                <span id="fileUploadStatus">Aucun fichier sélectionné</span>
             </div>
 
+            <div id="productImagesContainer" class="images-preview-container">
+                <!-- Les images prévisualisées s'afficheront ici -->
+            </div>
+            <small>Les chemins des images seront automatiquement générés.</small>
+
             <!-- Gestion des badges -->
-            <label>Badges (le badge "Promo" est automatique si un ancien prix est défini) :</label>
-            <div id="productBadgesContainerEdit"></div>
-            <button type="button" id="addBadgeButtonEdit" class="add-row-btn">+ Ajouter un Badge</button>
+            <label>Badges :</label>
+            <div id="productBadgesContainer"></div> <!-- Liste dynamique des badges -->
+            <button type="button" id="addBadgeButton">Ajouter un Badge</button>
 
             <!-- FAQ -->
             <label>FAQ :</label>
-            <div id="productFaqContainerEdit"></div>
-            <button type="button" id="addFaqButtonEdit" class="add-row-btn">+ Ajouter une Q/R</button>
+            <div id="productFaqContainer"></div> <!-- Liste dynamique des FAQ -->
+            <button type="button" id="addFaqButton">Ajouter une Question/Réponse</button>
 
             <!-- Produit en vedette -->
-            <div class="form-group-checkbox">
-                <input type="checkbox" id="productFeaturedEdit" name="featured">
-                <label for="productFeaturedEdit">Mettre ce produit en vedette</label>
-            </div>
+            <label for="productFeatured">En Vedette :</label>
+            <input type="checkbox" id="productFeatured" name="featured">
 
             <!-- Bouton Enregistrer -->
-            <button type="submit" class="submit-btn">Enregistrer les Modifications</button>
+            <button type="submit">Enregistrer</button>
         </form>
     </div>
 </div>
-
 <style>
+    /* Centrage et alignement des tuiles produits */
     .products-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-        gap: 1.5em;
-        padding: 1em;
-        min-height: 200px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 2em 2em;
+    margin: 0 auto;
+    width: 100%;
+    padding-bottom: 2em;
+    min-height: 200px;
+    box-sizing: border-box;
     }
-    .products-manage { max-width: 1300px; margin: 0 auto; }
-    .product-card-admin {
-        background: var(--contact-card-bg);
-        border: 1px solid var(--contact-border);
-        border-radius: 12px;
-        padding: 1em;
-        display: flex;
-        flex-direction: column;
-        transition: all .2s;
-        cursor: pointer;
+    .product-card {
+    margin: 0;
+    flex: 0 1 320px;
     }
-    .product-card-admin:hover {
-        transform: translateY(-4px);
-        box-shadow: 0 4px 20px #0000001a;
+    .products-manage {
+    max-width: 1200px;
+    margin: 0 auto;
     }
-    .product-card-admin .img-preview { width: 100%; aspect-ratio: 16/10; object-fit: cover; border-radius: 8px; margin-bottom: 1em; background: #eee; }
-    .product-card-admin h3 { margin: 0 0 0.5em; font-size: 1.1em; }
-    .product-card-admin p { margin: 0.2em 0; font-size: 0.9em; }
-    .product-card-admin-actions { margin-top: auto; padding-top: 1em; display:flex; justify-content: flex-end; }
-    .product-card-admin-actions .delete-button { background: #e74c3c; color: white; border: none; border-radius: 50%; width: 36px; height: 36px; cursor: pointer; display:flex; align-items:center; justify-content:center; }
-    .product-card-admin-actions .delete-button svg { width: 20px; height: 20px; }
 </style>
-
 <script>
 document.addEventListener("DOMContentLoaded", () => {
     const form = document.getElementById("productEditForm");
-    const imageInput = document.getElementById("productImagesEdit");
-    const customFileUploadButton = document.getElementById("customFileUploadButtonEdit");
-    const fileUploadStatus = document.getElementById("fileUploadStatusEdit");
-    const imagesContainer = document.getElementById("productImagesContainerEdit");
-    const badgesContainer = document.getElementById("productBadgesContainerEdit");
-    const faqContainer = document.getElementById("productFaqContainerEdit");
-    const resourceFileIdsContainer = document.getElementById("resourceFileIdsContainerEdit");
-
-    let allProducts = [];
-    let currentPage = 1;
-    const itemsPerPage = 9;
+    const imageInput = document.getElementById("productImages");
+    const customFileUploadButton = document.getElementById("customFileUploadButton");
+    const fileUploadStatus = document.getElementById("fileUploadStatus");
+    const imagesContainer = document.getElementById("productImagesContainer");
+    const badgesContainer = document.getElementById("productBadgesContainer");
+    const faqContainer = document.getElementById("productFaqContainer");
+    let imagesField = []; // URLs des images existantes
+    let selectedEditFilesSet = new Set();
     let quill;
 
     initializeRichTextEditor();
 
-    form.addEventListener("submit", (e) => e.preventDefault());
-    form.querySelector('.submit-btn').addEventListener('click', updateProduct);
-    
-    customFileUploadButton.addEventListener("click", () => imageInput.click());
-    imageInput.addEventListener("change", handleFileSelection);
-    document.getElementById("addBadgeButtonEdit").addEventListener("click", () => addBadge());
-    document.getElementById("addFaqButtonEdit").addEventListener("click", () => addFaq());
-    document.getElementById("addResourceFileIdBtnEdit").addEventListener("click", () => addResourceFileIdInput());
-
-    document.getElementById('adminProductSearch').addEventListener('input', () => {
-        currentPage = 1;
-        renderProducts();
+    form.setAttribute("enctype", "multipart/form-data");
+    form.addEventListener("submit", (e) => {
+        e.preventDefault();
+        updateProduct();
     });
 
-    function loadAndRender() {
-        fetch("/admin/products")
-            .then(response => response.json())
-            .then(products => {
-                allProducts = products.sort((a, b) => b.id - a.id); // Plus récents en premier par ID
-                renderProducts();
-            })
-            .catch(error => console.error("Erreur chargement produits:", error));
-    }
+    customFileUploadButton.addEventListener("click", () => imageInput.click());
+    imageInput.addEventListener("change", handleFileSelection);
 
-    function renderProducts() {
-        const searchTerm = document.getElementById('adminProductSearch').value.toLowerCase();
-        const filteredProducts = allProducts.filter(p => p.name.toLowerCase().includes(searchTerm));
+    document.getElementById("addBadgeButton").addEventListener("click", addBadge);
+    document.getElementById("addFaqButton").addEventListener("click", addFaq);
 
-        const grid = document.getElementById("productsGrid");
-        grid.innerHTML = "";
+    loadProducts();
+    setupImageDeletion();
 
-        const paginatedProducts = filteredProducts.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
-
-        paginatedProducts.forEach(product => {
-            const card = document.createElement("div");
-            card.className = "product-card-admin";
-            const imageUrl = product.images.length > 0 ? product.images[0] : 'https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/img/default.jpg';
-            
-            card.innerHTML = `
-                <img src="${imageUrl}" class="img-preview" alt="Aperçu de ${product.name}" loading="lazy">
-                <h3>${product.name}</h3>
-                <p><strong>Prix :</strong> ${product.price} ${product.currency}</p>
-                <p><strong>Stock :</strong> ${product.stock}</p>
-                <div class="product-card-admin-actions">
-                    <button class="delete-button" title="Supprimer">
-                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"></path></svg>
-                    </button>
-                </div>
-            `;
-            card.addEventListener("click", (e) => {
-                if (!e.target.closest('.delete-button')) openProductModal(product.id);
-            });
-            card.querySelector(".delete-button").addEventListener("click", (e) => {
-                e.stopPropagation();
-                ConfirmModal(`Supprimer "${product.name}" ?`, "Oui, supprimer", "Annuler", () => deleteProduct(product.id));
-            });
-            grid.appendChild(card);
+    document.getElementById('adminProductSearch').addEventListener('input', function(){
+        const search = this.value.trim().toLowerCase();
+        document.querySelectorAll('.products-grid .product-card').forEach(card => {
+            const text = card.textContent.toLowerCase();
+            card.style.display = text.includes(search) ? "" : "none";
         });
-        renderPagination(filteredProducts.length);
-    }
+    });
 
-    function renderPagination(totalItems) {
+    function renderPagination(totalItems, itemsPerPage, onPageChange, currentPage) {
         const totalPages = Math.ceil(totalItems / itemsPerPage);
         const pagination = document.getElementById('adminPagination');
         pagination.innerHTML = '';
-        if (totalPages <= 1) return;
+        if(totalPages <= 1) return;
 
-        for (let i = 1; i <= totalPages; i++) {
+        for(let i=1; i<=totalPages; i++) {
             const btn = document.createElement('button');
             btn.textContent = i;
             btn.className = 'admin-pagination-btn' + (i === currentPage ? ' active' : '');
-            btn.onclick = () => { currentPage = i; renderProducts(); };
+            btn.onclick = () => onPageChange(i);
             pagination.appendChild(btn);
         }
     }
 
-    function deleteProduct(productId) {
-        fetch(`/admin/products/manage/${productId}`, { method: "DELETE" })
-            .then(res => {
-                if (res.ok) {
-                    showNotification("Produit supprimé !", "success");
-                    loadAndRender();
-                } else {
-                    res.json().then(data => showNotification(data.error || "Erreur suppression.", "error"));
+    function handleFileSelection(event) {
+        const files = event.target.files;
+        if (files.length > 0) {
+            Array.from(files).forEach((file) => {
+                if (!selectedEditFilesSet.has(file.name)) {
+                    displayImagePreview(file);
+                    selectedEditFilesSet.add(file.name);
                 }
             });
-    }
-
-    function openProductModal(productId) {
-        fetch(`/admin/products/manage/${productId}`)
-            .then(response => response.json())
-            .then(product => {
-                form.dataset.productId = product.id;
-                document.getElementById("productNameEdit").value = product.name;
-                document.getElementById("productShortDescriptionEdit").value = product.short_description || "";
-                quill.root.innerHTML = product.description || "";
-                document.getElementById("productPriceEdit").value = product.price;
-                document.getElementById("productOldPriceEdit").value = product.old_price || "";
-                document.getElementById("productCurrencyEdit").value = product.currency;
-                document.getElementById("productStockEdit").value = product.stock;
-                document.getElementById("productSkuEdit").value = product.sku || "";
-                document.getElementById("productCategoryEdit").value = product.category;
-                document.getElementById("productFeaturedEdit").checked = !!product.featured;
-
-                renderDynamicInputs(badgesContainer, product.badges || [], addBadge);
-                renderDynamicInputs(faqContainer, product.faq || [], addFaq);
-                renderDynamicInputs(resourceFileIdsContainer, product.resource_files || [], addResourceFileIdInput);
-
-                imagesContainer.innerHTML = "";
-                (product.images || []).forEach(imageUrl => displayExistingImage(imageUrl));
-                imageInput.value = "";
-                fileUploadStatus.textContent = "";
-
-                document.getElementById("productEditModal").style.display = "block";
-            });
-    }
-
-    function renderDynamicInputs(container, data, addFn) {
-        container.innerHTML = "";
-        if (data && data.length > 0) {
-            data.forEach(item => addFn(item));
+            const fileNames = Array.from(selectedEditFilesSet).join(", ");
+            fileUploadStatus.textContent = `Fichiers sélectionnés : ${fileNames}`;
+        } else {
+            fileUploadStatus.textContent = "Aucun fichier sélectionné";
         }
     }
 
-    function addBadge(badge = { type: 'info', text: '' }) {
-        const div = document.createElement("div");
-        div.className = "dynamic-form-row";
-        div.innerHTML = `
-            <select class="badge-type-select">
-                <option value="nouveau" ${badge.type === 'nouveau' ? 'selected' : ''}>Nouveau</option>
-                <option value="populaire" ${badge.type === 'populaire' ? 'selected' : ''}>Populaire</option>
-                <option value="exclusif" ${badge.type === 'exclusif' ? 'selected' : ''}>Exclusif</option>
-                <option value="info" ${badge.type === 'info' ? 'selected' : ''}>Info</option>
-            </select>
-            <input type="text" class="badge-text-input" value="${badge.text || ''}" placeholder="Texte du badge">
-            <button type="button" class="remove-row-btn" onclick="this.parentElement.remove()">–</button>
-        `;
-        badgesContainer.appendChild(div);
+    function displayImagePreview(file) {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const imageWrapper = document.createElement("div");
+            imageWrapper.className = "image-wrapper";
+            imageWrapper.innerHTML = `
+                <img src="${e.target.result}" alt="${file.name}" class="preview-image">
+                <span class="remove-image">&times;</span>
+            `;
+            imageWrapper.querySelector(".remove-image").addEventListener("click", () => {
+                selectedEditFilesSet.delete(file.name);
+                imageWrapper.remove();
+                fileUploadStatus.textContent = selectedEditFilesSet.size
+                    ? `Fichiers sélectionnés : ${Array.from(selectedEditFilesSet).join(", ")}`
+                    : "Aucun fichier sélectionné";
+            });
+            imagesContainer.appendChild(imageWrapper);
+        };
+        reader.readAsDataURL(file);
     }
 
-    function addFaq(faq = { question: '', answer: '' }) {
-        const div = document.createElement("div");
-        div.className = "dynamic-form-row";
-        div.innerHTML = `
-            <input type="text" class="faq-question-input" value="${faq.question || ''}" placeholder="Question">
-            <textarea class="faq-answer-input" placeholder="Réponse">${faq.answer || ''}</textarea>
-            <button type="button" class="remove-row-btn" onclick="this.parentElement.remove()">–</button>
+    function addBadge() {
+        const badgeDiv = document.createElement("div");
+        badgeDiv.innerHTML = `
+            <label>Type :</label>
+            <input type="text" placeholder="Type">
+            <label>Contenu :</label>
+            <input type="text" placeholder="Contenu">
+            <button type="button" onclick="this.parentElement.remove()">Supprimer</button>
         `;
-        faqContainer.appendChild(div);
-    }
-    
-    function addResourceFileIdInput(file = { file_id: '' }) {
-        const div = document.createElement("div");
-        div.className = "dynamic-form-row";
-        div.innerHTML = `
-            <input type="text" class="resource-file-id-input" value="${file.file_id || ''}" placeholder="ID du fichier Telegram">
-            <button type="button" class="remove-row-btn" onclick="this.parentElement.remove()">–</button>
-        `;
-        resourceFileIdsContainer.appendChild(div);
+        badgesContainer.appendChild(badgeDiv);
     }
 
-    function handleFileSelection(event) {
-        fileUploadStatus.textContent = event.target.files.length > 0 ? `${event.target.files.length} nouveau(x) fichier(s) prêt(s)` : "";
+    function addFaq() {
+        const faqDiv = document.createElement("div");
+        faqDiv.innerHTML = `
+            <label>Question :</label>
+            <input type="text" placeholder="Question">
+            <label>Réponse :</label>
+            <textarea placeholder="Réponse"></textarea>
+            <button type="button" onclick="this.parentElement.remove()">Supprimer</button>
+        `;
+        faqContainer.appendChild(faqDiv);
+    }
+
+    // Charger la liste des produits
+    function loadProducts() {
+        fetch("/admin/products")
+            .then((response) => response.json())
+            .then((products) => {
+                const grid = document.getElementById("productsGrid");
+                grid.innerHTML = "";
+
+                products.forEach((product) => {
+                    const card = document.createElement("div");
+                    card.className = "product-card";
+                    card.setAttribute("data-id", product.id);
+                    card.innerHTML = `
+                        <h2>${product.name}</h2>
+                        <p><strong>Prix :</strong> ${product.price}</p>
+                        <p><strong>Catégorie :</strong> ${product.category}</p>
+                        <p><strong>Stock :</strong> ${product.stock}</p>
+                        <div class="product-card-actions">
+                            <button class="delete-button" onclick="deleteProduct(${product.id})">
+                                <?xml version="1.0" encoding="utf-8"?><!-- SVG intégré -->
+                                <svg width="60px" height="40px" viewBox="-2.5 0 61 61" xmlns="http://www.w3.org/2000/svg">
+                                    <defs>
+                                        <filter id="a" width="200%" height="200%" x="-50%" y="-50%" filterUnits="objectBoundingBox">
+                                            <feOffset dy="1" in="SourceAlpha" result="shadowOffsetOuter1"/>
+                                            <feGaussianBlur stdDeviation="10" in="shadowOffsetOuter1" result="shadowBlurOuter1"/>
+                                            <feColorMatrix values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.1 0" in="shadowBlurOuter1" result="shadowMatrixOuter1"/>
+                                            <feMerge>
+                                                <feMergeNode in="shadowMatrixOuter1"/>
+                                                <feMergeNode in="SourceGraphic"/>
+                                            </feMerge>
+                                        </filter>
+                                    </defs>
+                                    <path fill-rule="evenodd" d="M36 26v10.997c0 1.659-1.337 3.003-3.009 3.003h-9.981c-1.662 0-3.009-1.342-3.009-3.003v-10.997h16zm-2 0v10.998c0 .554-.456 1.002-1.002 1.002h-9.995c-.554 0-1.002-.456-1.002-1.002v-10.998h12zm-9-5c0-.552.451-1 .991-1h4.018c.547 0 .991.444.991 1 0 .552-.451 1-.991 1h-4.018c-.547 0-.991-.444-.991-1zm0 6.997c0-.551.444-.997 1-.997.552 0 1 .453 1 .997v6.006c0 .551-.444.997-1 .997-.552 0-1-.453-1-.997v-6.006zm4 0c0-.551.444-.997 1-.997.552 0 1 .453 1 .997v6.006c0 .551-.444.997-1 .997-.552 0-1-.453-1-.997v-6.006zm-6-5.997h-4.008c-.536 0-.992.448-.992 1 0 .556.444 1 .992 1h18.016c.536 0 .992-.448.992-1 0-.556-.444-1-.992-1h-4.008v-1c0-1.653-1.343-3-3-3h-3.999c-1.652 0-3 1.343-3 3v1z" filter="url(#a)"/>
+                                </svg>
+                            </button>
+                        </div>
+                    `;
+                    card.addEventListener("click", () => openProductModal(product.id));
+                    card.querySelector(".delete-button").addEventListener("click", (event) => {
+                        event.stopPropagation();
+                        ConfirmModal(
+                            "Êtes-vous sûr de vouloir supprimer ce produit ?",
+                            "Oui",
+                            "Non",
+                            () => deleteProduct(product.id),
+                            () => showNotification("Suppression annulée.", "info")
+                        );
+                    });
+                    grid.appendChild(card);
+                });
+            })
+            .catch((error) => console.error("Erreur lors du chargement des produits :", error));
+    }
+
+    // Supprimer un produit
+    function deleteProduct(productId) {
+        fetch(`/admin/products/manage/${productId}`, {
+            method: "DELETE",
+        })
+            .then((response) => {
+                if (response.ok) {
+                    showNotification("Produit supprimé avec succès !", "success");
+                    loadProducts();
+                } else {
+                    showNotification("Erreur lors de la suppression du produit.", "error");
+                }
+            })
+            .catch((error) => console.error("Erreur lors de la suppression du produit :", error));
+    }
+
+    // PATCH Rendu featured + resource_file_id + images
+    function openProductModal(productId) {
+        fetch(`/admin/products/manage/${productId}`)
+            .then((response) => response.json())
+            .then((product) => {
+                document.getElementById("productName").value = product.name;
+                document.getElementById("productShortDescription").value = product.short_description || "";
+                quill.root.innerHTML = product.description;
+                document.getElementById("productPrice").value = product.price;
+                document.getElementById("productOldPrice").value = product.old_price || "";
+                document.getElementById("productStock").value = product.stock;
+                document.getElementById("productSku").value = product.sku || "";
+                document.getElementById("productCategory").value = product.category;
+                document.getElementById("productFeatured").checked = !!product.featured;
+                let fileIds = product.resource_files ? product.resource_files.map(f => f.file_id) : [];
+                if (!Array.isArray(fileIds)) fileIds = [fileIds];
+                if (fileIds.length === 0) fileIds = [""];
+                renderResourceFileIdInputs(fileIds);
+
+                badgesContainer.innerHTML = "";
+                product.badges.forEach((badge) => addBadgeWithData(badge));
+
+                faqContainer.innerHTML = "";
+                product.faq.forEach((faq) => addFaqWithData(faq));
+
+                imagesContainer.innerHTML = "";
+                imagesField = [...product.images]; // URLs des images déjà existantes
+                imagesField.forEach((imageUrl) => displayExistingImage(imageUrl));
+
+                document.getElementById("productEditModal").style.display = "block";
+                form.setAttribute("data-product-id", productId);
+                selectedEditFilesSet.clear();
+            })
+            .catch((error) => console.error("Erreur lors de l'ouverture de la modale :", error));
+    }
+
+    function addBadgeWithData(badge) {
+        const badgeDiv = document.createElement("div");
+        badgeDiv.innerHTML = `
+            <label>Type :</label>
+            <input type="text" value="${badge.type}" placeholder="Type">
+            <label>Contenu :</label>
+            <input type="text" value="${badge.text}" placeholder="Contenu">
+            <button type="button" onclick="this.parentElement.remove()">Supprimer</button>
+        `;
+        badgesContainer.appendChild(badgeDiv);
+    }
+
+    function addFaqWithData(faq) {
+        const faqDiv = document.createElement("div");
+        faqDiv.innerHTML = `
+            <label>Question :</label>
+            <input type="text" value="${faq.question}" placeholder="Question">
+            <label>Réponse :</label>
+            <textarea placeholder="Réponse">${faq.answer}</textarea>
+            <button type="button" onclick="this.parentElement.remove()">Supprimer</button>
+        `;
+        faqContainer.appendChild(faqDiv);
+    }
+
+    const resourceFileIdsContainerEdit = document.getElementById("resourceFileIdsContainerEdit");
+    const addResourceFileIdBtnEdit = document.getElementById("addResourceFileIdBtnEdit");
+
+    function renderResourceFileIdInputs(fileIds = []) {
+        resourceFileIdsContainerEdit.innerHTML = "";
+        if (fileIds.length === 0) fileIds = [""];
+        fileIds.forEach((fileId, idx) => {
+            const row = document.createElement("div");
+            row.className = "resource-file-id-row";
+            row.innerHTML = `
+                <input type="text" name="resource_file_id[]" value="${fileId || ""}" placeholder="ID du fichier de ressource">
+                <button type="button" class="remove-file-id-btn"${fileIds.length === 1 ? ' style="display:none;"' : ""}>–</button>
+                <br>
+                <br>
+            `;
+            row.querySelector(".remove-file-id-btn").addEventListener("click", () => row.remove());
+            resourceFileIdsContainerEdit.appendChild(row);
+        });
+    }
+
+    addResourceFileIdBtnEdit.addEventListener("click", () => {
+        renderResourceFileIdInputs(Array.from(resourceFileIdsContainerEdit.querySelectorAll("input[name='resource_file_id[]']")).map(i => i.value).concat([""]));
+    });
+
+    // Utility to render a responsive <picture> element like on the front
+    function renderProductPicture(url, alt = "Image produit") {
+        // Extraction du nom de base sans extension
+        let filename = url.split('/').pop(); // Récupère le dernier élément (ex: "bar.jpg")
+        let base = filename.split('.').slice(0, -1).join('.');
+        return `
+        <picture style="display:block;text-align:center;">
+            <source
+                srcset="
+                    https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/img/${base}-400.webp 400w,
+                    https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/img/${base}-800.webp 800w,
+                    https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/img/${base}-1200.webp 1200w
+                "
+                type="image/webp"
+                sizes="(max-width:600px) 400px, (max-width:1100px) 800px, 1200px"
+            >
+            <source
+                srcset="
+                    https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/img/${base}-400.jpg 400w,
+                    https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/img/${base}-800.jpg 800w,
+                    https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/img/${base}-1200.jpg 1200w
+                "
+                type="image/jpeg"
+                sizes="(max-width:600px) 400px, (max-width:1100px) 800px, 1200px"
+            >
+            <img src="https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/img/${base}-800.jpg"
+                alt="${alt}"
+                style="max-width:140px;max-height:120px;border-radius:5px;box-shadow:0 2px 14px #4fc3f71c;margin:0 auto;display:block;"
+                width="fit" height=fit">
+        </picture>
+        `;
     }
 
     function displayExistingImage(imageUrl) {
-        const wrapper = document.createElement("div");
-        wrapper.className = "image-wrapper";
-        wrapper.innerHTML = `<img src="${imageUrl}" class="preview-image"><span class="remove-image" title="Supprimer">&times;</span>`;
-        wrapper.querySelector(".remove-image").addEventListener("click", (e) => {
-            e.stopPropagation();
-            ConfirmModal("Supprimer cette image définitivement ?", "Oui", "Non", () => {
-                fetch(`/admin/products/manage/${form.dataset.productId}/image/delete`, {
-                    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ imageUrl }),
-                })
-                .then(res => res.json())
-                .then(result => {
-                    if (result.message) { showNotification("Image supprimée.", "success"); wrapper.remove(); } 
-                    else { showNotification(result.error || "Erreur suppression.", "error"); }
-                });
-            });
-        });
-        imagesContainer.appendChild(wrapper);
-    }
+        const imageWrapper = document.createElement("div");
+        imageWrapper.className = "image-wrapper";
     
+        imageWrapper.innerHTML = `
+            ${renderProductPicture(imageUrl, "Image du produit")}
+            <span class="remove-image" style="position:absolute;top:6px;right:6px;cursor:pointer;">&times;</span>
+        `;
+    
+        // Utilise addEventListener, pas onclick dans le HTML
+        const removeBtn = imageWrapper.querySelector(".remove-image");
+        removeBtn.addEventListener("click", function(event) {
+            event.stopPropagation(); // ← Important !
+            fetch(`/admin/products/manage/${form.dataset.productId}/image/delete`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ imageUrl }),
+            })
+                .then((res) => res.json())
+                .then((result) => {
+                    if (result.message) {
+                        showNotification("Image supprimée avec succès.", "success");
+                        imageWrapper.remove();
+                    } else {
+                        showNotification("Erreur lors de la suppression de l'image.", "error");
+                    }
+                })
+                .catch((error) => {
+                    showNotification("Erreur lors de la suppression de l'image.", "error");
+                    console.error("Erreur lors de la suppression de l'image :", error);
+                });
+        });
+    
+        imagesContainer.appendChild(imageWrapper);
+    }
+
+    
+
     function updateProduct() {
-        const productId = form.dataset.productId;
-        const formData = new FormData();
-        
-        formData.append("name", document.getElementById("productNameEdit").value);
-        formData.append("short_description", document.getElementById("productShortDescriptionEdit").value);
-        formData.append("description", quill.root.innerHTML);
-        formData.append("price", document.getElementById("productPriceEdit").value);
-        formData.append("old_price", document.getElementById("productOldPriceEdit").value);
-        formData.append("currency", document.getElementById("productCurrencyEdit").value);
-        formData.append("stock", document.getElementById("productStockEdit").value);
-        formData.append("sku", document.getElementById("productSkuEdit").value);
-        formData.append("category", document.getElementById("productCategoryEdit").value);
-        formData.append("featured", document.getElementById("productFeaturedEdit").checked);
+        const productId = form.getAttribute("data-product-id");
+        const formData = new FormData(form);
 
-        const badges = Array.from(badgesContainer.children).map(div => ({ type: div.querySelector(".badge-type-select").value, text: div.querySelector(".badge-text-input").value }));
-        formData.append("badges", JSON.stringify(badges));
+        formData.set("featured", document.getElementById("productFeatured").checked ? "true" : "false");
 
-        const faqs = Array.from(faqContainer.children).map(div => ({ question: div.querySelector(".faq-question-input").value, answer: div.querySelector(".faq-answer-input").value }));
-        formData.append("faq", JSON.stringify(faqs));
+        formData.set("badges", JSON.stringify(Array.from(badgesContainer.children).map((badgeDiv) => ({
+            type: badgeDiv.querySelector("input[placeholder='Type']").value,
+            text: badgeDiv.querySelector("input[placeholder='Contenu']").value,
+        }))));
+        formData.set("faq", JSON.stringify(Array.from(faqContainer.children).map((faqDiv) => ({
+            question: faqDiv.querySelector("input[placeholder='Question']").value,
+            answer: faqDiv.querySelector("textarea").value,
+        }))));
+        const fileIdInputs = resourceFileIdsContainerEdit.querySelectorAll("input[name='resource_file_id[]']");
+        const resource_file_ids = Array.from(fileIdInputs).map(input => input.value.trim()).filter(val => val !== "");
+        formData.set("resource_file_id", JSON.stringify(resource_file_ids));
 
-        const resource_files = Array.from(resourceFileIdsContainer.querySelectorAll(".resource-file-id-input")).map(input => ({ file_id: input.value.trim() })).filter(rf => rf.file_id);
-        formData.append("resource_file_id", JSON.stringify(resource_files));
+        // N'ajoute que les nouvelles images uploadées
+        const files = imageInput.files;
+        for (const file of files) {
+            formData.append("images", file);
+        }
 
-        Array.from(imageInput.files).forEach(file => formData.append("images", file));
-
-        fetch(`/admin/products/manage/${productId}`, { method: "PUT", body: formData })
-            .then(res => res.json())
-            .then(data => {
-                if (data.message) {
-                    showNotification("Produit mis à jour !", "success");
-                    closeProductModal();
-                    loadAndRender();
-                } else { showNotification(data.error || "Erreur mise à jour.", "error"); }
+        fetch(`/admin/products/manage/${productId}`, {
+            method: "PUT",
+            body: formData,
+        })
+            .then((response) => response.json())
+            .then(() => {
+                showNotification("Produit mis à jour avec succès !", "success");
+                closeProductModal();
+                loadProducts();
+                selectedEditFilesSet.clear();
+            })
+            .catch((error) => {
+                showNotification("Erreur lors de la mise à jour du produit.", "error");
+                console.error(error);
             });
     }
 
-    window.closeProductModal = function() {
+    const closeModalButton = document.querySelector(".custom-modal-close");
+    if (closeModalButton) {
+        closeModalButton.addEventListener("click", closeProductModal);
+    }
+
+    function closeProductModal() {
         document.getElementById("productEditModal").style.display = "none";
     }
 
     function initializeRichTextEditor() {
-        if(quill) return;
-        quill = new Quill("#productDescriptionEditorEdit", {
+        quill = new Quill("#productDescriptionEditor", {
             theme: "snow",
-            modules: { toolbar: [
-                [{ 'header': [1, 2, 3, false] }], ['bold', 'italic', 'underline'],
-                [{'list': 'ordered'}, {'list': 'bullet'}], ['link', 'image', 'code-block']
-            ]}
+            modules: {
+                toolbar: [
+                    [{ 'header': [1, 2, 3, false] }],
+                    ['bold', 'italic', 'underline', 'strike'],
+                    [{ 'align': [] }],
+                    [{ 'color': [] }, { 'background': [] }],
+                    [{ 'script': 'sub'}, { 'script': 'super' }],
+                    ['blockquote', 'code-block'],
+                    [{ 'list': 'ordered' }, { 'list': 'bullet' }, { 'indent': '-1'}, { 'indent': '+1' }],
+                    ['link', 'image', 'video', 'formula'],
+                    ['clean'],
+                    [{ 'table': [] }]
+                ],
+                table: true, // Table support (native in Quill 2.x)
+                clipboard: {
+                    matchVisual: false
+                },
+                history: { delay: 2000, maxStack: 500, userOnly: true }
+            }
         });
     }
 
-    loadAndRender();
+    function setupImageDeletion() {
+        imagesContainer.addEventListener("click", (event) => {
+            if (event.target.classList.contains("remove-image")) {
+                const imageWrapper = event.target.closest(".image-wrapper");
+                const imageUrl = imageWrapper.querySelector("img").src;
+                fetch(`/admin/products/manage/${form.dataset.productId}/image/delete`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ imageUrl }),
+                })
+                    .then((res) => res.json())
+                    .then((result) => {
+                        if (result.message) {
+                            showNotification("Image supprimée avec succès.", "success");
+                            imageWrapper.remove();
+                        } else {
+                            showNotification("Erreur lors de la suppression de l'image.", "error");
+                        }
+                    })
+                    .catch((error) => console.error("Erreur lors de la suppression de l'image :", error));
+            }
+        });
+    }
 });
 </script>
 {% endblock %}
