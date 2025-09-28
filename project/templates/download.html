@@ -10,11 +10,22 @@
 
 {% block content %}
 <style>
-    /* CORRECTION : Style pour les boutons de téléchargement */
-    .download-links-container a.btn-primary {
-        text-decoration: none; /* Supprime le soulignement */
-        transition: all 0.2s ease-in-out;
+    /* Style pour les boutons de téléchargement */
+    .download-links-container {
+        display: flex;
+        flex-direction: column; /* Aligne les boutons verticalement sur mobile */
+        align-items: center;   /* Centre les boutons */
+        gap: 1rem;             /* Espace entre les boutons */
     }
+
+    .download-links-container a.btn-primary {
+        text-decoration: none;
+        transition: all 0.2s ease-in-out;
+        width: 90%; /* Occupe 90% de la largeur du conteneur */
+        max-width: 400px; /* Limite la largeur maximale sur grand écran */
+        box-sizing: border-box; /* Inclut padding et bordure dans la largeur */
+    }
+
     .download-links-container a.btn-primary:hover {
         transform: translateY(-3px);
         box-shadow: 0 0 15px var(--primary-dark);
