@@ -1571,38 +1571,45 @@ z-index: 10001;
     background: none;
     border: none;
     padding: 0;
-    font-size: 1.8em;
+    font-size: 1.8em; /* Fallback si SVG ne charge pas */
     color: #bdbdbd;
     cursor: pointer;
     transition: color 0.2s, transform 0.1s;
+    line-height: 1; /* Assure que les SVG s'alignent bien */
 }
-.star-btn:hover {
-    color: #FFD600;
+.star-btn svg {
+    width: 1.2em; /* Taille de l'étoile */
+    height: 1.2em;
+    fill: #bdbdbd; /* Couleur de l'étoile vide */
+    transition: fill 0.2s, transform 0.2s;
+}
+.star-btn:hover svg {
+    fill: #FFD600;
     transform: scale(1.15);
 }
-.star-btn.filled {
-    color: #FFD600;
-    text-shadow: 0 0 8px #FFD600;
+.star-btn.filled svg {
+    fill: #FFC107; /* Or plus riche pour les étoiles pleines */
+    filter: drop-shadow(0 0 4px #FFC107);
 }
 .product-rating.voted .star-btn {
     cursor: default;
 }
-.product-rating.voted .star-btn:hover {
+.product-rating.voted .star-btn:hover svg {
     transform: none;
 }
 .rating-summary {
     display: flex;
     align-items: baseline;
-    gap: 0.5em;
-    font-size: 1em;
+    gap: 0.4em;
+    font-size: 0.9em; /* Texte plus petit */
+    color: #81868a; /* Couleur plus discrète */
 }
 .rating-value {
     font-weight: bold;
     color: var(--primary-dark);
 }
 .review-count {
-    font-size: 0.9em;
-    color: #81868a;
+    font-size: 0.95em; /* Encore plus petit par rapport à la note */
 }
 
 
