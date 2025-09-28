@@ -2194,13 +2194,27 @@ def remind_all_abandoned_carts():
 
 @app.route('/api/marketing/clear-all', methods=['POST'])
 def clear_all_abandoned_carts():
-    """Supprime TOUS les paniers abandonnés de la base de données."""
+    """Supprime TOUS les paniers abandonnés et leurs liens de téléchargement associés."""
     if not session.get('admin_logged_in'):
         return jsonify({"status": "error", "message": "Non autorisé"}), 403
 
     try:
-        # Compte le nombre de lignes à supprimer
-        num_deleted = db.session.query(AbandonedCart).delete()
+        # Récupère tous les paniers à supprimer
+        carts_to_delete = AbandonedCart.query.all()
+        num_deleted = len(carts_to_delete)
+
+        if num_deleted == 0:
+            return jsonify({"status": "success", "message": "La liste est déjà vide."})
+
+        # Pour chaque panier, supprime d'abord les liens de téléchargement associés
+        for cart in carts_to_delete:
+            DownloadLink.query.filter_by(cart_id=cart.id).delete()
+
+        # Ensuite, supprime les paniers eux-mêmes
+        # Utiliser une boucle pour supprimer est plus sûr avec les relations complexes
+        for cart in carts_to_delete:
+            db.session.delete(cart)
+
         db.session.commit()
         
         message = f"{num_deleted} panier(s) abandonné(s) ont été supprimés."
@@ -2211,7 +2225,6 @@ def clear_all_abandoned_carts():
         db.session.rollback()
         logging.error(f"Erreur lors de la suppression de tous les paniers abandonnés : {e}")
         return jsonify({"status": "error", "message": "Une erreur serveur est survenue."}), 500
-
 
 # Clé secrète pour le cron job (gardez-la secrète)
 CRON_SECRET_KEY = os.environ.get('CRON_SECRET_KEY', 'une-cle-tres-secrete-par-defaut')
