@@ -30,8 +30,8 @@
         <input type="number" id="productPrice" name="price" placeholder="Prix" required>
 
         <!-- Ancien Prix -->
-        <label for="productOldPrice">Ancien Prix :</label>
-        <input type="number" id="productOldPrice" name="old_price" placeholder="Ancien prix">
+        <label for="productOldPrice">Ancien Prix (pour promo) :</label>
+        <input type="number" id="productOldPrice" name="old_price" placeholder="Ancien prix (ex: 10000)">
 
         <!-- Devise -->
         <label for="productCurrency">Devise :</label>
@@ -66,10 +66,6 @@
         <button type="button" id="addResourceFileIdBtn">+ Ajouter un File ID</button>
         <br>
 
-        <!-- Fichier de ressource -->
-        <!--<label for="productResourceFileId">Resource File ID :</label>
-        <input type="text" id="productResourceFileId" name="resource_file_id" placeholder="ID du fichier de ressource (facultatif)">-->
-
         <!-- Images -->
         <div class="custom-file-upload-container">
             <label for="productImages">Images :</label>
@@ -79,12 +75,12 @@
         </div>
 
         <div id="productImagesContainer" class="images-preview-container">
-            <!-- Les images pr�visualis�es s'afficheront ici -->
+            <!-- Les images prvisualises s'afficheront ici -->
         </div>
         <small>Les chemins des images seront automatiquement générés.</small>
 
         <!-- Gestion des badges -->
-        <label>Badges :</label>
+        <label>Badges (le badge "Promo" est automatique) :</label>
         <div id="productBadgesContainer"></div> <!-- Liste dynamique des badges -->
         <button type="button" id="addBadgeButton">Ajouter un Badge</button>
 
@@ -161,126 +157,144 @@
             reader.readAsDataURL(file);
         }
     
+        // CORRECTION : Fonction pour ajouter un badge avec une liste déroulante
         function addBadge() {
             const badgeDiv = document.createElement("div");
+            badgeDiv.className = "dynamic-form-row";
             badgeDiv.innerHTML = `
-                <label>Type :</label>
-                <input type="text" placeholder="Type">
-            <label>Contenu :</label>
-            <input type="text" placeholder="Contenu">
-            <button type="button" onclick="this.parentElement.remove()">Supprimer</button>
-        `;
-        badgesContainer.appendChild(badgeDiv);
-    }
-
-    function addFaq() {
-        const faqDiv = document.createElement("div");
-        faqDiv.innerHTML = `
-            <label>Question :</label>
-            <input type="text" placeholder="Question">
-            <label>Réponse :</label>
-            <textarea placeholder="Réponse"></textarea>
-            <button type="button" onclick="this.parentElement.remove()">Supprimer</button>
-        `;
-        faqContainer.appendChild(faqDiv);
-    }
-
-    const resourceFileIdsContainer = document.getElementById("resourceFileIdsContainer");
-    const addResourceFileIdBtn = document.getElementById("addResourceFileIdBtn");
-
-    addResourceFileIdBtn.addEventListener("click", () => {
-        const row = document.createElement("div");
-        row.className = "resource-file-id-row";
-        row.innerHTML = `
-            <input type="text" name="resource_file_id[]" placeholder="ID du fichier de ressource">
-            <button type="button" class="remove-file-id-btn">–</button>
-        `;
-        row.querySelector(".remove-file-id-btn").addEventListener("click", () => row.remove());
-        resourceFileIdsContainer.appendChild(row);
-        resourceFileIdsContainer.querySelectorAll(".remove-file-id-btn").forEach(btn => btn.style.display = "");
-    });
-
-    function handleFormSubmit(event) {
-        event.preventDefault();
-        const formData = new FormData();
-        formData.append("name", document.getElementById("productName").value);
-        formData.append("short_description", document.getElementById("productShortDescription").value);
-        formData.append("description", quill.root.innerHTML);
-        formData.append("price", document.getElementById("productPrice").value);
-        formData.append("old_price", document.getElementById("productOldPrice").value || "");
-        formData.append("currency", document.getElementById("productCurrency").value);
-        formData.append("stock", document.getElementById("productStock").value);
-        formData.append("sku", document.getElementById("productSku").value);
-        formData.append("category", document.getElementById("productCategory").value);
-        const fileIdInputs = document.querySelectorAll("input[name='resource_file_id[]']");
-        const resource_file_ids = Array.from(fileIdInputs)
-            .map(input => input.value.trim())
-            .filter(val => val !== "");
-        formData.append("resource_file_id", JSON.stringify(resource_file_ids));
-        formData.append("featured", document.getElementById("productFeatured").checked ? "true" : "false");
-
-        const files = imageInput.files;
-        for (const file of files) {
-            formData.append("images", file);
+                <div class="form-group">
+                    <label>Type de Badge :</label>
+                    <select class="badge-type-select">
+                        <option value="nouveau">Nouveau</option>
+                        <option value="populaire">Populaire</option>
+                        <option value="exclusif">Exclusif</option>
+                        <option value="info">Info</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Texte du Badge :</label>
+                    <input type="text" class="badge-text-input" placeholder="Ex: Version 2.0">
+                </div>
+                <button type="button" class="remove-row-btn" onclick="this.parentElement.remove()">Supprimer</button>
+            `;
+            badgesContainer.appendChild(badgeDiv);
         }
 
-        const badges = Array.from(badgesContainer.children).map((badgeDiv) => ({
-            type: badgeDiv.querySelector("input[placeholder='Type']").value,
-            text: badgeDiv.querySelector("input[placeholder='Contenu']").value,
-        }));
-        formData.append("badges", JSON.stringify(badges));
+        function addFaq() {
+            const faqDiv = document.createElement("div");
+            faqDiv.className = "dynamic-form-row";
+            faqDiv.innerHTML = `
+                <div class="form-group">
+                    <label>Question :</label>
+                    <input type="text" class="faq-question-input" placeholder="Question">
+                </div>
+                <div class="form-group">
+                    <label>Réponse :</label>
+                    <textarea class="faq-answer-input" placeholder="Réponse"></textarea>
+                </div>
+                <button type="button" class="remove-row-btn" onclick="this.parentElement.remove()">Supprimer</button>
+            `;
+            faqContainer.appendChild(faqDiv);
+        }
 
-        const faq = Array.from(faqContainer.children).map((faqDiv) => ({
-            question: faqDiv.querySelector("input[placeholder='Question']").value,
-            answer: faqDiv.querySelector("textarea").value,
-        }));
-        formData.append("faq", JSON.stringify(faq));
+        const resourceFileIdsContainer = document.getElementById("resourceFileIdsContainer");
+        const addResourceFileIdBtn = document.getElementById("addResourceFileIdBtn");
 
-        fetch("/admin/products/add", {
-            method: "POST",
-            body: formData,
-        })
-        .then(async (response) => {
-            let data;
-            try { data = await response.json(); } catch(e) { data = {}; }
-            if (response.ok) {
-                showNotification(data.message || "Produit ajouté avec succès !", "success");
-                form.reset();
-                imagesContainer.innerHTML = "";
-                selectedFilesSet.clear();
-            } else {
-                showNotification(data.error || "Erreur lors de l'ajout du produit.", "error");
-            }
-        })
-        .catch((error) => {
-            showNotification("Erreur réseau/serveur : " + error, "error");
+        addResourceFileIdBtn.addEventListener("click", () => {
+            const row = document.createElement("div");
+            row.className = "resource-file-id-row";
+            row.innerHTML = `
+                <input type="text" name="resource_file_id[]" placeholder="ID du fichier de ressource">
+                <button type="button" class="remove-file-id-btn">–</button>
+            `;
+            row.querySelector(".remove-file-id-btn").addEventListener("click", () => row.remove());
+            resourceFileIdsContainer.appendChild(row);
+            resourceFileIdsContainer.querySelectorAll(".remove-file-id-btn").forEach(btn => btn.style.display = "");
         });
-    }
+
+        function handleFormSubmit(event) {
+            event.preventDefault();
+            const formData = new FormData();
+            formData.append("name", document.getElementById("productName").value);
+            formData.append("short_description", document.getElementById("productShortDescription").value);
+            formData.append("description", quill.root.innerHTML);
+            formData.append("price", document.getElementById("productPrice").value);
+            formData.append("old_price", document.getElementById("productOldPrice").value || "");
+            formData.append("currency", document.getElementById("productCurrency").value);
+            formData.append("stock", document.getElementById("productStock").value);
+            formData.append("sku", document.getElementById("productSku").value);
+            formData.append("category", document.getElementById("productCategory").value);
+            const fileIdInputs = document.querySelectorAll("input[name='resource_file_id[]']");
+            const resource_file_ids = Array.from(fileIdInputs)
+                .map(input => input.value.trim())
+                .filter(val => val !== "");
+            formData.append("resource_file_id", JSON.stringify(resource_file_ids));
+            formData.append("featured", document.getElementById("productFeatured").checked ? "true" : "false");
+
+            const files = imageInput.files;
+            for (const file of files) {
+                formData.append("images", file);
+            }
+
+            // CORRECTION : Lire les données depuis les nouveaux champs de badge
+            const badges = Array.from(badgesContainer.children).map((badgeDiv) => ({
+                type: badgeDiv.querySelector(".badge-type-select").value,
+                text: badgeDiv.querySelector(".badge-text-input").value,
+            }));
+            formData.append("badges", JSON.stringify(badges));
+
+            const faqs = Array.from(faqContainer.children).map((faqDiv) => ({
+                question: faqDiv.querySelector(".faq-question-input").value,
+                answer: faqDiv.querySelector(".faq-answer-input").value,
+            }));
+            formData.append("faq", JSON.stringify(faqs));
+
+            fetch("/admin/products/add", {
+                method: "POST",
+                body: formData,
+            })
+            .then(async (response) => {
+                let data;
+                try { data = await response.json(); } catch(e) { data = {}; }
+                if (response.ok) {
+                    showNotification(data.message || "Produit ajouté avec succès !", "success");
+                    form.reset();
+                    quill.root.innerHTML = '';
+                    imagesContainer.innerHTML = "";
+                    badgesContainer.innerHTML = "";
+                    faqContainer.innerHTML = "";
+                    selectedFilesSet.clear();
+                } else {
+                    showNotification(data.error || "Erreur lors de l'ajout du produit.", "error");
+                }
+            })
+            .catch((error) => {
+                showNotification("Erreur réseau/serveur : " + error, "error");
+            });
+        }
     
-    function initializeRichTextEditor() {
-        quill = new Quill("#productDescriptionEditor", {
-            theme: "snow",
-            modules: {
-                toolbar: [
-                    [{ 'header': [1, 2, 3, false] }],
-                    ['bold', 'italic', 'underline', 'strike'],
-                    [{ 'align': [] }],
-                    [{ 'color': [] }, { 'background': [] }],
-                    [{ 'script': 'sub'}, { 'script': 'super' }],
-                    ['blockquote', 'code-block'],
-                    [{ 'list': 'ordered' }, { 'list': 'bullet' }, { 'indent': '-1'}, { 'indent': '+1' }],
-                    ['link', 'image', 'video', 'formula'],
-                    ['clean'],
-                    [{ 'table': [] }]
-                ],
-                table: true, // Table support (native in Quill 2.x)
-                clipboard: {
-                    matchVisual: false
-                },
-                history: { delay: 2000, maxStack: 500, userOnly: true }
-            }
-        });
-    }
-});
-</script>
+        function initializeRichTextEditor() {
+            quill = new Quill("#productDescriptionEditor", {
+                theme: "snow",
+                modules: {
+                    toolbar: [
+                        [{ 'header': [1, 2, 3, false] }],
+                        ['bold', 'italic', 'underline', 'strike'],
+                        [{ 'align': [] }],
+                        [{ 'color': [] }, { 'background': [] }],
+                        [{ 'script': 'sub'}, { 'script': 'super' }],
+                        ['blockquote', 'code-block'],
+                        [{ 'list': 'ordered' }, { 'list': 'bullet' }, { 'indent': '-1'}, { 'indent': '+1' }],
+                        ['link', 'image', 'video', 'formula'],
+                        ['clean'],
+                        [{ 'table': [] }]
+                    ],
+                    table: true,
+                    clipboard: { matchVisual: false },
+                    history: { delay: 2000, maxStack: 500, userOnly: true }
+                }
+            });
+        }
+    });
+    </script>
 {% endblock %}
