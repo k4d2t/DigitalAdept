@@ -1556,7 +1556,7 @@ z-index: 10001;
     max-width: 500px;
 }
 
-/* --- NOUVEAU : Système de notation esthétique --- */
+/* --- CORRIGÉ : Système de notation esthétique --- */
 .product-rating {
     display: flex;
     align-items: center;
@@ -1612,6 +1612,7 @@ z-index: 10001;
 .review-count {
     font-size: 0.95em;
 }
+
 
 /* --- CORRIGÉ : Section des badges sur la page produit --- */
 .product-badges-detailed {
