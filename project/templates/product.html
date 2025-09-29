@@ -92,7 +92,7 @@
 
       <h1 class="product-title">{{ produit.name }}</h1>
         
-        <!-- NOUVEAU : Système de notation avec étoiles SVG améliorées -->
+        <!-- CORRIGÉ : Système de notation avec étoiles SVG esthétiques -->
         <div id="product-rating-interactive" class="product-rating" data-product-id="{{ produit.id }}" data-initial-rating="{{ rating|default(0) }}" data-initial-reviews="{{ reviews_count|default(0) }}">
             <div class="stars-interactive">
                 {% for i in range(1, 6) %}
@@ -324,7 +324,7 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // --- SCRIPT FAQ PRODUIT (LOCAL) ---
+    // --- SCRIPT FAQ PRODUIT (LOCAL ET CORRIGÉ) ---
     document.querySelectorAll(".product-faq-question").forEach(questionButton => {
         questionButton.addEventListener("click", () => {
             const faqItem = questionButton.closest('.product-faq-item');
