@@ -712,42 +712,39 @@ z-index: 1000;
     }
 }
 
-/* --- CORRIGÉ : Conteneur de badges HORIZONTAL --- */
+/* --- CORRECTION FINALE : Conteneur de badges horizontal et superposé --- */
 .product-badges-container {
     position: absolute;
-    top: 0.8em;
-    left: 0.8em;
-    right: 0.8em; /* S'étend sur toute la largeur */
+    top: 1.5em; /* Un peu plus bas pour ne pas toucher le bord */
+    left: 1.5em;
+    right: 1.5em;
     display: flex;
-    flex-direction: row; /* Aligne les badges horizontalement */
-    justify-content: flex-start; /* Commence par la gauche */
-    flex-wrap: wrap; /* Passe à la ligne si pas assez de place */
-    gap: 0.5em;
+    flex-direction: row;
+    flex-wrap: wrap; /* Permet le passage à la ligne */
+    align-items: center; /* Centre les badges verticalement s'ils sont sur plusieurs lignes */
+    gap: 0.6em;
     z-index: 2;
     pointer-events: none;
 }
 
 .product-badge {
     color: #fff;
-    font-size: 0.9em;
+    font-size: 0.85em; /* Légèrement plus petit pour mieux s'intégrer */
     font-weight: 700;
-    padding: 0.3em 0.9em;
+    padding: 0.3em 0.8em;
     border-radius: 1em;
     box-shadow: 0 1px 6px #0003;
     letter-spacing: 0.02em;
     white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    max-width: 100%;
-    box-sizing: border-box; /* Important pour que le padding soit inclus dans la largeur */
-    width: fit-content; /* S'ajuste au contenu */
 }
 
-/* --- CORRIGÉ : Couleurs spécifiques pour chaque type de badge --- */
+/* --- CORRECTION FINALE : Positionnement du badge promo --- */
 .product-badge.badge-promo {
     background-color: var(--badge-promo-bg);
-    margin-left: auto; /* Le badge promo va à droite */
+    order: -1; /* Place toujours le badge promo en premier */
+    margin-right: auto; /* Pousse les autres badges vers la droite */
 }
+
 .product-badge.badge-nouveau {
     background-color: var(--badge-nouveau-bg);
 }
@@ -760,6 +757,7 @@ z-index: 1000;
 .product-badge.badge-info {
     background-color: var(--badge-info-bg);
 }
+
 
 .product-info {
     flex: 1;
