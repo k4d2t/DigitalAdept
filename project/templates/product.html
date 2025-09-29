@@ -3,6 +3,24 @@
 {% block content %}
 
 <section class="product-page">
+  <!-- Définitions SVG pour les dégradés des étoiles -->
+  <svg width="0" height="0" style="position:absolute;">
+    <defs>
+      <linearGradient id="star-filled" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" style="stop-color:#FFD700;" />
+        <stop offset="100%" style="stop-color:#FFA000;" />
+      </linearGradient>
+      <linearGradient id="star-hover" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" style="stop-color:#FFF176;" />
+        <stop offset="100%" style="stop-color:#FFD54F;" />
+      </linearGradient>
+      <linearGradient id="star-empty" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" style="stop-color:rgba(255, 255, 255, 0.1);" />
+        <stop offset="100%" style="stop-color:rgba(255, 255, 255, 0.0);" />
+      </linearGradient>
+    </defs>
+  </svg>
+
   <!-- Barre du panier -->
   <div id="cart-bar" class="hidden">
       <div id="cart-header">
@@ -92,12 +110,14 @@
 
       <h1 class="product-title">{{ produit.name }}</h1>
         
-        <!-- NOUVEAU : Système de notation dynamique avec SVG -->
+        <!-- NOUVEAU : Système de notation avec étoiles SVG améliorées -->
         <div id="product-rating-interactive" class="product-rating" data-product-id="{{ produit.id }}" data-initial-rating="{{ rating|default(0) }}" data-initial-reviews="{{ reviews_count|default(0) }}">
             <div class="stars-interactive">
                 {% for i in range(1, 6) %}
                     <button class="star-btn" data-value="{{ i }}" aria-label="Noter {{ i }} sur 5">
-                        <svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                        <svg viewBox="0 0 24 24">
+                            <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
+                        </svg>
                     </button>
                 {% endfor %}
             </div>
@@ -168,15 +188,15 @@
     </div>
   </div>
 
-  <!-- FAQ Section -->
+  <!-- FAQ Section - CORRIGÉ -->
   {% if produit.faqs and produit.faqs|length > 0 %}
   <div class="product-faq">
-    <h2>FAQ</h2>
-    <div class="faq-container">
+    <h2>Questions Fréquentes</h2>
+    <div class="product-faq-container">
       {% for faq in produit.faqs %}
-      <div class="faq-item">
-        <button class="faq-question">{{ faq.question }}</button>
-        <div class="faq-answer">{{ faq.answer }}</div>
+      <div class="product-faq-item">
+        <button class="product-faq-question">{{ faq.question }}</button>
+        <div class="product-faq-answer">{{ faq.answer }}</div>
       </div>
       {% endfor %}
     </div>
@@ -322,6 +342,15 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // --- SCRIPT FAQ PRODUIT (LOCAL) ---
+    document.querySelectorAll(".product-faq-question").forEach(questionButton => {
+        questionButton.addEventListener("click", () => {
+            const faqItem = questionButton.closest('.product-faq-item');
+            faqItem.classList.toggle("open");
+        });
+    });
+
+    // --- SCRIPT NOTATION PRODUIT (LOCAL) ---
     const ratingContainer = document.getElementById('product-rating-interactive');
     if (!ratingContainer) return;
 
@@ -329,7 +358,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const ratingValueEl = ratingContainer.querySelector('.rating-value');
     const reviewCountEl = ratingContainer.querySelector('.review-count');
     const productId = ratingContainer.dataset.productId;
-    let initialRating = parseFloat(ratingContainer.dataset.initialRating); // Rendre modifiable
+    let initialRating = parseFloat(ratingContainer.dataset.initialRating);
     let hasVoted = localStorage.getItem('voted_' + productId);
 
     function updateStars(rating) {
@@ -359,7 +388,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
         star.addEventListener('mouseout', () => {
             if (hasVoted) return;
-            // Retourne à l'état de la note actuelle (arrondie)
             updateStars(Math.round(initialRating));
         });
 
@@ -375,7 +403,7 @@ document.addEventListener('DOMContentLoaded', function() {
             .then(response => response.json())
             .then(data => {
                 if (data.average_rating !== undefined) {
-                    initialRating = data.average_rating; // Mettre à jour la note de référence
+                    initialRating = data.average_rating;
                     ratingValueEl.textContent = `${data.average_rating.toFixed(1)}/5`;
                     reviewCountEl.textContent = `– ${data.reviews_count} avis`;
                     updateStars(Math.round(data.average_rating));
