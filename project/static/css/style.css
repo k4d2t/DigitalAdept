@@ -1556,7 +1556,7 @@ z-index: 10001;
     max-width: 500px;
 }
 
-/* --- NOUVEAU : Système de notation interactif --- */
+/* --- NOUVEAU : Système de notation esthétique --- */
 .product-rating {
     display: flex;
     align-items: center;
@@ -1565,39 +1565,38 @@ z-index: 10001;
 }
 .stars-interactive {
     display: flex;
-    gap: 0.2em; /* Léger espace entre les étoiles */
+    gap: 0.2em;
 }
 .star-btn {
     background: none;
     border: none;
     padding: 0;
-    color: #bdbdbd;
     cursor: pointer;
-    transition: color 0.2s, transform 0.1s;
     line-height: 1;
 }
 .star-btn svg {
-    width: 1.5em; /* Taille des étoiles augmentée */
-    height: 1.5em;
-    fill: url(#star-empty); /* Dégradé pour l'étoile vide */
+    width: 1.8em; /* Taille des étoiles augmentée */
+    height: 1.8em;
+    fill: transparent; /* Étoile vide transparente */
     stroke: #FFD700; /* Contour doré */
-    stroke-width: 1.2;
-    transition: fill 0.2s, transform 0.2s;
+    stroke-width: 1.5;
+    transition: all 0.2s cubic-bezier(.4,2.3,.3,1);
 }
 .star-btn:hover svg {
-    transform: scale(1.15);
-    fill: url(#star-hover); /* Dégradé au survol */
+    transform: scale(1.2);
+    fill: #FFD700;
+    filter: drop-shadow(0 0 8px #FFD700);
 }
 .star-btn.filled svg {
-    fill: url(#star-filled); /* Dégradé pour l'étoile pleine */
-    stroke: #FFC107; /* Contour plus riche */
-    filter: drop-shadow(0 0 5px #FFD700aa);
+    fill: #FFD700; /* Remplissage doré pour l'étoile pleine */
+    stroke: #FFC107;
 }
 .product-rating.voted .star-btn {
     cursor: default;
 }
 .product-rating.voted .star-btn:hover svg {
     transform: none;
+    filter: none;
 }
 .rating-summary {
     display: flex;
@@ -1611,9 +1610,8 @@ z-index: 10001;
     color: var(--primary-dark);
 }
 .review-count {
-    font-size: 0.95em; /* Encore plus petit par rapport à la note */
+    font-size: 0.95em;
 }
-
 
 /* --- CORRIGÉ : Section des badges sur la page produit --- */
 .product-badges-detailed {
