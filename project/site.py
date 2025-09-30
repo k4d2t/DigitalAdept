@@ -2348,16 +2348,16 @@ def admin_suivi():
     elif user.revenue_share_percentage > 0:
         user_revenue = total_revenue * (user.revenue_share_percentage / 100.0)
 
-    # Données pour le graphique (par exemple, CA par mois)
+    # CORRECTION : On utilise `to_char` pour PostgreSQL au lieu de `strftime`
     revenue_by_month = db.session.query(
-        db.func.strftime('%Y-%m', AbandonedCart.created_at),
+        db.func.to_char(AbandonedCart.created_at, 'YYYY-MM'),
         db.func.sum(AbandonedCart.total_price)
     ).filter(
         AbandonedCart.status == 'completed'
     ).group_by(
-        db.func.strftime('%Y-%m', AbandonedCart.created_at)
+        db.func.to_char(AbandonedCart.created_at, 'YYYY-MM')
     ).order_by(
-        db.func.strftime('%Y-%m', AbandonedCart.created_at)
+        db.func.to_char(AbandonedCart.created_at, 'YYYY-MM')
     ).all()
 
     chart_labels = [row[0] for row in revenue_by_month]
