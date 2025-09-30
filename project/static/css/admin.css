@@ -2339,3 +2339,58 @@ color: var(--text);
     max-height: 100%;
     border-radius: 8px;
 }
+
+
+/* --- Harmonisation supplémentaire du select de filtre --- */
+.filter-controls select {
+  background-image:
+    url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" fill="%234fc3f7" viewBox="0 0 24 24"><path d="M7 10l5 5 5-5z"/></svg>');
+  background-repeat: no-repeat;
+  background-position: right 0.9em center;
+  background-size: 1.1em;
+  padding-right: 2.6em;
+}
+
+/* --- Chart: éviter tout dépassement visuel --- */
+.chart-container {
+  position: relative;
+  overflow: hidden;     /* coupe tout dépassement */
+  contain: paint;       /* isole le rendu du canvas */
+  padding-bottom: 1.2em;
+  border-radius: 12px;
+}
+
+.chart-container canvas {
+  display: block;
+  width: 100% !important;
+  height: 320px !important;  /* hauteur visible maîtrisée */
+  max-height: 100%;
+  border-radius: 8px;
+}
+
+/* --- Fallback: appliquer le style du tableau même si on n'a pas .users-page --- */
+.settings-page table {
+  border-collapse: collapse;
+  margin-bottom: 2rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  width: 100%;
+}
+
+.settings-page table th,
+.settings-page table td {
+  padding: 1rem;
+  text-align: center;
+  border: 1px solid var(--contact-input-border, #e4e8f0);
+  white-space: nowrap;
+}
+
+.settings-page table th {
+  background: var(--primary-dark, #1976d2);
+  color: #fff;
+  font-weight: bold;
+}
+
+.settings-page table td {
+  background: var(--contact-card-bg, #fff);
+  color: var(--text, #142439);
+}
