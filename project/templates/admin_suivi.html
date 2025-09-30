@@ -1,41 +1,56 @@
 {% extends "admin_base.html" %}
 
-{% block admin_title %}
-    Suivi du Chiffre d'Affaires
-{% endblock %}
+{% block admin_title %}Suivi du Chiffre d'Affaires{% endblock %}
 
 {% block admin_content %}
 <div class="suivi-page">
     <nav class="admin-nav">
-        <a href="{{ url_for('admin_dashboard') }}" id="retour">Retour</a>
+        <a href="{{ url_for('admin_dashboard') }}">← Retour au tableau de bord</a>
     </nav>
     <h1>Suivi du Chiffre d'Affaires</h1>
 
-    <div class="suivi-kpis">
-        <div class="kpi-card">
-            <div class="kpi-title">
-                {% if role == 'super_admin' %}
-                    CA Total Réel
-                {% else %}
-                    Votre Part du CA
-                {% endif %}
+    <!-- FORMULAIRE DE FILTRE DE PÉRIODE -->
+    <div class="filter-form-container">
+        <form id="period-filter-form" method="GET" action="{{ url_for('admin_suivi') }}">
+            <div class="filter-controls">
+                <select name="period" id="period-select">
+                    <option value="today" {% if selected_period == 'today' %}selected{% endif %}>Aujourd'hui</option>
+                    <option value="last_7_days" {% if selected_period == 'last_7_days' %}selected{% endif %}>7 derniers jours</option>
+                    <option value="last_30_days" {% if selected_period == 'last_30_days' %}selected{% endif %}>30 derniers jours</option>
+                    <option value="this_month" {% if selected_period == 'this_month' %}selected{% endif %}>Ce mois-ci</option>
+                    <option value="last_month" {% if selected_period == 'last_month' %}selected{% endif %}>Mois dernier</option>
+                    <option value="custom" {% if selected_period == 'custom' %}selected{% endif %}>Période personnalisée</option>
+                </select>
+
+                <div id="custom-date-range" class="custom-date-controls" {% if selected_period != 'custom' %}style="display: none;"{% endif %}>
+                    <input type="date" name="start_date" value="{{ start_date }}">
+                    <span>à</span>
+                    <input type="date" name="end_date" value="{{ end_date }}">
+                </div>
+
+                <button type="submit" class="cta-button filter-btn">Appliquer</button>
             </div>
-            <div class="kpi-value">{{ "%.2f"|format(user_revenue) }} XOF</div>
-            {% if role != 'super_admin' %}
-                <div class="kpi-detail">Calculé sur {{ user_percentage }}% du CA total</div>
-            {% endif %}
-        </div>
-        {% if role == 'super_admin' %}
-        <div class="kpi-card">
-            <div class="kpi-title">CA Total Brut</div>
-            <div class="kpi-value">{{ "%.2f"|format(total_revenue) }} XOF</div>
-            <div class="kpi-detail">Basé sur tous les paiements confirmés</div>
-        </div>
-        {% endif %}
+        </form>
     </div>
 
+    <!-- Indicateurs Clés (KPIs) -->
+    <div class="suivi-kpis">
+        <div class="kpi-card">
+            <div class="kpi-title">CA Total (période)</div>
+            <div class="kpi-value">{{ "%.0f"|format(total_revenue) }} XOF</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-title">Votre Commission</div>
+            <div class="kpi-value">{{ "%.0f"|format(user_revenue) }} XOF</div>
+            {% if role != 'super_admin' %}
+                <div class="kpi-detail">({{ user_percentage }}% du CA)</div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Graphique -->
     <div class="chart-container">
-        <h2>Évolution du CA par Mois</h2>
+        <h2>Évolution du Chiffre d'Affaires</h2>
         <canvas id="revenueChart"></canvas>
     </div>
 </div>
@@ -44,20 +59,34 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // --- Logique pour le formulaire de filtre ---
+    const periodSelect = document.getElementById('period-select');
+    const customDateRange = document.getElementById('custom-date-range');
+
+    periodSelect.addEventListener('change', function() {
+        if (this.value === 'custom') {
+            customDateRange.style.display = 'flex';
+        } else {
+            customDateRange.style.display = 'none';
+        }
+    });
+
+    // --- Configuration du graphique ---
     const ctx = document.getElementById('revenueChart').getContext('2d');
-    
-    // Gradient pour le fond du graphique
+    const chartLabels = {{ chart_labels|tojson|safe }};
+    const chartData = {{ chart_data|tojson|safe }};
+
     const gradient = ctx.createLinearGradient(0, 0, 0, 400);
     gradient.addColorStop(0, 'rgba(79, 195, 247, 0.6)');
     gradient.addColorStop(1, 'rgba(25, 118, 210, 0.1)');
 
-    const revenueChart = new Chart(ctx, {
+    new Chart(ctx, {
         type: 'line',
         data: {
-            labels: {{ chart_labels|tojson }},
+            labels: chartLabels,
             datasets: [{
                 label: 'Chiffre d\'Affaires (XOF)',
-                data: {{ chart_data|tojson }},
+                data: chartData,
                 backgroundColor: gradient,
                 borderColor: '#4FC3F7',
                 borderWidth: 3,
@@ -65,7 +94,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 pointBorderColor: '#1976D2',
                 pointHoverBackgroundColor: '#1976D2',
                 pointHoverBorderColor: '#fff',
-                tension: 0.4, // Lignes courbes
+                tension: 0.4,
                 fill: true
             }]
         },
@@ -75,26 +104,16 @@ document.addEventListener('DOMContentLoaded', function() {
             scales: {
                 y: {
                     beginAtZero: true,
-                    ticks: {
-                        color: '#E8F1FA'
-                    },
-                    grid: {
-                        color: 'rgba(255, 255, 255, 0.1)'
-                    }
+                    ticks: { color: '#E8F1FA' },
+                    grid: { color: 'rgba(255, 255, 255, 0.1)' }
                 },
                 x: {
-                    ticks: {
-                        color: '#E8F1FA'
-                    },
-                    grid: {
-                        display: false
-                    }
+                    ticks: { color: '#E8F1FA' },
+                    grid: { display: false }
                 }
             },
             plugins: {
-                legend: {
-                    display: false
-                }
+                legend: { display: false }
             }
         }
     });
