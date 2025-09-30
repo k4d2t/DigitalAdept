@@ -1160,7 +1160,7 @@ def admin_login():
         if user and user.password.startswith('$2b$') and bcrypt.checkpw(password.encode('utf-8'), user.password.encode('utf-8')):
             session['admin_logged_in'] = True
             session['username'] = user.username
-            session['role'] = user.role
+            session['role'] = user.role.name
             flash("Connexion réussie !", "success")
             return redirect(url_for('admin_dashboard'))
         flash("Identifiants invalides. Réessayez.", "error")
