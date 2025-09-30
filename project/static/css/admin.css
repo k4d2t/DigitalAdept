@@ -2229,24 +2229,53 @@ color: var(--text);
 }
 
 
-/* ... à la fin de votre fichier CSS ... */
-
-/* --- RESPONSIVITÉ SIMPLE POUR LES TABLEAUX ADMIN --- */
-/*
-  Ce conteneur permet au tableau de défiler horizontalement sur les petits écrans
-  sans altérer son style visuel (couleurs, bordures, etc.).
-*/
-.table-responsive-wrapper {
-    overflow-x: auto;      /* Active le défilement horizontal si le contenu dépasse */
-    -webkit-overflow-scrolling: touch; /* Améliore le défilement sur iOS */
-    border: 1px solid #3a8aff33; /* Une bordure discrète autour de la zone de défilement */
-    border-radius: 8px;
+/* --- FORMULAIRE DE FILTRE DE PÉRIODE (PAGE SUIVI) --- */
+.filter-form-container {
+    background: var(--admin-card-bg);
+    padding: 1em 1.5em;
+    border-radius: 12px;
     margin-bottom: 2em;
+    border: 1px solid var(--admin-border);
 }
 
-/* On s'assure que le tableau à l'intérieur ne soit pas forcé à 100% de largeur,
-   ce qui lui permet de déborder et de devenir scrollable. */
-.table-responsive-wrapper table {
-    min-width: 600px; /* Force une largeur minimale pour déclencher le scroll sur mobile */
-    width: 100%;
+.filter-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1em;
 }
+
+.filter-controls select,
+.filter-controls input[type="date"] {
+    padding: 0.7em;
+    border-radius: 6px;
+    border: 1px solid var(--admin-border);
+    background: var(--admin-bg);
+    color: var(--admin-text);
+    font-size: 1em;
+    font-family: inherit;
+}
+
+.custom-date-controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5em;
+}
+
+.filter-btn {
+    padding: 0.7em 1.5em;
+    font-size: 1em;
+    margin-left: auto; /* Pousse le bouton "Appliquer" à droite */
+}
+
+@media (max-width: 768px) {
+    .filter-controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .filter-btn {
+        margin-left: 0;
+        width: 100%;
+    }
+}
+
