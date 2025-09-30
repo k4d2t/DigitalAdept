@@ -2509,63 +2509,56 @@ def admin_settings_roles():
         flash("Accès non autorisé.", "error")
         return redirect(url_for('admin_dashboard'))
 
-    # On identifie la tuile "Suivi" (verrouillée pour tous)
+    # Tuile "Suivi" (verrouillée pour tous)
     suivi_tile = Tile.query.filter(
         (Tile.endpoint == 'admin_suivi') | (Tile.name == 'Suivi')
     ).first()
 
     if request.method == 'POST':
-        # CAS 1 : Création d'un rôle
+        # Création d'un rôle
         role_name = request.form.get('role_name')
         if role_name:
             if not Role.query.filter_by(name=role_name).first():
                 new_role = Role(name=role_name)
                 db.session.add(new_role)
                 db.session.commit()
-                # Assigner "Suivi" automatiquement et définitivement
+                # Forcer "Suivi" pour ce rôle
                 if suivi_tile:
-                    # dynamique ou non: append fonctionne
-                    new_role.tiles.append(suivi_tile)
-                    db.session.commit()
+                    try:
+                        new_role.tiles.append(suivi_tile)
+                        db.session.commit()
+                    except Exception:
+                        db.session.rollback()
                 flash(f"Le rôle '{role_name}' a été créé.", "success")
             else:
                 flash("Ce nom de rôle existe déjà.", "error")
             return redirect(url_for('admin_settings_roles'))
 
-        # CAS 2 : Mise à jour des permissions
-        # Format attendu: permissions = ['role_<roleid>_<tileid>', ...]
+        # Mise à jour des permissions
         permissions = request.form.getlist('permissions')
-
-        # Récupérer TOUS les rôles
         all_roles = Role.query.all()
 
         for role in all_roles:
-            # Super admin: on peut choisir de tout laisser, mais on force aussi "Suivi"
-            # Pour éviter l'erreur 500 avec lazy='dynamic', on gère append/remove
-            # 1) enlever toutes les tuiles sauf "Suivi"
-            if hasattr(role.tiles, 'all'):
+            # 1) retirer toutes les tuiles sauf "Suivi"
+            try:
                 current_tiles = role.tiles.all()
-            else:
+            except Exception:
                 current_tiles = list(role.tiles)
-
             for t in list(current_tiles):
-                if (not suivi_tile) or (t.id != suivi_tile.id):
-                    # Retire chaque tuile sauf "Suivi"
+                if not (suivi_tile and t.id == suivi_tile.id):
                     try:
                         role.tiles.remove(t)
                     except Exception:
                         pass
 
-            # 2) réassigner selon le formulaire (en ignorant "Suivi", qui est forcée)
+            # 2) réassigner selon le formulaire (en ignorant "Suivi" qui est forcée)
             for perm_string in permissions:
-                # 'role_3_5' => role 3, tile 5
                 if perm_string.startswith(f'role_{role.id}_'):
                     try:
                         tile_id = int(perm_string.split('_')[2])
                     except Exception:
                         continue
                     if suivi_tile and tile_id == suivi_tile.id:
-                        # ignoré: "Suivi" est gérée par le back (toujours présente)
                         continue
                     tile_to_add = Tile.query.get(tile_id)
                     if tile_to_add:
@@ -2574,13 +2567,11 @@ def admin_settings_roles():
                         except Exception:
                             pass
 
-            # 3) forcer "Suivi" pour TOUS les rôles (verrouillé)
+            # 3) forcer "Suivi" présent pour tous
             if suivi_tile:
-                # Tester la présence
-                present = False
-                if hasattr(role.tiles, 'all'):
-                    present = any(t.id == suivi_tile.id for t in role.tiles.all())
-                else:
+                try:
+                    present = any(t.id == suivi_tile.id for t in (role.tiles.all() if hasattr(role.tiles, 'all') else role.tiles))
+                except Exception:
                     present = any(t.id == suivi_tile.id for t in role.tiles)
                 if not present:
                     role.tiles.append(suivi_tile)
@@ -2589,10 +2580,25 @@ def admin_settings_roles():
         flash("Permissions mises à jour avec succès.", "success")
         return redirect(url_for('admin_settings_roles'))
 
+    # GET: on prépare un mapping rôle -> set(tile_ids) pour éviter hasattr dans Jinja
     roles = Role.query.order_by(Role.id).all()
     tiles = Tile.query.order_by(Tile.id).all()
+    role_tiles_map = {}
+    for r in roles:
+        try:
+            tile_ids = {t.id for t in r.tiles.all()}
+        except Exception:
+            tile_ids = {t.id for t in r.tiles}
+        role_tiles_map[r.id] = tile_ids
+
     suivi_tile_id = suivi_tile.id if suivi_tile else None
-    return render_template('admin_settings_roles.html', roles=roles, tiles=tiles, suivi_tile_id=suivi_tile_id)
+    return render_template(
+        'admin_settings_roles.html',
+        roles=roles,
+        tiles=tiles,
+        suivi_tile_id=suivi_tile_id,
+        role_tiles_map=role_tiles_map
+    )
 
 
 # --- NOUVELLE ROUTE POUR SUPPRIMER UN RÔLE ---
