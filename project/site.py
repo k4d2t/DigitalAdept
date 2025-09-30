@@ -1220,24 +1220,25 @@ def admin_dashboard():
         flash("Veuillez vous connecter.", "error")
         return redirect(url_for('admin_login'))
 
-    # CORRECTION : On charge l'utilisateur et son rôle, mais SANS le chargement anticipé des tuiles qui cause l'erreur.
-    # Les tuiles seront chargées automatiquement par SQLAlchemy lorsque le template en aura besoin.
     user = User.query.options(
         joinedload(User.role)
     ).filter_by(username=session.get('username')).first()
 
-    # Si l'utilisateur est introuvable, on déconnecte.
     if not user:
         session.clear()
         flash("Session invalide, veuillez vous reconnecter.", "error")
         return redirect(url_for('admin_login'))
 
-    # On récupère les tuiles associées au rôle de l'utilisateur.
-    user_tiles = user.role.tiles if user.role else []
-    
+    # Récupère les tuiles du rôle de manière robuste (lazy list ou dynamic query)
+    if user.role:
+        try:
+            user_tiles = user.role.tiles.all()  # si lazy='dynamic'
+        except Exception:
+            user_tiles = list(user.role.tiles)  # si collection classique
+    else:
+        user_tiles = []
+
     log_action("access_dashboard", {"role": session.get('role')})
-    
-    # On passe la liste de tuiles au template.
     return render_template('admin_dashboard.html', user_tiles=user_tiles)
 
 @app.route('/k4d3t/settings', methods=['GET'])
@@ -2541,9 +2542,9 @@ def admin_settings_roles():
         for role in all_roles:
             # 1) retirer toutes les tuiles sauf "Suivi"
             try:
-                current_tiles = role.tiles.all()
+                current_tiles = role.tiles.all()  # lazy='dynamic'
             except Exception:
-                current_tiles = list(role.tiles)
+                current_tiles = list(role.tiles)  # collection classique
             for t in list(current_tiles):
                 if not (suivi_tile and t.id == suivi_tile.id):
                     try:
@@ -2570,7 +2571,7 @@ def admin_settings_roles():
             # 3) forcer "Suivi" présent pour tous
             if suivi_tile:
                 try:
-                    present = any(t.id == suivi_tile.id for t in (role.tiles.all() if hasattr(role.tiles, 'all') else role.tiles))
+                    present = any(t.id == suivi_tile.id for t in role.tiles.all())
                 except Exception:
                     present = any(t.id == suivi_tile.id for t in role.tiles)
                 if not present:
@@ -2580,15 +2581,30 @@ def admin_settings_roles():
         flash("Permissions mises à jour avec succès.", "success")
         return redirect(url_for('admin_settings_roles'))
 
-    # GET: on prépare un mapping rôle -> set(tile_ids) pour éviter hasattr dans Jinja
+    # GET: on force "Suivi" pour tous les rôles existants (auto-réparation)
     roles = Role.query.order_by(Role.id).all()
+    if suivi_tile:
+        changed = False
+        for r in roles:
+            try:
+                present = any(t.id == suivi_tile.id for t in r.tiles.all())
+            except Exception:
+                present = any(t.id == suivi_tile.id for t in r.tiles)
+            if not present:
+                r.tiles.append(suivi_tile)
+                changed = True
+        if changed:
+            db.session.commit()
+
     tiles = Tile.query.order_by(Tile.id).all()
+
+    # mapping rôle -> liste d'IDs de tuiles (pas de set() dans Jinja)
     role_tiles_map = {}
     for r in roles:
         try:
-            tile_ids = {t.id for t in r.tiles.all()}
+            tile_ids = [t.id for t in r.tiles.all()]
         except Exception:
-            tile_ids = {t.id for t in r.tiles}
+            tile_ids = [t.id for t in r.tiles]
         role_tiles_map[r.id] = tile_ids
 
     suivi_tile_id = suivi_tile.id if suivi_tile else None
