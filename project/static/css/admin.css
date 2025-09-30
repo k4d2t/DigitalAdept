@@ -2394,3 +2394,16 @@ color: var(--text);
   background: var(--contact-card-bg, #fff);
   color: var(--text, #142439);
 }
+
+
+/* Ajouts mineurs pour l'inline edit utilisateurs */
+.actions-column .action-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 4px 6px;
+  font-size: 16px;
+}
+.actions-column .action-btn:hover {
+  opacity: 0.9;
+}
