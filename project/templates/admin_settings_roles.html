@@ -9,7 +9,6 @@
     <h1>Rôles & Permissions</h1>
 
     <div class="roles-grid">
-        <!-- Création d'un rôle -->
         <div class="role-card">
             <h2>Créer un rôle</h2>
             <form class="form-role" method="POST" action="{{ url_for('admin_settings_roles') }}">
@@ -21,7 +20,6 @@
             <p style="margin-top:1em;color:#9ec;">Note: La tuile "Suivi" est toujours autorisée et verrouillée pour tous.</p>
         </div>
 
-        <!-- Permissions -->
         <div class="permissions-card">
             <h2>Permissions par rôle</h2>
             <form method="POST" action="{{ url_for('admin_settings_roles') }}">
@@ -39,10 +37,9 @@
                         <tr>
                             <td><strong>{{ role.name }}</strong></td>
                             {% for tile in tiles %}
-                                {% set is_checked = tile.id in (role_tiles_map.get(role.id) or set()) %}
+                                {% set is_checked = tile.id in (role_tiles_map.get(role.id) or []) %}
                                 <td class="checkbox-cell">
                                     {% if suivi_tile_id and tile.id == suivi_tile_id %}
-                                        <!-- Tuile Suivi: toujours cochée et inmodifiable -->
                                         <input type="checkbox" id="cb_{{ role.id }}_{{ tile.id }}" checked disabled>
                                         <label for="cb_{{ role.id }}_{{ tile.id }}"></label>
                                     {% else %}
@@ -67,7 +64,6 @@
             </form>
         </div>
 
-        <!-- Liste rôles -->
         <div class="roles-list-card">
             <h2>Rôles existants</h2>
             <ul>
