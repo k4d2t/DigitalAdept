@@ -2228,14 +2228,16 @@ color: var(--text);
     font-weight: bold;
 }
 
+/* ... à la fin de votre fichier admin.css ... */
 
-/* --- FORMULAIRE DE FILTRE DE PÉRIODE (PAGE SUIVI) --- */
-.filter-form-container {
-    background: var(--admin-card-bg);
-    padding: 1em 1.5em;
+/* --- NOUVEAU STYLE POUR LE FILTRE DE LA PAGE SUIVI --- */
+.filter-card {
+    background: rgba(31, 53, 90, 0.9);
     border-radius: 12px;
-    margin-bottom: 2em;
-    border: 1px solid var(--admin-border);
+    padding: 1em 1.5em;
+    border: 1.5px solid var(--primary-dark);
+    box-shadow: var(--neon-hover);
+    margin-bottom: 2.5em; /* Espace avant les KPIs */
 }
 
 .filter-controls {
@@ -2249,23 +2251,45 @@ color: var(--text);
 .filter-controls input[type="date"] {
     padding: 0.7em;
     border-radius: 6px;
-    border: 1px solid var(--admin-border);
+    border: 1px solid var(--primary-dark);
     background: var(--admin-bg);
     color: var(--admin-text);
     font-size: 1em;
     font-family: inherit;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    outline: none;
+}
+
+.filter-controls select:focus,
+.filter-controls input[type="date"]:focus {
+    border-color: var(--primary);
+    box-shadow: var(--neon-hover);
 }
 
 .custom-date-controls {
     display: flex;
     align-items: center;
     gap: 0.5em;
+    color: var(--primary);
 }
 
 .filter-btn {
-    padding: 0.7em 1.5em;
-    font-size: 1em;
+    padding: 0.7em 1.5em !important;
+    font-size: 1em !important;
+    font-weight: bold;
     margin-left: auto; /* Pousse le bouton "Appliquer" à droite */
+    background: var(--primary-dark) !important;
+    color: white !important;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.2s, box-shadow 0.2s;
+    box-shadow: var(--neon);
+}
+
+.filter-btn:hover {
+    background: var(--primary) !important;
+    box-shadow: var(--neon-hover);
 }
 
 @media (max-width: 768px) {
@@ -2278,4 +2302,3 @@ color: var(--text);
         width: 100%;
     }
 }
-
