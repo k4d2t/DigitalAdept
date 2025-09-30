@@ -2293,20 +2293,158 @@ def trigger_relaunch_job():
         
     return response
 
+# --- NOUVELLE ROUTE POUR LA TUILE "SUIVI" ---
+@app.route('/k4d3t/suivi')
+def admin_suivi():
+    if not session.get('admin_logged_in'):
+        flash("Veuillez vous connecter.", "error")
+        return redirect(url_for('admin_login'))
+
+    user = User.query.filter_by(username=session.get('username')).first()
+    if not user:
+        abort(403)
+
+    # Calcul du CA total réel (basé sur les paniers complétés)
+    total_revenue = db.session.query(db.func.sum(AbandonedCart.total_price)).filter_by(status='completed').scalar() or 0
+
+    user_revenue = 0
+    if user.role.name == 'super_admin':
+        user_revenue = total_revenue
+    elif user.revenue_share_percentage > 0:
+        user_revenue = total_revenue * (user.revenue_share_percentage / 100.0)
+
+    # Données pour le graphique (par exemple, CA par mois)
+    revenue_by_month = db.session.query(
+        db.func.strftime('%Y-%m', AbandonedCart.created_at),
+        db.func.sum(AbandonedCart.total_price)
+    ).filter(
+        AbandonedCart.status == 'completed'
+    ).group_by(
+        db.func.strftime('%Y-%m', AbandonedCart.created_at)
+    ).order_by(
+        db.func.strftime('%Y-%m', AbandonedCart.created_at)
+    ).all()
+
+    chart_labels = [row[0] for row in revenue_by_month]
+    chart_data = [row[1] for row in revenue_by_month]
+
+    return render_template('admin_suivi.html',
+                           total_revenue=total_revenue,
+                           user_revenue=user_revenue,
+                           user_percentage=user.revenue_share_percentage,
+                           chart_labels=chart_labels,
+                           chart_data=chart_data,
+                           role=user.role.name)
+
+
+# --- NOUVELLE ROUTE POUR GÉRER LES RÔLES ET PERMISSIONS ---
+@app.route('/k4d3t/settings/roles', methods=['GET', 'POST'])
+def admin_settings_roles():
+    if not session.get('admin_logged_in') or session.get('role') != 'super_admin':
+        flash("Accès non autorisé.", "error")
+        return redirect(url_for('admin_dashboard'))
+
+    if request.method == 'POST':
+        # Création d'un nouveau rôle
+        role_name = request.form.get('role_name')
+        if role_name and not Role.query.filter_by(name=role_name).first():
+            new_role = Role(name=role_name)
+            db.session.add(new_role)
+            db.session.commit()
+            flash(f"Le rôle '{role_name}' a été créé.", "success")
+        elif role_name:
+            flash("Ce rôle existe déjà.", "error")
+        
+        # Mise à jour des permissions
+        permissions = request.form.getlist('permissions')
+        for role in Role.query.all():
+            role.tiles.clear() # On vide les permissions actuelles
+            for perm in permissions:
+                if perm.startswith(f'role_{role.id}_'):
+                    tile_id = perm.split('_')[2]
+                    tile = Tile.query.get(tile_id)
+                    if tile:
+                        role.tiles.append(tile)
+            db.session.commit()
+        flash("Permissions mises à jour.", "success")
+        
+        return redirect(url_for('admin_settings_roles'))
+
+    roles = Role.query.all()
+    tiles = Tile.query.all()
+    return render_template('admin_settings_roles.html', roles=roles, tiles=tiles)
+
+# --- NOUVELLE ROUTE POUR SUPPRIMER UN RÔLE ---
+@app.route('/k4d3t/settings/roles/delete/<int:role_id>', methods=['POST'])
+def delete_role(role_id):
+    if not session.get('admin_logged_in') or session.get('role') != 'super_admin':
+        abort(403)
+    
+    role = Role.query.get(role_id)
+    if role and role.name != 'super_admin' and not role.users:
+        db.session.delete(role)
+        db.session.commit()
+        flash("Rôle supprimé.", "success")
+    elif role.users:
+        flash("Impossible de supprimer un rôle assigné à des utilisateurs.", "error")
+    else:
+        flash("Impossible de supprimer ce rôle.", "error")
+        
+    return redirect(url_for('admin_settings_roles'))
+
+# --- NOUVELLE FONCTION DE DÉMARRAGE POUR INITIALISER LES RÔLES/TUILES ---
+def initialize_database():
+    """Crée les rôles et tuiles par défaut s'ils n'existent pas."""
+    # Rôles par défaut
+    if not Role.query.filter_by(name='super_admin').first():
+        db.session.add(Role(name='super_admin'))
+    if not Role.query.filter_by(name='admin').first():
+        db.session.add(Role(name='admin'))
+    if not Role.query.filter_by(name='monteur_video').first():
+        db.session.add(Role(name='monteur_video'))
+
+    # Tuiles par défaut
+    default_tiles = [
+        {'name': 'Produits', 'endpoint': 'admin_products_page', 'description': 'Gérer les produits du site.'},
+        {'name': 'Annonces', 'endpoint': 'admin_announcements', 'description': 'Gérer les annonces et bannières.'},
+        {'name': 'Marketing', 'endpoint': 'admin_marketing', 'description': 'Suivre les paniers abandonnés.'},
+        {'name': 'Commentaires', 'endpoint': 'admin_comments_page', 'description': 'Modérer les commentaires.'},
+        {'name': 'Suivi', 'endpoint': 'admin_suivi', 'description': 'Voir le chiffre d\'affaires.'} # La nouvelle tuile
+    ]
+    for tile_data in default_tiles:
+        if not Tile.query.filter_by(endpoint=tile_data['endpoint']).first():
+            db.session.add(Tile(**tile_data))
+    
+    db.session.commit()
+
+    # Assigner toutes les tuiles au super_admin par défaut
+    super_admin_role = Role.query.filter_by(name='super_admin').first()
+    all_tiles = Tile.query.all()
+    for tile in all_tiles:
+        if tile not in super_admin_role.tiles:
+            super_admin_role.tiles.append(tile)
+    db.session.commit()
+
+# --- MODIFICATION DANS LA FONCTION DE DÉMARRAGE `if __name__ == '__main__':` ---
+# Remplacez votre bloc `if __name__ == '__main__':` par celui-ci pour tout initialiser correctement.
 if __name__ == '__main__':
     with app.app_context():
-        # Cette ligne va créer toutes les tables définies dans models.py si elles n'existent pas
         db.create_all()
+        initialize_database() # Appel de la nouvelle fonction
 
-        # On s'assure que l'utilisateur super_admin existe pour ne pas être bloqué dehors
+        # On s'assure que l'utilisateur super_admin existe
         super_admin_user = User.query.filter_by(username='k4d3t').first()
+        super_admin_role = Role.query.filter_by(name='super_admin').first()
         if not super_admin_user:
             hashed_password = bcrypt.hashpw("spacekali".encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-            new_super_admin = User(username='k4d3t', password=hashed_password, role='super_admin')
+            new_super_admin = User(username='k4d3t', password=hashed_password, role_id=super_admin_role.id, revenue_share_percentage=100)
             db.session.add(new_super_admin)
             db.session.commit()
             print("Utilisateur super_admin 'k4d3t' créé avec succès.")
+        elif super_admin_user.role.name != 'super_admin':
+            # Assure que k4d3t est TOUJOURS super_admin
+            super_admin_user.role_id = super_admin_role.id
+            db.session.commit()
 
-    # Le reste du code pour lancer le serveur
     port = int(os.environ.get('PORT', 5005))
     app.run(host='0.0.0.0', port=port)
