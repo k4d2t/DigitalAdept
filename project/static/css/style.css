@@ -2744,24 +2744,3 @@ display: none;
     padding: 1.3em 0.3em 1.3em 0.8em;
     line-height: 1.6;
 }
-
-
-/* --- RESPONSIVITÉ SIMPLE POUR LES TABLEAUX ADMIN --- */
-/*
-  Ce conteneur permet au tableau de défiler horizontalement sur les petits écrans
-  sans altérer son style visuel (couleurs, bordures, etc.).
-*/
-.table-responsive-wrapper {
-    overflow-x: auto;      /* Active le défilement horizontal si le contenu dépasse */
-    -webkit-overflow-scrolling: touch; /* Améliore le défilement sur iOS */
-    border: 1px solid #3a8aff33; /* Une bordure discrète autour de la zone de défilement */
-    border-radius: 8px;
-    margin-bottom: 2em;
-}
-
-/* On s'assure que le tableau à l'intérieur ne soit pas forcé à 100% de largeur,
-   ce qui lui permet de déborder et de devenir scrollable. */
-.table-responsive-wrapper table {
-    min-width: 600px; /* Force une largeur minimale pour déclencher le scroll sur mobile */
-    width: 100%;
-}
