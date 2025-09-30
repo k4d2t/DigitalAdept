@@ -1223,8 +1223,9 @@ def admin_dashboard():
         log_action("unauthenticated_access_attempt", {"path": "/k4d3t/dashboard"})
         flash("Veuillez vous connecter pour accéder au tableau de bord.", "error")
         return redirect(url_for('admin_login'))
-
-    log_action("access_dashboard", {"role": session.get('role')})
+    
+    user_tiles = user.role.tiles.all() if user.role else []
+    
     return render_template('admin_dashboard.html', role=session.get('role'))
 
 @app.route('/k4d3t/settings', methods=['GET'])
