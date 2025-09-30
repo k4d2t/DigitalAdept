@@ -1,80 +1,88 @@
 {% extends "admin_base.html" %}
-
-{% block admin_title %}
-    Gestion des Rôles & Permissions
-{% endblock %}
+{% block admin_title %}Rôles & Permissions{% endblock %}
 
 {% block admin_content %}
 <div class="roles-page">
     <nav class="admin-nav">
-        <a href="{{ url_for('admin_settings') }}" id="retour">Retour</a>
+        <a href="{{ url_for('admin_settings') }}">← Retour aux paramètres</a>
     </nav>
     <h1>Rôles & Permissions</h1>
 
     <div class="roles-grid">
-        <!-- Formulaire pour créer un rôle -->
-        <div class="role-card add-role-card">
-            <h2>Créer un nouveau rôle</h2>
-            <form method="POST" action="{{ url_for('admin_settings_roles') }}" class="form-role">
-                <label>
-                    Nom du rôle
-                    <input type="text" name="role_name" placeholder="Ex: monteur_video" required>
+        <!-- Création d'un rôle -->
+        <div class="role-card">
+            <h2>Créer un rôle</h2>
+            <form class="form-role" method="POST" action="{{ url_for('admin_settings_roles') }}">
+                <label>Nom du rôle
+                    <input type="text" name="role_name" required>
                 </label>
                 <button type="submit" class="cta">Créer</button>
             </form>
+            <p style="margin-top:1em;color:#9ec;">Note: La tuile "Suivi" est toujours autorisée et verrouillée pour tous.</p>
         </div>
 
-        <!-- Formulaire pour gérer les permissions -->
-        <div class="permissions-card">
+        <!-- Permissions -->
+        <div class="permissions-card" style="grid-column: span 1;">
             <h2>Permissions par rôle</h2>
             <form method="POST" action="{{ url_for('admin_settings_roles') }}">
                 <table>
                     <thead>
                         <tr>
-                            <th>Permission (Tuile)</th>
-                            {% for role in roles %}
-                            <th>{{ role.name }}</th>
+                            <th>Rôle</th>
+                            {% for tile in tiles %}
+                                <th>{{ tile.name }}</th>
                             {% endfor %}
                         </tr>
                     </thead>
                     <tbody>
-                        {% for tile in tiles %}
+                        {% for role in roles %}
                         <tr>
-                            <td>{{ tile.name }}</td>
-                            {% for role in roles %}
-                            <td class="checkbox-cell">
-                                <input type="checkbox" 
-                                       name="permissions" 
-                                       value="role_{{ role.id }}_tile_{{ tile.id }}"
-                                       id="perm_{{ role.id }}_{{ tile.id }}"
-                                       {% if tile in role.tiles %}checked{% endif %}
-                                       {% if role.name == 'super_admin' or tile.name == 'Suivi' %}disabled{% endif %}>
-                                <label for="perm_{{ role.id }}_{{ tile.id }}"></label>
-                            </td>
+                            <td><strong>{{ role.name }}</strong></td>
+                            {% for tile in tiles %}
+                                {% set checked = (tile in (role.tiles.all() if hasattr(role.tiles,'all') else role.tiles)) %}
+                                <td class="checkbox-cell">
+                                    {% if suivi_tile_id and tile.id == suivi_tile_id %}
+                                        <!-- Tuile Suivi: toujours cochée et inmodifiable -->
+                                        <input type="checkbox" id="cb_{{ role.id }}_{{ tile.id }}" checked disabled>
+                                        <label for="cb_{{ role.id }}_{{ tile.id }}"></label>
+                                    {% else %}
+                                        <input
+                                          type="checkbox"
+                                          id="cb_{{ role.id }}_{{ tile.id }}"
+                                          name="permissions"
+                                          value="role_{{ role.id }}_{{ tile.id }}"
+                                          {% if checked %}checked{% endif %}
+                                        >
+                                        <label for="cb_{{ role.id }}_{{ tile.id }}"></label>
+                                    {% endif %}
+                                </td>
                             {% endfor %}
                         </tr>
                         {% endfor %}
                     </tbody>
                 </table>
-                <button type="submit" class="cta" style="margin-top: 1em;">Sauvegarder les Permissions</button>
+                <div style="margin-top:1em; text-align:right;">
+                    <button type="submit" class="cta">Enregistrer</button>
+                </div>
             </form>
         </div>
-    </div>
-    
-    <div class="roles-list-card">
-        <h2>Liste des Rôles</h2>
-        <ul>
-            {% for role in roles %}
+
+        <!-- Liste rôles -->
+        <div class="roles-list-card">
+            <h2>Rôles existants</h2>
+            <ul>
+                {% for role in roles %}
                 <li>
                     <span>{{ role.name }}</span>
                     {% if role.name != 'super_admin' and not role.users %}
                     <form method="POST" action="{{ url_for('delete_role', role_id=role.id) }}" style="display:inline;">
-                        <button type="submit" class="delete-role-btn" title="Supprimer ce rôle">×</button>
+                        <button class="delete-role-btn" title="Supprimer">×</button>
                     </form>
                     {% endif %}
                 </li>
-            {% endfor %}
-        </ul>
+                {% endfor %}
+            </ul>
+        </div>
     </div>
 </div>
 {% endblock %}
