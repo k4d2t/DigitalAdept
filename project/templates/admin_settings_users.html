@@ -5,46 +5,47 @@
 {% endblock %}
 
 {% block admin_content %}
-<div class="users-page -h1">
+<div class="settings-page">
     <nav class="admin-nav">
-        <a href="{{ url_for('admin_settings') }}" id="retour">Retour</a>
+        <a href="{{ url_for('admin_settings') }}" id="retour">← Retour aux paramètres</a>
     </nav>
     <h1>Gestion des Utilisateurs</h1>
 
-    <h2>Liste des Utilisateurs</h2>
-    <table>
-        <thead>
-            <tr>
-                <th>Nom d'utilisateur</th>
-                <th>Rôle</th>
-                <th>Commission (%)</th>
-                <th style="width: 120px;">Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            {% for user in users %}
-            <tr id="user-row-{{ user.id }}">
-                <td>{{ user.username }}</td>
-                <td>{{ user.role.name }}</td>
-                <td>{{ user.revenue_share_percentage }}%</td>
-                <td class="actions-column">
-                    <!-- Bouton pour éditer (à implémenter si besoin) -->
-                    <!-- Bouton Supprimer -->
-                    {% if user.role.name != 'super_admin' %}
-                    <form class="delete-user" method="POST" action="{{ url_for('delete_user', username=user.username) }}" style="display:inline;">
-                        <button class="action-btn delete-btn" type="submit" title="Supprimer l'utilisateur">
-                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                                <polyline points="3 6 5 6 21 6"></polyline>
-                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                            </svg>
-                        </button>
-                    </form>
-                    {% endif %}
-                </td>
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
+    {# Ajout pour la responsivité du tableau #}
+    <div class="table-responsive-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>Nom d'utilisateur</th>
+                    <th>Rôle</th>
+                    <th>Commission (%)</th>
+                    <th style="width: 80px;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users %}
+                <tr>
+                    <td data-label="Utilisateur">{{ user.username }}</td>
+                    <td data-label="Rôle">{{ user.role.name }}</td>
+                    <td data-label="Commission">{{ user.revenue_share_percentage }}%</td>
+                    <td data-label="Actions" class="actions-column">
+                        {# Le super_admin ne peut pas être supprimé #}
+                        {% if user.role.name != 'super_admin' %}
+                        <form class="delete-form" method="POST" action="{{ url_for('delete_user', username=user.username) }}" style="display:inline;">
+                            <button class="action-btn delete-btn" type="submit" title="Supprimer l'utilisateur">
+                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <polyline points="3 6 5 6 21 6"></polyline>
+                                    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                </svg>
+                            </button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
 
     <h2 style="margin-top: 2em;">Ajouter un nouvel Utilisateur</h2>
     <form class="form-user" method="POST" action="{{ url_for('admin_settings_users') }}">
@@ -58,6 +59,7 @@
         </label>
         <label>
             Rôle
+            {# CORRECTION : Boucle sur les rôles passés depuis la route #}
             <select name="role_id" required>
                 {% for role in roles %}
                 <option value="{{ role.id }}">{{ role.name }}</option>
@@ -71,4 +73,20 @@
         <button type="submit" class="cta">Ajouter</button>
     </form>
 </div>
+
+<script>
+document.querySelectorAll('.delete-form').forEach(form => {
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        ConfirmModal(
+            'Voulez-vous vraiment supprimer cet utilisateur ?',
+            'Oui, supprimer',
+            'Annuler',
+            () => {
+                form.submit();
+            }
+        );
+    });
+});
+</script>
 {% endblock %}
