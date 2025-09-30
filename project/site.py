@@ -1249,12 +1249,9 @@ def admin_settings():
     return render_template('admin_settings.html')
 
 
+# --- Ajouter un utilisateur: empêche de dépasser 100% hors super_admin ---
 @app.route('/k4d3t/settings/users', methods=['GET', 'POST'])
 def admin_settings_users():
-    """
-    Page pour gérer les administrateurs et leurs rôles.
-    Accessible uniquement au super_admin.
-    """
     if session.get('role') != 'super_admin':
         log_action("unauthorized_access_attempt", {"path": "/k4d3t/settings/users"})
         flash("Accès non autorisé.", "error")
@@ -1268,26 +1265,43 @@ def admin_settings_users():
 
         if not username or not password or not role_id:
             flash("Nom d'utilisateur, mot de passe et rôle sont requis.", "error")
-        elif User.query.filter_by(username=username).first():
+            return redirect(url_for('admin_settings_users'))
+
+        if User.query.filter_by(username=username).first():
             flash("Ce nom d'utilisateur est déjà pris.", "error")
-        else:
-            hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-            user = User(
-                username=username,
-                password=hashed_password,
-                role_id=int(role_id),
-                revenue_share_percentage=float(revenue_share)
-            )
-            db.session.add(user)
-            db.session.commit()
-            flash("Nouvel administrateur ajouté avec succès.", "success")
+            return redirect(url_for('admin_settings_users'))
+
+        role = Role.query.get(int(role_id))
+        try:
+            new_share = float(revenue_share or 0)
+        except Exception:
+            new_share = 0.0
+
+        # Si on ajoute un non-super_admin, vérifier le plafond 100%
+        if role and role.name != 'super_admin':
+            total_after = get_non_super_total_percentage() + new_share
+            if total_after > 100.0 + 1e-9:
+                flash(f"Le total des commissions (hors super_admin) dépasserait 100% (demande: +{new_share}%, actuel: {total_after - new_share:.1f}%).", "error")
+                return redirect(url_for('admin_settings_users'))
+
+        hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        user = User(
+            username=username,
+            password=hashed_password,
+            role_id=int(role_id),
+            revenue_share_percentage=new_share
+        )
+        db.session.add(user)
+        db.session.commit()
+        flash("Nouvel administrateur ajouté avec succès.", "success")
         return redirect(url_for('admin_settings_users'))
 
     users = User.query.options(joinedload(User.role)).all()
     roles = Role.query.order_by(Role.name).all()
     return render_template('admin_settings_users.html', users=users, roles=roles)
 
-# --- API INLINE EDIT UTILISATEUR ---
+
+# --- Inline edit: empêche de dépasser 100% hors super_admin ---
 @app.route('/api/admin/users/<int:user_id>', methods=['PATCH'])
 def api_admin_update_user(user_id):
     if not session.get('admin_logged_in') or session.get('role') != 'super_admin':
@@ -1302,7 +1316,6 @@ def api_admin_update_user(user_id):
     new_role_id = data.get('role_id')
     new_share = data.get('revenue_share_percentage')
 
-    # Username
     if new_username is not None:
         new_username = str(new_username).strip()
         if not new_username:
@@ -1311,27 +1324,22 @@ def api_admin_update_user(user_id):
             return jsonify({"status": "error", "message": "Nom d'utilisateur déjà pris"}), 409
         user.username = new_username
 
-    # Rôle
-    if new_role_id is not None:
-        try:
-            rid = int(new_role_id)
-        except Exception:
-            return jsonify({"status": "error", "message": "role_id invalide"}), 400
-        role = Role.query.get(rid)
-        if not role:
-            return jsonify({"status": "error", "message": "Rôle introuvable"}), 404
-        # Optionnel: empêcher de retirer super_admin à 'k4d3t' si tu veux
-        user.role_id = rid
+    target_role_id = int(new_role_id) if new_role_id is not None else user.role_id
+    target_role = Role.query.get(target_role_id)
 
-    # Commission
-    if new_share is not None:
-        try:
-            pct = float(new_share)
-            if pct < 0 or pct > 100:
-                return jsonify({"status": "error", "message": "Commission hors plage (0-100)"}), 400
-            user.revenue_share_percentage = pct
-        except Exception:
-            return jsonify({"status": "error", "message": "Commission invalide"}), 400
+    target_share = float(new_share) if new_share is not None else float(user.revenue_share_percentage or 0.0)
+
+    # Si le rôle cible n'est pas super_admin, vérifier que la somme reste <= 100
+    if target_role and target_role.name != 'super_admin':
+        total_after = get_non_super_total_percentage(exclude_user_id=user.id) + target_share
+        if total_after > 100.0 + 1e-9:
+            return jsonify({
+                "status": "error",
+                "message": f"Le total des commissions (hors super_admin) dépasserait 100% (demande: {target_share}%, actuel hors cet utilisateur: {total_after - target_share:.1f}%)."
+            }), 400
+
+    user.role_id = target_role_id
+    user.revenue_share_percentage = target_share
 
     db.session.commit()
     return jsonify({"status": "success", "message": "Utilisateur mis à jour"}), 200
@@ -2312,6 +2320,14 @@ def trigger_relaunch_job():
         
     return response
 
+def get_non_super_total_percentage(exclude_user_id=None):
+    q = db.session.query(
+        db.func.coalesce(db.func.sum(User.revenue_share_percentage), 0.0)
+    ).join(Role, User.role_id == Role.id).filter(Role.name != 'super_admin')
+    if exclude_user_id:
+        q = q.filter(User.id != exclude_user_id)
+    return float(q.scalar() or 0.0)
+
 # --- NOUVELLE ROUTE POUR LA TUILE "SUIVI" ---
 @app.route('/k4d3t/suivi')
 def admin_suivi():
@@ -2321,67 +2337,53 @@ def admin_suivi():
 
     user = User.query.filter_by(username=session.get('username')).first_or_404()
 
-    # --- 1. Gestion de la période ---
-    period = request.args.get('period', 'this_month') # Période par défaut : ce mois-ci
+    period = request.args.get('period', 'this_month')
     today = date.today()
     start_date_str = request.args.get('start_date')
     end_date_str = request.args.get('end_date')
 
     if period == 'today':
-        start_date = today
-        end_date = today + timedelta(days=1)
-        group_by_format = 'YYYY-MM-DD HH24' # Groupe par heure
-        chart_label_format = '%H:00'
+        start_date = today; end_date = today + timedelta(days=1)
+        group_by_format = 'YYYY-MM-DD HH24'; chart_label_format = '%H:00'
     elif period == 'last_7_days':
-        start_date = today - timedelta(days=6)
-        end_date = today + timedelta(days=1)
-        group_by_format = 'YYYY-MM-DD'
-        chart_label_format = '%d %b'
+        start_date = today - timedelta(days=6); end_date = today + timedelta(days=1)
+        group_by_format = 'YYYY-MM-DD'; chart_label_format = '%d %b'
     elif period == 'last_30_days':
-        start_date = today - timedelta(days=29)
-        end_date = today + timedelta(days=1)
-        group_by_format = 'YYYY-MM-DD'
-        chart_label_format = '%d %b'
+        start_date = today - timedelta(days=29); end_date = today + timedelta(days=1)
+        group_by_format = 'YYYY-MM-DD'; chart_label_format = '%d %b'
     elif period == 'this_month':
-        start_date = today.replace(day=1)
-        end_date = (start_date + timedelta(days=32)).replace(day=1)
-        group_by_format = 'YYYY-MM-DD'
-        chart_label_format = '%d %b'
+        start_date = today.replace(day=1); end_date = (start_date + timedelta(days=32)).replace(day=1)
+        group_by_format = 'YYYY-MM-DD'; chart_label_format = '%d %b'
     elif period == 'last_month':
         end_of_last_month = today.replace(day=1) - timedelta(days=1)
-        start_date = end_of_last_month.replace(day=1)
-        end_date = today.replace(day=1)
-        group_by_format = 'YYYY-MM-DD'
-        chart_label_format = '%d %b'
+        start_date = end_of_last_month.replace(day=1); end_date = today.replace(day=1)
+        group_by_format = 'YYYY-MM-DD'; chart_label_format = '%d %b'
     elif period == 'custom' and start_date_str and end_date_str:
         start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
         end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date() + timedelta(days=1)
-        group_by_format = 'YYYY-MM-DD'
-        chart_label_format = '%d %b %Y'
+        group_by_format = 'YYYY-MM-DD'; chart_label_format = '%d %b %Y'
     else:
-        # Fallback si période invalide
         start_date = today.replace(day=1)
         end_date = (start_date + timedelta(days=32)).replace(day=1)
-        period = 'this_month'
-        group_by_format = 'YYYY-MM-DD'
-        chart_label_format = '%d %b'
+        period = 'this_month'; group_by_format = 'YYYY-MM-DD'; chart_label_format = '%d %b'
 
-    # --- 2. Requêtes filtrées par la période ---
     base_query = AbandonedCart.query.filter(
         AbandonedCart.status == 'completed',
         AbandonedCart.created_at >= start_date,
         AbandonedCart.created_at < end_date
     )
+    total_revenue = base_query.with_entities(db.func.sum(AbandonedCart.total_price)).scalar() or 0.0
 
-    total_revenue = base_query.with_entities(db.func.sum(AbandonedCart.total_price)).scalar() or 0
+    # Part utilisateur
+    effective_pct = 0.0
+    if user.role and user.role.name == 'super_admin':
+        other_pct = get_non_super_total_percentage()
+        effective_pct = max(0.0, 100.0 - other_pct)
+    else:
+        effective_pct = float(user.revenue_share_percentage or 0.0)
 
-    user_revenue = 0
-    if user.role.name == 'super_admin':
-        user_revenue = total_revenue
-    elif user.revenue_share_percentage > 0:
-        user_revenue = total_revenue * (user.revenue_share_percentage / 100.0)
+    user_revenue = total_revenue * (effective_pct / 100.0)
 
-    # Requête pour le graphique, groupée par jour ou par heure
     revenue_by_time = base_query.with_entities(
         db.func.to_char(AbandonedCart.created_at, group_by_format),
         db.func.sum(AbandonedCart.total_price)
@@ -2390,25 +2392,28 @@ def admin_suivi():
     ).order_by(
         db.func.to_char(AbandonedCart.created_at, group_by_format)
     ).all()
+
+    chart_labels = [
+        datetime.strptime(r[0], '%Y-%m-%d' if 'HH24' not in group_by_format else '%Y-%m-%d %H').strftime(chart_label_format)
+        for r in revenue_by_time
+    ]
+    chart_data = [float(r[1]) for r in revenue_by_time]
+
+    return render_template(
+        'admin_suivi.html',
+        total_revenue=total_revenue,
+        user_revenue=user_revenue,
+        user_percentage=effective_pct,
+        chart_labels=chart_labels,
+        chart_data=chart_data,
+        role=(user.role.name if user.role else None),
+        selected_period=period,
+        start_date=start_date.strftime('%Y-%m-%d'),
+        end_date=(end_date - timedelta(days=1)).strftime('%Y-%m-%d')
+    )
+
     
-    # Formatage des labels pour le graphique
-    chart_labels = [datetime.strptime(row[0], '%Y-%m-%d' if 'HH24' not in group_by_format else '%Y-%m-%d %H').strftime(chart_label_format) for row in revenue_by_time]
-    chart_data = [float(row[1]) for row in revenue_by_time] # S'assurer que les données sont des nombres
-
-    return render_template('admin_suivi.html',
-                           total_revenue=total_revenue,
-                           user_revenue=user_revenue,
-                           user_percentage=user.revenue_share_percentage,
-                           chart_labels=chart_labels,
-                           chart_data=chart_data,
-                           role=user.role.name,
-                           # Variables pour le formulaire de filtre
-                           selected_period=period,
-                           start_date=start_date.strftime('%Y-%m-%d') if isinstance(start_date, date) else start_date,
-                           end_date=(end_date - timedelta(days=1)).strftime('%Y-%m-%d') if isinstance(end_date, date) else end_date
-                          )
-
-# --- API AJAX pour le tableau Suivi (filtrage sans rechargement) ---
+# --- API Suivi (AJAX): même logique pour le calcul de la part super_admin ---
 @app.route('/api/admin/suivi/metrics', methods=['GET'])
 def api_admin_suivi_metrics():
     if not session.get('admin_logged_in'):
@@ -2423,69 +2428,48 @@ def api_admin_suivi_metrics():
     start_date_str = request.args.get('start_date')
     end_date_str = request.args.get('end_date')
 
-    # Détermination de la période + format de groupage
     if period == 'today':
-        start_date = today
-        end_date = today + timedelta(days=1)
-        group_by_format = 'YYYY-MM-DD HH24'
-        label_in = '%Y-%m-%d %H'
-        label_out = '%H:00'
+        start_date = today; end_date = today + timedelta(days=1)
+        group_by_format = 'YYYY-MM-DD HH24'; label_in = '%Y-%m-%d %H'; label_out = '%H:00'
     elif period == 'last_7_days':
-        start_date = today - timedelta(days=6)
-        end_date = today + timedelta(days=1)
-        group_by_format = 'YYYY-MM-DD'
-        label_in = '%Y-%m-%d'
-        label_out = '%d %b'
+        start_date = today - timedelta(days=6); end_date = today + timedelta(days=1)
+        group_by_format = 'YYYY-MM-DD'; label_in = '%Y-%m-%d'; label_out = '%d %b'
     elif period == 'last_30_days':
-        start_date = today - timedelta(days=29)
-        end_date = today + timedelta(days=1)
-        group_by_format = 'YYYY-MM-DD'
-        label_in = '%Y-%m-%d'
-        label_out = '%d %b'
+        start_date = today - timedelta(days=29); end_date = today + timedelta(days=1)
+        group_by_format = 'YYYY-MM-DD'; label_in = '%Y-%m-%d'; label_out = '%d %b'
     elif period == 'this_month':
-        start_date = today.replace(day=1)
-        end_date = (start_date + timedelta(days=32)).replace(day=1)
-        group_by_format = 'YYYY-MM-DD'
-        label_in = '%Y-%m-%d'
-        label_out = '%d %b'
+        start_date = today.replace(day=1); end_date = (start_date + timedelta(days=32)).replace(day=1)
+        group_by_format = 'YYYY-MM-DD'; label_in = '%Y-%m-%d'; label_out = '%d %b'
     elif period == 'last_month':
         end_of_last_month = today.replace(day=1) - timedelta(days=1)
-        start_date = end_of_last_month.replace(day=1)
-        end_date = today.replace(day=1)
-        group_by_format = 'YYYY-MM-DD'
-        label_in = '%Y-%m-%d'
-        label_out = '%d %b'
+        start_date = end_of_last_month.replace(day=1); end_date = today.replace(day=1)
+        group_by_format = 'YYYY-MM-DD'; label_in = '%Y-%m-%d'; label_out = '%d %b'
     elif period == 'custom' and start_date_str and end_date_str:
         try:
             start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
             end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date() + timedelta(days=1)
         except ValueError:
             return jsonify({"error": "Invalid date format"}), 400
-        group_by_format = 'YYYY-MM-DD'
-        label_in = '%Y-%m-%d'
-        label_out = '%d %b %Y'
+        group_by_format = 'YYYY-MM-DD'; label_in = '%Y-%m-%d'; label_out = '%d %b %Y'
     else:
-        # fallback par défaut: ce mois-ci
         start_date = today.replace(day=1)
         end_date = (start_date + timedelta(days=32)).replace(day=1)
-        period = 'this_month'
-        group_by_format = 'YYYY-MM-DD'
-        label_in = '%Y-%m-%d'
-        label_out = '%d %b'
+        period = 'this_month'; group_by_format = 'YYYY-MM-DD'; label_in = '%Y-%m-%d'; label_out = '%d %b'
 
     base_query = AbandonedCart.query.filter(
         AbandonedCart.status == 'completed',
         AbandonedCart.created_at >= start_date,
         AbandonedCart.created_at < end_date
     )
-
     total_revenue = base_query.with_entities(db.func.sum(AbandonedCart.total_price)).scalar() or 0.0
 
     if user.role and user.role.name == 'super_admin':
-        user_revenue = total_revenue
+        other_pct = get_non_super_total_percentage()
+        effective_pct = max(0.0, 100.0 - other_pct)
     else:
-        pct = float(user.revenue_share_percentage or 0)
-        user_revenue = total_revenue * (pct / 100.0)
+        effective_pct = float(user.revenue_share_percentage or 0.0)
+
+    user_revenue = total_revenue * (effective_pct / 100.0)
 
     rows = base_query.with_entities(
         db.func.to_char(AbandonedCart.created_at, group_by_format),
@@ -2498,15 +2482,13 @@ def api_admin_suivi_metrics():
 
     labels = []
     data = []
-    for r in rows:
-        key = r[0]
-        amount = float(r[1] or 0)
+    for key, amount in rows:
         try:
             dt = datetime.strptime(key, label_in)
             labels.append(dt.strftime(label_out))
         except Exception:
             labels.append(key)
-        data.append(amount)
+        data.append(float(amount or 0))
 
     return jsonify({
         "period": period,
@@ -2514,7 +2496,7 @@ def api_admin_suivi_metrics():
         "end_date": (end_date - timedelta(days=1)).strftime('%Y-%m-%d'),
         "total_revenue": float(total_revenue),
         "user_revenue": float(user_revenue),
-        "user_percentage": float(user.revenue_share_percentage or 0),
+        "user_percentage": float(effective_pct),
         "role": user.role.name if user.role else None,
         "labels": labels,
         "data": data
