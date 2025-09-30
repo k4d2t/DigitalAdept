@@ -1,0 +1,80 @@
+{% extends "admin_base.html" %}
+
+{% block admin_title %}
+    Gestion des Rôles & Permissions
+{% endblock %}
+
+{% block admin_content %}
+<div class="roles-page">
+    <nav class="admin-nav">
+        <a href="{{ url_for('admin_settings') }}" id="retour">Retour</a>
+    </nav>
+    <h1>Rôles & Permissions</h1>
+
+    <div class="roles-grid">
+        <!-- Formulaire pour créer un rôle -->
+        <div class="role-card add-role-card">
+            <h2>Créer un nouveau rôle</h2>
+            <form method="POST" action="{{ url_for('admin_settings_roles') }}" class="form-role">
+                <label>
+                    Nom du rôle
+                    <input type="text" name="role_name" placeholder="Ex: monteur_video" required>
+                </label>
+                <button type="submit" class="cta">Créer</button>
+            </form>
+        </div>
+
+        <!-- Formulaire pour gérer les permissions -->
+        <div class="permissions-card">
+            <h2>Permissions par rôle</h2>
+            <form method="POST" action="{{ url_for('admin_settings_roles') }}">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Permission (Tuile)</th>
+                            {% for role in roles %}
+                            <th>{{ role.name }}</th>
+                            {% endfor %}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for tile in tiles %}
+                        <tr>
+                            <td>{{ tile.name }}</td>
+                            {% for role in roles %}
+                            <td class="checkbox-cell">
+                                <input type="checkbox" 
+                                       name="permissions" 
+                                       value="role_{{ role.id }}_tile_{{ tile.id }}"
+                                       id="perm_{{ role.id }}_{{ tile.id }}"
+                                       {% if tile in role.tiles %}checked{% endif %}
+                                       {% if role.name == 'super_admin' or tile.name == 'Suivi' %}disabled{% endif %}>
+                                <label for="perm_{{ role.id }}_{{ tile.id }}"></label>
+                            </td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                <button type="submit" class="cta" style="margin-top: 1em;">Sauvegarder les Permissions</button>
+            </form>
+        </div>
+    </div>
+    
+    <div class="roles-list-card">
+        <h2>Liste des Rôles</h2>
+        <ul>
+            {% for role in roles %}
+                <li>
+                    <span>{{ role.name }}</span>
+                    {% if role.name != 'super_admin' and not role.users %}
+                    <form method="POST" action="{{ url_for('delete_role', role_id=role.id) }}" style="display:inline;">
+                        <button type="submit" class="delete-role-btn" title="Supprimer ce rôle">×</button>
+                    </form>
+                    {% endif %}
+                </li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+{% endblock %}
