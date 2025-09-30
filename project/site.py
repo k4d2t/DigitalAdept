@@ -1261,114 +1261,98 @@ def admin_settings_users():
         return redirect(url_for('admin_dashboard'))
 
     if request.method == 'POST':
-        # Récupérer les données du formulaire
         username = request.form.get('username')
         password = request.form.get('password')
-        # CORRECTION : On récupère role_id, qui est un ID numérique
         role_id = request.form.get('role_id')
         revenue_share = request.form.get('revenue_share', 0)
 
-        # Validation des champs
         if not username or not password or not role_id:
             flash("Nom d'utilisateur, mot de passe et rôle sont requis.", "error")
         elif User.query.filter_by(username=username).first():
             flash("Ce nom d'utilisateur est déjà pris.", "error")
         else:
             hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-            # CORRECTION : On utilise role_id et revenue_share_percentage
             user = User(
-                username=username, 
-                password=hashed_password, 
+                username=username,
+                password=hashed_password,
                 role_id=int(role_id),
                 revenue_share_percentage=float(revenue_share)
             )
             db.session.add(user)
             db.session.commit()
             flash("Nouvel administrateur ajouté avec succès.", "success")
-        
-        # On redirige dans tous les cas après un POST pour éviter le re-POST au refresh
         return redirect(url_for('admin_settings_users'))
 
     users = User.query.options(joinedload(User.role)).all()
-    # CORRECTION : On passe la liste des rôles au template pour le sélecteur
     roles = Role.query.order_by(Role.name).all()
     return render_template('admin_settings_users.html', users=users, roles=roles)
 
-@app.route('/k4d3t/settings/users/edit/<username>', methods=['POST'])
-def edit_user(username):
+# --- API INLINE EDIT UTILISATEUR ---
+@app.route('/api/admin/users/<int:user_id>', methods=['PATCH'])
+def api_admin_update_user(user_id):
     if not session.get('admin_logged_in') or session.get('role') != 'super_admin':
-        return {"status": "error", "message": "Accès non autorisé"}, 403
-    data = request.json
-    new_username = data.get('new_username')
-    new_role = data.get('new_role')
-    user = User.query.filter_by(username=username).first()
+        return jsonify({"status": "error", "message": "Accès non autorisé"}), 403
+
+    user = User.query.get(user_id)
     if not user:
-        return {"status": "error", "message": "Utilisateur introuvable"}, 404
-    if not new_username or not new_role:
-        return {"status": "error", "message": "Les champs nom d'utilisateur et rôle sont requis"}, 400
-    if new_username != username and User.query.filter_by(username=new_username).first():
-        return {"status": "error", "message": "Nom d'utilisateur déjà pris"}, 409
-    user.username = new_username
-    user.role = new_role
+        return jsonify({"status": "error", "message": "Utilisateur introuvable"}), 404
+
+    data = request.get_json(silent=True) or {}
+    new_username = data.get('username')
+    new_role_id = data.get('role_id')
+    new_share = data.get('revenue_share_percentage')
+
+    # Username
+    if new_username is not None:
+        new_username = str(new_username).strip()
+        if not new_username:
+            return jsonify({"status": "error", "message": "Nom d'utilisateur invalide"}), 400
+        if new_username != user.username and User.query.filter_by(username=new_username).first():
+            return jsonify({"status": "error", "message": "Nom d'utilisateur déjà pris"}), 409
+        user.username = new_username
+
+    # Rôle
+    if new_role_id is not None:
+        try:
+            rid = int(new_role_id)
+        except Exception:
+            return jsonify({"status": "error", "message": "role_id invalide"}), 400
+        role = Role.query.get(rid)
+        if not role:
+            return jsonify({"status": "error", "message": "Rôle introuvable"}), 404
+        # Optionnel: empêcher de retirer super_admin à 'k4d3t' si tu veux
+        user.role_id = rid
+
+    # Commission
+    if new_share is not None:
+        try:
+            pct = float(new_share)
+            if pct < 0 or pct > 100:
+                return jsonify({"status": "error", "message": "Commission hors plage (0-100)"}), 400
+            user.revenue_share_percentage = pct
+        except Exception:
+            return jsonify({"status": "error", "message": "Commission invalide"}), 400
+
     db.session.commit()
-    return {"status": "success", "message": "Utilisateur mis à jour avec succès"}
+    return jsonify({"status": "success", "message": "Utilisateur mis à jour"}), 200
 
-@app.route('/settings/logs', methods=['GET'])
-def get_logs():
-    """Récupère les logs depuis logs.json."""
-    try:
-        with open(LOGS_FILE, "r") as f:
-            logs = json.load(f)
+@app.route('/api/admin/users/<int:user_id>/password', methods=['POST'])
+def api_admin_update_user_password(user_id):
+    if not session.get('admin_logged_in') or session.get('role') != 'super_admin':
+        return jsonify({"status": "error", "message": "Accès non autorisé"}), 403
 
-        # Valider et nettoyer les logs avant de les renvoyer
-        validated_logs = []
-        for log in logs:
-            validated_logs.append({
-                "timestamp": log.get("timestamp", "N/A"),
-                "user": log.get("user", "Anonyme"),
-                "action": log.get("action", "Non spécifié"),
-                "details": log.get("details", {})
-            })
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"status": "error", "message": "Utilisateur introuvable"}), 404
 
-        log_action("view_logs", {"username": session.get('username')})  # Enregistrer l'accès aux logs
-        return jsonify(validated_logs)
-    except (FileNotFoundError, json.JSONDecodeError):
-        log_action("view_logs_failed", {"username": session.get('username')})  # Enregistrer l'échec de l'accès aux logs
-        return jsonify([])  # Retourne une liste vide si aucun log
+    data = request.get_json(silent=True) or {}
+    new_password = data.get('new_password')
+    if not new_password or len(new_password) < 6:
+        return jsonify({"status": "error", "message": "Mot de passe trop court (min 6 caractères)"}), 400
 
-@cache.cached(timeout=300)
-@app.route('/settings/logs/view', methods=['GET'])
-def view_logs():
-    """Affiche la page HTML pour le journal d'activité."""
-    log_action("view_logs_page", {"username": session.get('username')})  # Enregistrer l'accès à la page des logs
-    return render_template("admin_settings_logs.html")
-
-
-@app.route('/settings/logs/export', methods=['GET'])
-def export_logs():
-    """Exporte les logs au format CSV."""
-    csv_file = "data/logs_export.csv"
-    try:
-        with open(LOGS_FILE, "r") as f:
-            logs = json.load(f)
-    except (FileNotFoundError, json.JSONDecodeError):
-        log_action("export_logs_failed", {"username": session.get('username')})  # Enregistrer l'échec de l'export
-        logs = []
-
-    # Créer un fichier CSV
-    with open(csv_file, "w", newline="") as f:
-        writer = csv.writer(f)
-        # En-têtes du CSV
-        writer.writerow(["Timestamp", "User", "Action", "Details"])
-        # Lignes des logs
-        for log in logs:
-            writer.writerow([log["timestamp"], log["user"], log["action"], json.dumps(log["details"])])
-
-    log_action("export_logs_success", {"username": session.get('username')})  # Enregistrer l'export réussi
-    return send_file(csv_file, as_attachment=True)
-
-# Dans project/site.py
-# AJOUTEZ CETTE NOUVELLE ROUTE
+    user.password = bcrypt.hashpw(new_password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+    db.session.commit()
+    return jsonify({"status": "success", "message": "Mot de passe mis à jour"}), 200
 
 @app.route('/k4d3t/relaunch-settings', methods=['GET', 'POST'])
 def admin_relaunch_settings():
@@ -2543,47 +2527,90 @@ def admin_settings_roles():
         flash("Accès non autorisé.", "error")
         return redirect(url_for('admin_dashboard'))
 
+    # On identifie la tuile "Suivi" (verrouillée pour tous)
+    suivi_tile = Tile.query.filter(
+        (Tile.endpoint == 'admin_suivi') | (Tile.name == 'Suivi')
+    ).first()
+
     if request.method == 'POST':
-        # CAS 1 : Création d'un nouveau rôle
+        # CAS 1 : Création d'un rôle
         role_name = request.form.get('role_name')
         if role_name:
             if not Role.query.filter_by(name=role_name).first():
                 new_role = Role(name=role_name)
                 db.session.add(new_role)
                 db.session.commit()
+                # Assigner "Suivi" automatiquement et définitivement
+                if suivi_tile:
+                    # dynamique ou non: append fonctionne
+                    new_role.tiles.append(suivi_tile)
+                    db.session.commit()
                 flash(f"Le rôle '{role_name}' a été créé.", "success")
             else:
                 flash("Ce nom de rôle existe déjà.", "error")
             return redirect(url_for('admin_settings_roles'))
 
         # CAS 2 : Mise à jour des permissions
+        # Format attendu: permissions = ['role_<roleid>_<tileid>', ...]
         permissions = request.form.getlist('permissions')
-        all_roles = Role.query.options(joinedload(Role.tiles)).all()
-        
-        for role in all_roles:
-            # On ne modifie pas les permissions du super_admin via ce formulaire
-            if role.name == 'super_admin':
-                continue
 
-            # CORRECTION : La bonne façon de vider la relation est d'assigner une liste vide
-            role.tiles = [] 
-            
-            # On ré-assigne les permissions cochées
+        # Récupérer TOUS les rôles
+        all_roles = Role.query.all()
+
+        for role in all_roles:
+            # Super admin: on peut choisir de tout laisser, mais on force aussi "Suivi"
+            # Pour éviter l'erreur 500 avec lazy='dynamic', on gère append/remove
+            # 1) enlever toutes les tuiles sauf "Suivi"
+            if hasattr(role.tiles, 'all'):
+                current_tiles = role.tiles.all()
+            else:
+                current_tiles = list(role.tiles)
+
+            for t in list(current_tiles):
+                if (not suivi_tile) or (t.id != suivi_tile.id):
+                    # Retire chaque tuile sauf "Suivi"
+                    try:
+                        role.tiles.remove(t)
+                    except Exception:
+                        pass
+
+            # 2) réassigner selon le formulaire (en ignorant "Suivi", qui est forcée)
             for perm_string in permissions:
+                # 'role_3_5' => role 3, tile 5
                 if perm_string.startswith(f'role_{role.id}_'):
-                    tile_id = int(perm_string.split('_')[2])
+                    try:
+                        tile_id = int(perm_string.split('_')[2])
+                    except Exception:
+                        continue
+                    if suivi_tile and tile_id == suivi_tile.id:
+                        # ignoré: "Suivi" est gérée par le back (toujours présente)
+                        continue
                     tile_to_add = Tile.query.get(tile_id)
                     if tile_to_add:
-                        role.tiles.append(tile_to_add)
+                        try:
+                            role.tiles.append(tile_to_add)
+                        except Exception:
+                            pass
+
+            # 3) forcer "Suivi" pour TOUS les rôles (verrouillé)
+            if suivi_tile:
+                # Tester la présence
+                present = False
+                if hasattr(role.tiles, 'all'):
+                    present = any(t.id == suivi_tile.id for t in role.tiles.all())
+                else:
+                    present = any(t.id == suivi_tile.id for t in role.tiles)
+                if not present:
+                    role.tiles.append(suivi_tile)
 
         db.session.commit()
         flash("Permissions mises à jour avec succès.", "success")
         return redirect(url_for('admin_settings_roles'))
 
-    # Logique GET (inchangée)
     roles = Role.query.order_by(Role.id).all()
     tiles = Tile.query.order_by(Tile.id).all()
-    return render_template('admin_settings_roles.html', roles=roles, tiles=tiles)
+    suivi_tile_id = suivi_tile.id if suivi_tile else None
+    return render_template('admin_settings_roles.html', roles=roles, tiles=tiles, suivi_tile_id=suivi_tile_id)
 
 
 # --- NOUVELLE ROUTE POUR SUPPRIMER UN RÔLE ---
