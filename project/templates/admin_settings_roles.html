@@ -22,7 +22,7 @@
         </div>
 
         <!-- Permissions -->
-        <div class="permissions-card" style="grid-column: span 1;">
+        <div class="permissions-card">
             <h2>Permissions par rôle</h2>
             <form method="POST" action="{{ url_for('admin_settings_roles') }}">
                 <table>
@@ -39,7 +39,7 @@
                         <tr>
                             <td><strong>{{ role.name }}</strong></td>
                             {% for tile in tiles %}
-                                {% set checked = (tile in (role.tiles.all() if hasattr(role.tiles,'all') else role.tiles)) %}
+                                {% set is_checked = tile.id in (role_tiles_map.get(role.id) or set()) %}
                                 <td class="checkbox-cell">
                                     {% if suivi_tile_id and tile.id == suivi_tile_id %}
                                         <!-- Tuile Suivi: toujours cochée et inmodifiable -->
@@ -51,7 +51,7 @@
                                           id="cb_{{ role.id }}_{{ tile.id }}"
                                           name="permissions"
                                           value="role_{{ role.id }}_{{ tile.id }}"
-                                          {% if checked %}checked{% endif %}
+                                          {% if is_checked %}checked{% endif %}
                                         >
                                         <label for="cb_{{ role.id }}_{{ tile.id }}"></label>
                                     {% endif %}
