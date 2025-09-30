@@ -1132,6 +1132,52 @@ ADMIN_PASSWORD_HASH = bcrypt.hashpw("spacekali".encode('utf-8'), bcrypt.gensalt(
 
 DATA_FILE = 'data/site_data.json'
 
+# --- NOUVELLE FONCTION DE DÉMARRAGE POUR INITIALISER LES RÔLES/TUILES ---
+def initialize_database():
+    """Crée les rôles, tuiles, permissions et l'admin par défaut."""
+    
+    # 1. Créer le rôle super_admin (uniquement)
+    if not Role.query.filter_by(name='super_admin').first():
+        db.session.add(Role(name='super_admin'))
+        db.session.commit()
+
+    # 2. Créer les Tuiles par défaut
+    default_tiles = [
+        {'name': 'Produits', 'endpoint': 'admin_products_page', 'description': 'Gérer les produits du site.'},
+        {'name': 'Annonces', 'endpoint': 'admin_announcements', 'description': 'Gérer les annonces et bannières.'},
+        {'name': 'Marketing', 'endpoint': 'admin_marketing', 'description': 'Suivre les paniers abandonnés.'},
+        {'name': 'Commentaires', 'endpoint': 'admin_comments_page', 'description': 'Modérer les commentaires.'},
+        {'name': 'Suivi', 'endpoint': 'admin_suivi', 'description': "Voir le chiffre d'affaires."}
+    ]
+    for tile_data in default_tiles:
+        if not Tile.query.filter_by(endpoint=tile_data['endpoint']).first():
+            db.session.add(Tile(**tile_data))
+    db.session.commit()
+
+    # 3. Assigner TOUTES les tuiles au super_admin (manière robuste)
+    super_admin_role = Role.query.filter_by(name='super_admin').first()
+    if super_admin_role:
+        all_tiles = Tile.query.all()
+        # On utilise un set pour éviter les doublons et être efficace
+        current_tile_ids = {tile.id for tile in super_admin_role.tiles}
+        for tile in all_tiles:
+            if tile.id not in current_tile_ids:
+                super_admin_role.tiles.append(tile)
+        db.session.commit()
+
+    # 4. Créer l'utilisateur Super Admin 'k4d3t' s'il n'existe pas
+    if not User.query.filter_by(username='k4d3t').first() and super_admin_role:
+        hashed_password = bcrypt.hashpw("spacekali".encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
+        admin_user = User(
+            username='k4d3t', 
+            password=hashed_password, 
+            role_id=super_admin_role.id, 
+            revenue_share_percentage=100
+        )
+        db.session.add(admin_user)
+        db.session.commit()
+        print("Utilisateur super_admin 'k4d3t' créé avec succès.")
+
 def load_data():
     """Charge les données depuis le fichier JSON."""
     with open(DATA_FILE, 'r') as f:
@@ -1196,7 +1242,7 @@ def admin_settings_users():
     Page pour gérer les administrateurs et leurs rôles.
     Accessible uniquement au super_admin.
     """
-    if not session.get('admin_logged_in') or session.get('role') != 'super_admin':
+    if session.get('role') != 'super_admin':
         log_action("unauthorized_access_attempt", {"path": "/k4d3t/settings/users"})
         flash("Accès non autorisé.", "error")
         return redirect(url_for('admin_dashboard'))
@@ -1205,47 +1251,35 @@ def admin_settings_users():
         # Récupérer les données du formulaire
         username = request.form.get('username')
         password = request.form.get('password')
-        role = request.form.get('role')
+        # CORRECTION : On récupère role_id, qui est un ID numérique
+        role_id = request.form.get('role_id')
+        revenue_share = request.form.get('revenue_share', 0)
 
         # Validation des champs
-        if not username or not password or not role:
-            log_action("add_user_failed", {
-                "reason": "Champs requis manquants",
-                "username": username,
-                "role": role
-            })
-            flash("Tous les champs sont requis.", "error")
-        elif len(username) < 3 or len(username) > 20:
-            log_action("add_user_failed", {
-                "reason": "Nom d'utilisateur invalide",
-                "username": username,
-                "role": role
-            })
-            flash("Le nom d'utilisateur doit contenir entre 3 et 20 caractères.", "error")
-        elif len(password) < 6:
-            log_action("add_user_failed", {
-                "reason": "Mot de passe trop court",
-                "username": username
-            })
-            flash("Le mot de passe doit contenir au moins 6 caractères.", "error")
-        elif not username.isalnum():
-            log_action("add_user_failed", {
-                "reason": "Nom d'utilisateur non alphanumérique",
-                "username": username
-            })
-            flash("Le nom d'utilisateur ne doit contenir que des lettres et des chiffres.", "error")
+        if not username or not password or not role_id:
+            flash("Nom d'utilisateur, mot de passe et rôle sont requis.", "error")
         elif User.query.filter_by(username=username).first():
-            flash("Nom d'utilisateur déjà pris. Choisissez-en un autre.", "error")
+            flash("Ce nom d'utilisateur est déjà pris.", "error")
         else:
             hashed_password = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-            user = User(username=username, password=hashed_password, role=role)
+            # CORRECTION : On utilise role_id et revenue_share_percentage
+            user = User(
+                username=username, 
+                password=hashed_password, 
+                role_id=int(role_id),
+                revenue_share_percentage=float(revenue_share)
+            )
             db.session.add(user)
             db.session.commit()
             flash("Nouvel administrateur ajouté avec succès.", "success")
+        
+        # On redirige dans tous les cas après un POST pour éviter le re-POST au refresh
+        return redirect(url_for('admin_settings_users'))
 
-    users = User.query.all()
-    return render_template('admin_settings_users.html', users=users)
-
+    users = User.query.options(joinedload(User.role)).all()
+    # CORRECTION : On passe la liste des rôles au template pour le sélecteur
+    roles = Role.query.order_by(Role.name).all()
+    return render_template('admin_settings_users.html', users=users, roles=roles)
 
 @app.route('/k4d3t/settings/users/edit/<username>', methods=['POST'])
 def edit_user(username):
@@ -2380,39 +2414,7 @@ def delete_role(role_id):
         
     return redirect(url_for('admin_settings_roles'))
 
-# --- NOUVELLE FONCTION DE DÉMARRAGE POUR INITIALISER LES RÔLES/TUILES ---
-def initialize_database():
-    """Crée les rôles et tuiles par défaut s'ils n'existent pas."""
-    # Rôles par défaut
-    if not Role.query.filter_by(name='super_admin').first():
-        db.session.add(Role(name='super_admin'))
-    if not Role.query.filter_by(name='admin').first():
-        db.session.add(Role(name='admin'))
-    if not Role.query.filter_by(name='monteur_video').first():
-        db.session.add(Role(name='monteur_video'))
-
-    # Tuiles par défaut
-    default_tiles = [
-        {'name': 'Produits', 'endpoint': 'admin_products_page', 'description': 'Gérer les produits du site.'},
-        {'name': 'Annonces', 'endpoint': 'admin_announcements', 'description': 'Gérer les annonces et bannières.'},
-        {'name': 'Marketing', 'endpoint': 'admin_marketing', 'description': 'Suivre les paniers abandonnés.'},
-        {'name': 'Commentaires', 'endpoint': 'admin_comments_page', 'description': 'Modérer les commentaires.'},
-        {'name': 'Suivi', 'endpoint': 'admin_suivi', 'description': 'Voir le chiffre d\'affaires.'} # La nouvelle tuile
-    ]
-    for tile_data in default_tiles:
-        if not Tile.query.filter_by(endpoint=tile_data['endpoint']).first():
-            db.session.add(Tile(**tile_data))
-    
-    db.session.commit()
-
-    # Assigner toutes les tuiles au super_admin par défaut
-    super_admin_role = Role.query.filter_by(name='super_admin').first()
-    all_tiles = Tile.query.all()
-    for tile in all_tiles:
-        if tile not in super_admin_role.tiles:
-            super_admin_role.tiles.append(tile)
-    db.session.commit()
-
+        
 # --- MODIFICATION DANS LA FONCTION DE DÉMARRAGE `if __name__ == '__main__':` ---
 # Remplacez votre bloc `if __name__ == '__main__':` par celui-ci pour tout initialiser correctement.
 if __name__ == '__main__':
