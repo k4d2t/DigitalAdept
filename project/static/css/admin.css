@@ -2407,3 +2407,63 @@ color: var(--text);
 .actions-column .action-btn:hover {
   opacity: 0.9;
 }
+
+
+/* === Settings tiles: grille propre et espacements harmonisés === */
+.settings-page .tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1.2rem;
+  align-items: stretch;
+  margin-top: 2rem; /* remplace le style inline dans le template */
+}
+
+/* La tuile est un lien: on force la même hauteur visuelle et un rendu clean */
+.settings-page .tiles .tile-link {
+  height: 100%;
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 0 2px 18px #0001;
+  border: 1.5px solid var(--contact-border, #e4e8f0);
+  transition: box-shadow 0.2s, transform 0.17s;
+}
+
+/* Le contenu de la tuile: centre verticalement, garde une respiration uniforme */
+.settings-page .tiles .tile-link section {
+  background: var(--contact-card-bg);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 140px;
+  height: 100%;
+  padding: 1.4rem 1.2rem;
+  text-align: center;
+  color: var(--primary-dark);
+}
+
+.settings-page .tiles .tile-link:hover,
+.settings-page .tiles .tile-link:focus {
+  box-shadow: 0 4px 22px -3px var(--primary-dark, #1976d2),
+              0 0 0 2px #fff3,
+              0 2px 24px #1976d2aa;
+  transform: translateY(-3px);
+  text-decoration: none;
+}
+
+/* Danger tile: bordures/ombre cohérentes */
+.settings-page .tiles .tile-link.danger-zone {
+  border-color: var(--red-dark);
+}
+.settings-page .tiles .tile-link.danger-zone section h2 { color: var(--red); }
+
+@media (max-width: 680px) {
+  .settings-page .tiles {
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 0.9rem;
+  }
+  .settings-page .tiles .tile-link section {
+    min-height: 120px;
+    padding: 1.2rem 1rem;
+  }
+}
