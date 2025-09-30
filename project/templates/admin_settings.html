@@ -15,11 +15,18 @@
         <a href="{{ url_for('admin_settings_users') }}" class="tile-link">
             <section>
                 <h2>Utilisateurs</h2>
-                <p>Gérer les administrateurs et leurs rôles.</p>
+                <p>Gérer les comptes administrateurs.</p>
+            </section>
+        </a>
+        
+        <!-- NOUVELLE TUILE POUR LES RÔLES -->
+        <a href="{{ url_for('admin_settings_roles') }}" class="tile-link">
+            <section>
+                <h2>Rôles & Permissions</h2>
+                <p>Définir les rôles et leurs accès au dashboard.</p>
             </section>
         </a>
 
-        <!-- NOUVELLE TUILE À AJOUTER -->
         <a href="{{ url_for('admin_relaunch_settings') }}" class="tile-link">
             <section>
                 <h2>Stratégie de Relance</h2>
@@ -28,7 +35,6 @@
         </a>
        
         <br> 
-        <!-- Section "Zone de Danger" existante -->
         <div class="tile-link danger-zone">
             <section>
                 <h2 style="color: var(--red);">Zone de Danger</h2>
