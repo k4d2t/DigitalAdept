@@ -684,7 +684,7 @@ def api_produits():
             "stock": p.stock,
             "sku": p.sku,
             "slug": p.slug,
-            "images": [img.url for img in p.images],
+            "images": [img.url for img in p.images],  # Si tu as une relation ProductImage
             "badges": [{"type": b.type, "text": b.text} for b in p.badges],
             "faq": [{"question": f.question, "answer": f.answer} for f in p.faqs],
             "resource_files": [{"type": r.type, "url": r.url, "file_id": r.file_id} for r in p.resource_files],
@@ -1200,8 +1200,6 @@ def admin_settings_users():
         log_action("unauthorized_access_attempt", {"path": "/k4d3t/settings/users"})
         flash("Accès non autorisé.", "error")
         return redirect(url_for('admin_dashboard'))
-
-    data = load_data()
 
     if request.method == 'POST':
         # Récupérer les données du formulaire
