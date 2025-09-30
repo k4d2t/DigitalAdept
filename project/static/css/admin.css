@@ -2231,52 +2231,22 @@ color: var(--text);
 
 /* ... à la fin de votre fichier CSS ... */
 
-/* --- RESPONSIVITÉ POUR LES TABLEAUX ADMIN --- */
+/* --- RESPONSIVITÉ SIMPLE POUR LES TABLEAUX ADMIN --- */
+/*
+  Ce conteneur permet au tableau de défiler horizontalement sur les petits écrans
+  sans altérer son style visuel (couleurs, bordures, etc.).
+*/
 .table-responsive-wrapper {
-    overflow-x: auto;
-    -webkit-overflow-scrolling: touch; /* Pour un défilement fluide sur iOS */
-    border: 1px solid #334;
+    overflow-x: auto;      /* Active le défilement horizontal si le contenu dépasse */
+    -webkit-overflow-scrolling: touch; /* Améliore le défilement sur iOS */
+    border: 1px solid #3a8aff33; /* Une bordure discrète autour de la zone de défilement */
     border-radius: 8px;
     margin-bottom: 2em;
 }
 
-table {
+/* On s'assure que le tableau à l'intérieur ne soit pas forcé à 100% de largeur,
+   ce qui lui permet de déborder et de devenir scrollable. */
+.table-responsive-wrapper table {
+    min-width: 600px; /* Force une largeur minimale pour déclencher le scroll sur mobile */
     width: 100%;
-    border-collapse: collapse;
-}
-
-@media (max-width: 768px) {
-    table thead {
-        /* Masquer les en-têtes sur mobile, les labels sont dans les `td` */
-        display: none;
-    }
-    table, table tbody, table tr, table td {
-        display: block;
-        width: 100%;
-    }
-    table tr {
-        margin-bottom: 15px;
-        border-bottom: 2px solid var(--primary-dark);
-    }
-    table td {
-        text-align: right;
-        padding-left: 50%;
-        position: relative;
-    }
-    table td::before {
-        content: attr(data-label);
-        position: absolute;
-        left: 10px;
-        width: calc(50% - 20px);
-        text-align: left;
-        font-weight: bold;
-        color: var(--primary);
-    }
-    .actions-column {
-        text-align: center;
-        padding-left: 0;
-    }
-    .actions-column::before {
-        display: none; /* Pas de label pour la colonne d'actions */
-    }
 }
