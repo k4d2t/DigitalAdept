@@ -9,8 +9,8 @@
     </nav>
     <h1>Suivi du Chiffre d'Affaires</h1>
 
-    <!-- FORMULAIRE DE FILTRE DE PÉRIODE -->
-    <div class="filter-form-container">
+    <!-- FORMULAIRE DE FILTRE INTÉGRÉ DANS UNE CARTE STYLISÉE -->
+    <div class="filter-card">
         <form id="period-filter-form" method="GET" action="{{ url_for('admin_suivi') }}">
             <div class="filter-controls">
                 <select name="period" id="period-select">
@@ -33,7 +33,7 @@
         </form>
     </div>
 
-    <!-- Indicateurs Clés (KPIs) -->
+    <!-- Indicateurs Clés (KPIs) - Inchangé -->
     <div class="suivi-kpis">
         <div class="kpi-card">
             <div class="kpi-title">CA Total (période)</div>
@@ -48,30 +48,25 @@
         </div>
     </div>
 
-    <!-- Graphique -->
+    <!-- Graphique - Inchangé -->
     <div class="chart-container">
         <h2>Évolution du Chiffre d'Affaires</h2>
         <canvas id="revenueChart"></canvas>
     </div>
 </div>
 
-<!-- Intégration de Chart.js -->
+<!-- Intégration de Chart.js - Inchangé -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // --- Logique pour le formulaire de filtre ---
+    // --- Logique pour le formulaire de filtre (inchangée) ---
     const periodSelect = document.getElementById('period-select');
     const customDateRange = document.getElementById('custom-date-range');
-
     periodSelect.addEventListener('change', function() {
-        if (this.value === 'custom') {
-            customDateRange.style.display = 'flex';
-        } else {
-            customDateRange.style.display = 'none';
-        }
+        customDateRange.style.display = (this.value === 'custom') ? 'flex' : 'none';
     });
 
-    // --- Configuration du graphique ---
+    // --- Configuration du graphique (inchangée, utilise votre style de gradient) ---
     const ctx = document.getElementById('revenueChart').getContext('2d');
     const chartLabels = {{ chart_labels|tojson|safe }};
     const chartData = {{ chart_data|tojson|safe }};
@@ -102,19 +97,10 @@ document.addEventListener('DOMContentLoaded', function() {
             responsive: true,
             maintainAspectRatio: false,
             scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: { color: '#E8F1FA' },
-                    grid: { color: 'rgba(255, 255, 255, 0.1)' }
-                },
-                x: {
-                    ticks: { color: '#E8F1FA' },
-                    grid: { display: false }
-                }
+                y: { beginAtZero: true, ticks: { color: '#E8F1FA' }, grid: { color: 'rgba(255, 255, 255, 0.1)' } },
+                x: { ticks: { color: '#E8F1FA' }, grid: { display: false } }
             },
-            plugins: {
-                legend: { display: false }
-            }
+            plugins: { legend: { display: false } }
         }
     });
 });
