@@ -1216,17 +1216,30 @@ def admin_login():
 @cache.cached(timeout=300)
 @app.route('/k4d3t/dashboard')
 def admin_dashboard():
-    """
-    Tableau de bord admin (protégé par authentification).
-    """
     if not session.get('admin_logged_in'):
-        log_action("unauthenticated_access_attempt", {"path": "/k4d3t/dashboard"})
         flash("Veuillez vous connecter pour accéder au tableau de bord.", "error")
         return redirect(url_for('admin_login'))
+
+    # CORRECTION CRUCIALE :
+    # On charge l'utilisateur ET ses permissions en une seule requête optimisée.
+    user = User.query.options(
+        joinedload(User.role).joinedload(Role.tiles)
+    ).filter_by(username=session.get('username')).first()
+
+    # Si l'utilisateur n'est pas trouvé (cas rare), on le déconnecte.
+    if not user:
+        session.clear()
+        flash("Votre session a expiré ou l'utilisateur est introuvable.", "error")
+        return redirect(url_for('admin_login'))
+
+    # On récupère la liste des tuiles autorisées pour cet utilisateur.
+    # S'il n'a pas de rôle, la liste sera vide.
+    user_tiles = user.role.tiles if user.role else []
     
-    user_tiles = user.role.tiles.all() if user.role else []
+    log_action("access_dashboard", {"role": session.get('role')})
     
-    return render_template('admin_dashboard.html', role=session.get('role'))
+    # On passe cette liste de tuiles au template.
+    return render_template('admin_dashboard.html', user_tiles=user_tiles)
 
 @app.route('/k4d3t/settings', methods=['GET'])
 def admin_settings():
