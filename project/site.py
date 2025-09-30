@@ -2424,6 +2424,118 @@ def admin_suivi():
                            end_date=(end_date - timedelta(days=1)).strftime('%Y-%m-%d') if isinstance(end_date, date) else end_date
                           )
 
+# --- API AJAX pour le tableau Suivi (filtrage sans rechargement) ---
+@app.route('/api/admin/suivi/metrics', methods=['GET'])
+def api_admin_suivi_metrics():
+    if not session.get('admin_logged_in'):
+        return jsonify({"error": "Unauthorized"}), 401
+
+    user = User.query.filter_by(username=session.get('username')).first()
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    period = request.args.get('period', 'this_month')
+    today = date.today()
+    start_date_str = request.args.get('start_date')
+    end_date_str = request.args.get('end_date')
+
+    # Détermination de la période + format de groupage
+    if period == 'today':
+        start_date = today
+        end_date = today + timedelta(days=1)
+        group_by_format = 'YYYY-MM-DD HH24'
+        label_in = '%Y-%m-%d %H'
+        label_out = '%H:00'
+    elif period == 'last_7_days':
+        start_date = today - timedelta(days=6)
+        end_date = today + timedelta(days=1)
+        group_by_format = 'YYYY-MM-DD'
+        label_in = '%Y-%m-%d'
+        label_out = '%d %b'
+    elif period == 'last_30_days':
+        start_date = today - timedelta(days=29)
+        end_date = today + timedelta(days=1)
+        group_by_format = 'YYYY-MM-DD'
+        label_in = '%Y-%m-%d'
+        label_out = '%d %b'
+    elif period == 'this_month':
+        start_date = today.replace(day=1)
+        end_date = (start_date + timedelta(days=32)).replace(day=1)
+        group_by_format = 'YYYY-MM-DD'
+        label_in = '%Y-%m-%d'
+        label_out = '%d %b'
+    elif period == 'last_month':
+        end_of_last_month = today.replace(day=1) - timedelta(days=1)
+        start_date = end_of_last_month.replace(day=1)
+        end_date = today.replace(day=1)
+        group_by_format = 'YYYY-MM-DD'
+        label_in = '%Y-%m-%d'
+        label_out = '%d %b'
+    elif period == 'custom' and start_date_str and end_date_str:
+        try:
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date() + timedelta(days=1)
+        except ValueError:
+            return jsonify({"error": "Invalid date format"}), 400
+        group_by_format = 'YYYY-MM-DD'
+        label_in = '%Y-%m-%d'
+        label_out = '%d %b %Y'
+    else:
+        # fallback par défaut: ce mois-ci
+        start_date = today.replace(day=1)
+        end_date = (start_date + timedelta(days=32)).replace(day=1)
+        period = 'this_month'
+        group_by_format = 'YYYY-MM-DD'
+        label_in = '%Y-%m-%d'
+        label_out = '%d %b'
+
+    base_query = AbandonedCart.query.filter(
+        AbandonedCart.status == 'completed',
+        AbandonedCart.created_at >= start_date,
+        AbandonedCart.created_at < end_date
+    )
+
+    total_revenue = base_query.with_entities(db.func.sum(AbandonedCart.total_price)).scalar() or 0.0
+
+    if user.role and user.role.name == 'super_admin':
+        user_revenue = total_revenue
+    else:
+        pct = float(user.revenue_share_percentage or 0)
+        user_revenue = total_revenue * (pct / 100.0)
+
+    rows = base_query.with_entities(
+        db.func.to_char(AbandonedCart.created_at, group_by_format),
+        db.func.sum(AbandonedCart.total_price)
+    ).group_by(
+        db.func.to_char(AbandonedCart.created_at, group_by_format)
+    ).order_by(
+        db.func.to_char(AbandonedCart.created_at, group_by_format)
+    ).all()
+
+    labels = []
+    data = []
+    for r in rows:
+        key = r[0]
+        amount = float(r[1] or 0)
+        try:
+            dt = datetime.strptime(key, label_in)
+            labels.append(dt.strftime(label_out))
+        except Exception:
+            labels.append(key)
+        data.append(amount)
+
+    return jsonify({
+        "period": period,
+        "start_date": start_date.strftime('%Y-%m-%d'),
+        "end_date": (end_date - timedelta(days=1)).strftime('%Y-%m-%d'),
+        "total_revenue": float(total_revenue),
+        "user_revenue": float(user_revenue),
+        "user_percentage": float(user.revenue_share_percentage or 0),
+        "role": user.role.name if user.role else None,
+        "labels": labels,
+        "data": data
+    }), 200
+
 # --- NOUVELLE ROUTE POUR GÉRER LES RÔLES ET PERMISSIONS ---
 @app.route('/k4d3t/settings/roles', methods=['GET', 'POST'])
 def admin_settings_roles():
