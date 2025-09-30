@@ -1,7 +1,7 @@
 from flask import Flask, render_template, jsonify, request, redirect, url_for, abort, session, flash, send_file, Response
 import json
 import os
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone, timedelta, date
 import uuid  
 import re
 from unicodedata import normalize
@@ -2335,12 +2335,61 @@ def admin_suivi():
         flash("Veuillez vous connecter.", "error")
         return redirect(url_for('admin_login'))
 
-    user = User.query.filter_by(username=session.get('username')).first()
-    if not user:
-        abort(403)
+    user = User.query.filter_by(username=session.get('username')).first_or_404()
 
-    # Calcul du CA total réel (basé sur les paniers complétés)
-    total_revenue = db.session.query(db.func.sum(AbandonedCart.total_price)).filter_by(status='completed').scalar() or 0
+    # --- 1. Gestion de la période ---
+    period = request.args.get('period', 'this_month') # Période par défaut : ce mois-ci
+    today = date.today()
+    start_date_str = request.args.get('start_date')
+    end_date_str = request.args.get('end_date')
+
+    if period == 'today':
+        start_date = today
+        end_date = today + timedelta(days=1)
+        group_by_format = 'YYYY-MM-DD HH24' # Groupe par heure
+        chart_label_format = '%H:00'
+    elif period == 'last_7_days':
+        start_date = today - timedelta(days=6)
+        end_date = today + timedelta(days=1)
+        group_by_format = 'YYYY-MM-DD'
+        chart_label_format = '%d %b'
+    elif period == 'last_30_days':
+        start_date = today - timedelta(days=29)
+        end_date = today + timedelta(days=1)
+        group_by_format = 'YYYY-MM-DD'
+        chart_label_format = '%d %b'
+    elif period == 'this_month':
+        start_date = today.replace(day=1)
+        end_date = (start_date + timedelta(days=32)).replace(day=1)
+        group_by_format = 'YYYY-MM-DD'
+        chart_label_format = '%d %b'
+    elif period == 'last_month':
+        end_of_last_month = today.replace(day=1) - timedelta(days=1)
+        start_date = end_of_last_month.replace(day=1)
+        end_date = today.replace(day=1)
+        group_by_format = 'YYYY-MM-DD'
+        chart_label_format = '%d %b'
+    elif period == 'custom' and start_date_str and end_date_str:
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+        end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date() + timedelta(days=1)
+        group_by_format = 'YYYY-MM-DD'
+        chart_label_format = '%d %b %Y'
+    else:
+        # Fallback si période invalide
+        start_date = today.replace(day=1)
+        end_date = (start_date + timedelta(days=32)).replace(day=1)
+        period = 'this_month'
+        group_by_format = 'YYYY-MM-DD'
+        chart_label_format = '%d %b'
+
+    # --- 2. Requêtes filtrées par la période ---
+    base_query = AbandonedCart.query.filter(
+        AbandonedCart.status == 'completed',
+        AbandonedCart.created_at >= start_date,
+        AbandonedCart.created_at < end_date
+    )
+
+    total_revenue = base_query.with_entities(db.func.sum(AbandonedCart.total_price)).scalar() or 0
 
     user_revenue = 0
     if user.role.name == 'super_admin':
@@ -2348,20 +2397,19 @@ def admin_suivi():
     elif user.revenue_share_percentage > 0:
         user_revenue = total_revenue * (user.revenue_share_percentage / 100.0)
 
-    # CORRECTION : On utilise `to_char` pour PostgreSQL au lieu de `strftime`
-    revenue_by_month = db.session.query(
-        db.func.to_char(AbandonedCart.created_at, 'YYYY-MM'),
+    # Requête pour le graphique, groupée par jour ou par heure
+    revenue_by_time = base_query.with_entities(
+        db.func.to_char(AbandonedCart.created_at, group_by_format),
         db.func.sum(AbandonedCart.total_price)
-    ).filter(
-        AbandonedCart.status == 'completed'
     ).group_by(
-        db.func.to_char(AbandonedCart.created_at, 'YYYY-MM')
+        db.func.to_char(AbandonedCart.created_at, group_by_format)
     ).order_by(
-        db.func.to_char(AbandonedCart.created_at, 'YYYY-MM')
+        db.func.to_char(AbandonedCart.created_at, group_by_format)
     ).all()
-
-    chart_labels = [row[0] for row in revenue_by_month]
-    chart_data = [row[1] for row in revenue_by_month]
+    
+    # Formatage des labels pour le graphique
+    chart_labels = [datetime.strptime(row[0], '%Y-%m-%d' if 'HH24' not in group_by_format else '%Y-%m-%d %H').strftime(chart_label_format) for row in revenue_by_time]
+    chart_data = [float(row[1]) for row in revenue_by_time] # S'assurer que les données sont des nombres
 
     return render_template('admin_suivi.html',
                            total_revenue=total_revenue,
@@ -2369,8 +2417,12 @@ def admin_suivi():
                            user_percentage=user.revenue_share_percentage,
                            chart_labels=chart_labels,
                            chart_data=chart_data,
-                           role=user.role.name)
-
+                           role=user.role.name,
+                           # Variables pour le formulaire de filtre
+                           selected_period=period,
+                           start_date=start_date.strftime('%Y-%m-%d') if isinstance(start_date, date) else start_date,
+                           end_date=(end_date - timedelta(days=1)).strftime('%Y-%m-%d') if isinstance(end_date, date) else end_date
+                          )
 
 # --- NOUVELLE ROUTE POUR GÉRER LES RÔLES ET PERMISSIONS ---
 @app.route('/k4d3t/settings/roles', methods=['GET', 'POST'])
