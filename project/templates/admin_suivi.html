@@ -1,5 +1,4 @@
 {% extends "admin_base.html" %}
-
 {% block admin_title %}Suivi du Chiffre d'Affaires{% endblock %}
 
 {% block admin_content %}
@@ -9,27 +8,24 @@
     </nav>
     <h1>Suivi du Chiffre d'Affaires</h1>
 
-    <!-- FORMULAIRE DE FILTRE DE PÉRIODE -->
+    <!-- Filtre auto (pas de bouton) -->
     <div class="filter-card">
-        <form id="period-filter-form" method="GET" action="{{ url_for('admin_suivi') }}">
+        <form id="period-filter-form" onsubmit="return false;">
             <div class="filter-controls">
                 <select name="period" id="period-select" aria-label="Choisir une période">
-                    <option value="today" {% if selected_period == 'today' %}selected{% endif %}>Aujourd'hui</option>
-                    <option value="last_7_days" {% if selected_period == 'last_7_days' %}selected{% endif %}>7 derniers jours</option>
-                    <option value="last_30_days" {% if selected_period == 'last_30_days' %}selected{% endif %}>30 derniers jours</option>
-                    <option value="this_month" {% if selected_period == 'this_month' %}selected{% endif %}>Ce mois-ci</option>
-                    <option value="last_month" {% if selected_period == 'last_month' %}selected{% endif %}>Mois dernier</option>
-                    <option value="custom" {% if selected_period == 'custom' %}selected{% endif %}>Période personnalisée</option>
+                    <option value="today">Aujourd'hui</option>
+                    <option value="last_7_days">7 derniers jours</option>
+                    <option value="last_30_days">30 derniers jours</option>
+                    <option value="this_month" selected>Ce mois-ci</option>
+                    <option value="last_month">Mois dernier</option>
+                    <option value="custom">Période personnalisée</option>
                 </select>
 
-                <div id="custom-date-range" class="custom-date-controls" {% if selected_period != 'custom' %}style="display: none;"{% endif %}>
-                    <input type="date" name="start_date" value="{{ start_date }}" aria-label="Date de début">
-                    <span style="color: var(--primary)">à</span>
-                    <input type="date" name="end_date" value="{{ end_date }}" aria-label="Date de fin">
+                <div id="custom-date-range" class="custom-date-controls" style="display:none;">
+                    <input type="date" name="start_date" id="start_date" aria-label="Date de début">
+                    <span>à</span>
+                    <input type="date" name="end_date" id="end_date" aria-label="Date de fin">
                 </div>
-
-                <!-- Important: la classe 'cta' harmonise le style -->
-                <button type="submit" class="cta filter-btn">Appliquer</button>
             </div>
         </form>
     </div>
@@ -38,14 +34,12 @@
     <div class="suivi-kpis">
         <div class="kpi-card">
             <div class="kpi-title">CA Total (période)</div>
-            <div class="kpi-value">{{ "%.0f"|format(total_revenue) }} XOF</div>
+            <div class="kpi-value" id="kpi-total">0 XOF</div>
         </div>
         <div class="kpi-card">
             <div class="kpi-title">Votre Commission</div>
-            <div class="kpi-value">{{ "%.0f"|format(user_revenue) }} XOF</div>
-            {% if role != 'super_admin' %}
-                <div class="kpi-detail">({{ user_percentage }}% du CA)</div>
-            {% endif %}
+            <div class="kpi-value" id="kpi-user">0 XOF</div>
+            <div class="kpi-detail" id="kpi-detail"></div>
         </div>
     </div>
 
@@ -56,33 +50,35 @@
     </div>
 </div>
 
-<!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // Affiche/masque la plage personnalisée
     const periodSelect = document.getElementById('period-select');
-    const customDateRange = document.getElementById('custom-date-range');
-    periodSelect.addEventListener('change', function() {
-        customDateRange.style.display = (this.value === 'custom') ? 'flex' : 'none';
-    });
+    const customRange = document.getElementById('custom-date-range');
+    const startInput = document.getElementById('start_date');
+    const endInput = document.getElementById('end_date');
 
-    // Graphique
+    // Style harmonisé: le select suit le thème via CSS (admin.css)
+    // Affichage/masquage des dates personnalisées
+    function toggleCustom() {
+        customRange.style.display = (periodSelect.value === 'custom') ? 'flex' : 'none';
+    }
+    periodSelect.addEventListener('change', () => { toggleCustom(); fetchAndUpdate(); });
+    startInput.addEventListener('change', fetchAndUpdate);
+    endInput.addEventListener('change', fetchAndUpdate);
+
     const ctx = document.getElementById('revenueChart').getContext('2d');
-    const chartLabels = {{ chart_labels|tojson|safe }};
-    const chartData = {{ chart_data|tojson|safe }};
-
-    const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+    const gradient = ctx.createLinearGradient(0, 0, 0, 320);
     gradient.addColorStop(0, 'rgba(79, 195, 247, 0.6)');
     gradient.addColorStop(1, 'rgba(25, 118, 210, 0.1)');
 
-    new Chart(ctx, {
+    const chart = new Chart(ctx, {
         type: 'line',
         data: {
-            labels: chartLabels,
+            labels: [],
             datasets: [{
-                label: 'Chiffre d\'Affaires (XOF)',
-                data: chartData,
+                label: "Chiffre d'Affaires (XOF)",
+                data: [],
                 backgroundColor: gradient,
                 borderColor: '#4FC3F7',
                 borderWidth: 3,
@@ -96,7 +92,7 @@ document.addEventListener('DOMContentLoaded', function() {
         },
         options: {
             responsive: true,
-            maintainAspectRatio: false,
+            maintainAspectRatio: false, // géré par CSS
             scales: {
                 y: {
                     beginAtZero: true,
@@ -108,11 +104,44 @@ document.addEventListener('DOMContentLoaded', function() {
                     grid: { display: false }
                 }
             },
-            plugins: {
-                legend: { display: false }
-            }
+            plugins: { legend: { display: false } }
         }
     });
+
+    const fmt = new Intl.NumberFormat('fr-FR');
+
+    async function fetchAndUpdate() {
+        const params = new URLSearchParams();
+        params.set('period', periodSelect.value);
+        if (periodSelect.value === 'custom') {
+            if (!startInput.value || !endInput.value) return; // attend les deux dates
+            params.set('start_date', startInput.value);
+            params.set('end_date', endInput.value);
+        }
+
+        try {
+            const res = await fetch(`/api/admin/suivi/metrics?${params.toString()}`, { credentials: 'same-origin' });
+            if (!res.ok) return;
+            const data = await res.json();
+
+            // KPIs
+            document.getElementById('kpi-total').textContent = `${fmt.format(Math.round(data.total_revenue))} XOF`;
+            document.getElementById('kpi-user').textContent = `${fmt.format(Math.round(data.user_revenue))} XOF`;
+            const detail = (data.role && data.role !== 'super_admin') ? `(${data.user_percentage}% du CA)` : '';
+            document.getElementById('kpi-detail').textContent = detail;
+
+            // Graph
+            chart.data.labels = data.labels || [];
+            chart.data.datasets[0].data = (data.data || []).map(v => Math.round(v));
+            chart.update();
+        } catch (e) {
+            console.error('Erreur fetch metrics', e);
+        }
+    }
+
+    // Initialisation
+    toggleCustom();
+    fetchAndUpdate();
 });
 </script>
 {% endblock %}
