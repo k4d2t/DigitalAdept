@@ -2367,34 +2367,47 @@ def admin_settings_roles():
         return redirect(url_for('admin_dashboard'))
 
     if request.method == 'POST':
-        # Création d'un nouveau rôle
+        # CAS 1 : Création d'un nouveau rôle
         role_name = request.form.get('role_name')
-        if role_name and not Role.query.filter_by(name=role_name).first():
-            new_role = Role(name=role_name)
-            db.session.add(new_role)
-            db.session.commit()
-            flash(f"Le rôle '{role_name}' a été créé.", "success")
-        elif role_name:
-            flash("Ce rôle existe déjà.", "error")
-        
-        # Mise à jour des permissions
+        if role_name:
+            if not Role.query.filter_by(name=role_name).first():
+                new_role = Role(name=role_name)
+                db.session.add(new_role)
+                db.session.commit()
+                flash(f"Le rôle '{role_name}' a été créé.", "success")
+            else:
+                flash("Ce nom de rôle existe déjà.", "error")
+            return redirect(url_for('admin_settings_roles'))
+
+        # CAS 2 : Mise à jour des permissions
         permissions = request.form.getlist('permissions')
-        for role in Role.query.all():
-            role.tiles.clear() # On vide les permissions actuelles
-            for perm in permissions:
-                if perm.startswith(f'role_{role.id}_'):
-                    tile_id = perm.split('_')[2]
-                    tile = Tile.query.get(tile_id)
-                    if tile:
-                        role.tiles.append(tile)
-            db.session.commit()
-        flash("Permissions mises à jour.", "success")
+        all_roles = Role.query.options(joinedload(Role.tiles)).all()
         
+        for role in all_roles:
+            # On ne modifie pas les permissions du super_admin via ce formulaire
+            if role.name == 'super_admin':
+                continue
+
+            # CORRECTION : La bonne façon de vider la relation est d'assigner une liste vide
+            role.tiles = [] 
+            
+            # On ré-assigne les permissions cochées
+            for perm_string in permissions:
+                if perm_string.startswith(f'role_{role.id}_'):
+                    tile_id = int(perm_string.split('_')[2])
+                    tile_to_add = Tile.query.get(tile_id)
+                    if tile_to_add:
+                        role.tiles.append(tile_to_add)
+
+        db.session.commit()
+        flash("Permissions mises à jour avec succès.", "success")
         return redirect(url_for('admin_settings_roles'))
 
-    roles = Role.query.all()
-    tiles = Tile.query.all()
+    # Logique GET (inchangée)
+    roles = Role.query.order_by(Role.id).all()
+    tiles = Tile.query.order_by(Tile.id).all()
     return render_template('admin_settings_roles.html', roles=roles, tiles=tiles)
+
 
 # --- NOUVELLE ROUTE POUR SUPPRIMER UN RÔLE ---
 @app.route('/k4d3t/settings/roles/delete/<int:role_id>', methods=['POST'])
