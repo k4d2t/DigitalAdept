@@ -2061,40 +2061,28 @@ def health():
 
 # ... (n'importe où dans le fichier, par exemple après les autres routes admin)
 
+# --- ROUTE DE RÉINITIALISATION (CORRIGÉE) ---
 @app.route('/admin/settings/reset-database', methods=['POST'])
 def reset_database_secure():
-    """
-    Réinitialise la base de données.
-    Accessible uniquement par le super_admin via une requête POST.
-    """
-    # ÉTAPE DE SÉCURITÉ CRUCIALE : Vérifie le rôle de l'utilisateur en session
-    if not session.get('admin_logged_in') or session.get('role') != 'super_admin':
-        flash("Action non autorisée. Seul un super_admin peut réinitialiser la base de données.", "error")
+    if session.get('role') != 'super_admin':
+        flash("Action non autorisée.", "error")
         return redirect(url_for('admin_dashboard'))
 
     try:
-        # 1. Supprime toutes les tables
         db.drop_all()
-        # 2. Recrée toutes les tables à partir des modèles (models.py)
         db.create_all()
-
-        # 3. IMPORTANT : Recrée l'utilisateur super_admin pour ne pas être bloqué dehors !
-        super_admin_user = User.query.filter_by(username='k4d3t').first()
-        if not super_admin_user:
-            # Utilise le mot de passe par défaut ou récupère-le depuis les variables d'environnement si configuré
-            hashed_password = bcrypt.hashpw("spacekali".encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
-            new_super_admin = User(username='k4d3t', password=hashed_password, role='super_admin')
-            db.session.add(new_super_admin)
-            db.session.commit()
-            
+        
+        # CORRECTION : On appelle la fonction d'initialisation qui sait comment
+        # créer les rôles, les tuiles ET l'utilisateur admin correctement.
+        initialize_database()
+        
         flash("La base de données a été réinitialisée avec succès.", "success")
+        log_action("database_reset", {"user": session.get('username')})
 
     except Exception as e:
-        # En cas d'erreur, on logue et on informe l'utilisateur
-        logging.error(f"Erreur lors de la réinitialisation de la base de données : {e}")
+        logging.error(f"Erreur lors de la réinitialisation de la base de données : {e}", exc_info=True)
         flash(f"Une erreur est survenue lors de la réinitialisation : {e}", "error")
 
-    # Redirige vers la page des paramètres
     return redirect(url_for('admin_settings'))
 
 # Nouvelle fonction à ajouter
