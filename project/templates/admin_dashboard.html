@@ -14,31 +14,15 @@
         {% endif %}
     </nav>
     <div class="dashboard-sections">
-        <a href="{{ url_for('admin_products_page') }}" class="tile-link">
+        {# --- MODIFICATION MAJEURE : Boucle sur les tuiles autorisées --- #}
+        {% for tile in user_tiles %}
+        <a href="{{ url_for(tile.endpoint) }}" class="tile-link">
             <section>
-                <h2>Produits</h2>
-                <p>Gérez vos produits affichés sur le site ici.</p>
+                <h2>{{ tile.name }}</h2>
+                <p>{{ tile.description }}</p>
             </section>
         </a>
-        <a href="{{ url_for('admin_announcements') }}" class="tile-link">
-            <section>
-                <h2>Annonces</h2>
-                <p>Affichez vos offres et annonces aux clients ici.</p>
-            </section>
-        </a>
-        <!-- CORRECTION ICI : La tuile est maintenant fonctionnelle -->
-        <a href="{{ url_for('admin_marketing') }}" class="tile-link">
-            <section>
-                <h2>Marketing</h2>
-                <p>Gérez les relances de paniers abandonnés.</p>
-            </section>
-        </a>
-        <a href="{{ url_for('admin_comments_page') }}" class="tile-link">
-        <section>
-            <h2>Commentaires</h2>
-            <p>Gérez et modérez les commentaires utilisateurs.</p>
-        </section>
-        </a>
+        {% endfor %}
     </div>
 </div>
 {% endblock %}
