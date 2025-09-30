@@ -1,0 +1,103 @@
+{% extends "admin_base.html" %}
+
+{% block admin_title %}
+    Suivi du Chiffre d'Affaires
+{% endblock %}
+
+{% block admin_content %}
+<div class="suivi-page">
+    <nav class="admin-nav">
+        <a href="{{ url_for('admin_dashboard') }}" id="retour">Retour</a>
+    </nav>
+    <h1>Suivi du Chiffre d'Affaires</h1>
+
+    <div class="suivi-kpis">
+        <div class="kpi-card">
+            <div class="kpi-title">
+                {% if role == 'super_admin' %}
+                    CA Total Réel
+                {% else %}
+                    Votre Part du CA
+                {% endif %}
+            </div>
+            <div class="kpi-value">{{ "%.2f"|format(user_revenue) }} XOF</div>
+            {% if role != 'super_admin' %}
+                <div class="kpi-detail">Calculé sur {{ user_percentage }}% du CA total</div>
+            {% endif %}
+        </div>
+        {% if role == 'super_admin' %}
+        <div class="kpi-card">
+            <div class="kpi-title">CA Total Brut</div>
+            <div class="kpi-value">{{ "%.2f"|format(total_revenue) }} XOF</div>
+            <div class="kpi-detail">Basé sur tous les paiements confirmés</div>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="chart-container">
+        <h2>Évolution du CA par Mois</h2>
+        <canvas id="revenueChart"></canvas>
+    </div>
+</div>
+
+<!-- Intégration de Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const ctx = document.getElementById('revenueChart').getContext('2d');
+    
+    // Gradient pour le fond du graphique
+    const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+    gradient.addColorStop(0, 'rgba(79, 195, 247, 0.6)');
+    gradient.addColorStop(1, 'rgba(25, 118, 210, 0.1)');
+
+    const revenueChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: {{ chart_labels|tojson }},
+            datasets: [{
+                label: 'Chiffre d\'Affaires (XOF)',
+                data: {{ chart_data|tojson }},
+                backgroundColor: gradient,
+                borderColor: '#4FC3F7',
+                borderWidth: 3,
+                pointBackgroundColor: '#fff',
+                pointBorderColor: '#1976D2',
+                pointHoverBackgroundColor: '#1976D2',
+                pointHoverBorderColor: '#fff',
+                tension: 0.4, // Lignes courbes
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        color: '#E8F1FA'
+                    },
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.1)'
+                    }
+                },
+                x: {
+                    ticks: {
+                        color: '#E8F1FA'
+                    },
+                    grid: {
+                        display: false
+                    }
+                }
+            },
+            plugins: {
+                legend: {
+                    display: false
+                }
+            }
+        }
+    });
+});
+</script>
+{% endblock %}
