@@ -1155,9 +1155,8 @@ def initialize_database():
             db.session.add(Tile(**tile_data))
     db.session.commit()
 
-    # 3) Assigner toutes les tuiles au super_admin, sauf "Retrait"
+    # 3) Assigner toutes les tuiles au super_admin (y compris Retrait)
     super_admin_role = Role.query.filter_by(name='super_admin').first()
-    payout_tile = Tile.query.filter_by(endpoint='admin_payout').first()
     if super_admin_role:
         all_tiles = Tile.query.all()
         try:
@@ -1167,27 +1166,14 @@ def initialize_database():
         current_ids = {t.id for t in current_tiles}
 
         for tile in all_tiles:
-            if tile.endpoint == 'admin_payout':
-                continue
             if tile.id not in current_ids:
                 super_admin_role.tiles.append(tile)
 
-        # Retirer "Retrait" du super_admin uniquement si présent (évite StaleDataError)
-        if payout_tile:
-            try:
-                present = any(t.id == payout_tile.id for t in (super_admin_role.tiles.all() if hasattr(super_admin_role.tiles, 'all') else super_admin_role.tiles))
-            except Exception:
-                present = False
-            if present:
-                try:
-                    super_admin_role.tiles.remove(payout_tile)
-                except Exception:
-                    pass
         try:
             db.session.commit()
         except Exception:
             db.session.rollback()
-            logging.exception("initialize_database: échec commit (suppression payout super_admin)")
+            logging.exception("initialize_database: échec commit (assignation tuiles super_admin)")
 
     # 4) Créer l'utilisateur super_admin "k4d3t" si absent
     if not User.query.filter_by(username='k4d3t').first() and super_admin_role:
@@ -2549,7 +2535,7 @@ def cached_admin_settings_roles_page():
 
     roles = Role.query.order_by(Role.id).all()
     changed = False
-    # Auto-réparation Suivi/Retrait
+    # Auto-réparation Suivi/Retrait: forcer pour TOUS les rôles
     for r in roles:
         if suivi_tile:
             try:
@@ -2564,13 +2550,9 @@ def cached_admin_settings_roles_page():
                 present_p = any(t.id == payout_tile.id for t in (r.tiles.all() if hasattr(r.tiles, 'all') else r.tiles))
             except Exception:
                 present_p = False
-            if r.name != 'super_admin' and not present_p:
+            if not present_p:
                 r.tiles.append(payout_tile); changed = True
-            if r.name == 'super_admin' and present_p:
-                try:
-                    r.tiles.remove(payout_tile); changed = True
-                except Exception:
-                    pass
+
     if changed:
         db.session.commit()
 
@@ -2751,8 +2733,9 @@ def admin_payout():
     if not session.get('admin_logged_in'):
         flash("Veuillez vous connecter.", "error")
         return redirect(url_for('admin_login'))
+    # Autoriser TOUS les rôles admin, y compris super_admin
     user = User.query.filter_by(username=session.get('username')).first()
-    if not user or not user.role or user.role.name == 'super_admin':
+    if not user or not user.role:
         flash("Accès non autorisé.", "error")
         return redirect(url_for('admin_dashboard'))
     return render_template('admin_payout.html')
@@ -2762,9 +2745,9 @@ def admin_payout():
 def get_user_available_balance(user):
     """
     Calcule le solde disponible = (Total CA complété × % commission du user) - retraits déjà 'completed'.
-    Note: super_admin n'a pas de solde de retrait (retourne 0).
+    Pour super_admin: % = 100 - somme des % des autres utilisateurs (≠ super_admin).
     """
-    if not user or not user.role or user.role.name == 'super_admin':
+    if not user or not user.role:
         return 0.0
 
     # 1) Total CA complété (toutes périodes)
@@ -2772,11 +2755,16 @@ def get_user_available_balance(user):
         db.func.coalesce(db.func.sum(AbandonedCart.total_price), 0.0)
     ).filter(AbandonedCart.status == 'completed').scalar() or 0.0
 
-    # 2) Commission brute du user (modèle actuel = % global sur tout le CA)
-    user_pct = float(user.revenue_share_percentage or 0.0)
+    # 2) Pourcentage effectif
+    if user.role.name == 'super_admin':
+        other_pct = get_non_super_total_percentage()
+        user_pct = max(0.0, 100.0 - other_pct)
+    else:
+        user_pct = float(user.revenue_share_percentage or 0.0)
+
     gross_commission = total_completed_revenue * (user_pct / 100.0)
 
-    # 3) Total déjà retiré (payouts status 'completed')
+    # 3) Total déjà retiré par CET utilisateur (statut 'completed')
     withdrawn_total = db.session.query(
         db.func.coalesce(db.func.sum(Payout.amount), 0.0)
     ).filter(
@@ -2793,7 +2781,7 @@ def api_payout_balance():
     if not session.get('admin_logged_in'):
         return jsonify({"status": "error", "message": "Non autorisé"}), 403
     user = User.query.filter_by(username=session.get('username')).first()
-    if not user or not user.role or user.role.name == 'super_admin':
+    if not user or not user.role:
         return jsonify({"status": "error", "message": "Non autorisé"}), 403
 
     available = get_user_available_balance(user)
