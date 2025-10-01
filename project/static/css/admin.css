@@ -2574,3 +2574,15 @@ color: var(--text);
 .settings-page .tiles .tile-link section {
   min-height: 120px; /* même gabarit visuel */
 }
+
+
+/* Payout: validation visuelle */
+.form-user .input-error {
+  border-color: var(--red, #e74c3c) !important;
+  box-shadow: 0 0 0 2px #e74c3c22;
+}
+.form-user .cta:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  filter: grayscale(0.2);
+}
