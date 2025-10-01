@@ -1135,37 +1135,46 @@ DATA_FILE = 'data/site_data.json'
 # --- NOUVELLE FONCTION DE DÉMARRAGE POUR INITIALISER LES RÔLES/TUILES ---
 def initialize_database():
     """Crée les rôles, tuiles, permissions et l'admin par défaut."""
-    
-    # 1. Créer le rôle super_admin (uniquement)
+    # 1) super_admin
     if not Role.query.filter_by(name='super_admin').first():
         db.session.add(Role(name='super_admin'))
         db.session.commit()
 
-    # 2. Créer les Tuiles par défaut
+    # 2) Tuiles par défaut (+ Retrait)
     default_tiles = [
         {'name': 'Produits', 'endpoint': 'admin_products_page', 'description': 'Gérer les produits du site.'},
         {'name': 'Annonces', 'endpoint': 'admin_announcements', 'description': 'Gérer les annonces et bannières.'},
         {'name': 'Marketing', 'endpoint': 'admin_marketing', 'description': 'Suivre les paniers abandonnés.'},
         {'name': 'Commentaires', 'endpoint': 'admin_comments_page', 'description': 'Modérer les commentaires.'},
-        {'name': 'Suivi', 'endpoint': 'admin_suivi', 'description': "Voir le chiffre d'affaires."}
+        {'name': 'Suivi', 'endpoint': 'admin_suivi', 'description': "Voir le chiffre d'affaires."},
+        {'name': 'Retrait', 'endpoint': 'admin_payout', 'description': "Demander un retrait d'argent."}, # NEW
     ]
     for tile_data in default_tiles:
         if not Tile.query.filter_by(endpoint=tile_data['endpoint']).first():
             db.session.add(Tile(**tile_data))
     db.session.commit()
 
-    # 3. Assigner TOUTES les tuiles au super_admin (manière robuste)
+    # 3) Assigner toutes les tuiles au super_admin, SAUF 'Retrait'
     super_admin_role = Role.query.filter_by(name='super_admin').first()
+    payout_tile = Tile.query.filter_by(endpoint='admin_payout').first()
     if super_admin_role:
         all_tiles = Tile.query.all()
-        # On utilise un set pour éviter les doublons et être efficace
         current_tile_ids = {tile.id for tile in super_admin_role.tiles}
         for tile in all_tiles:
+            if tile.endpoint == 'admin_payout':
+                # exclure Retrait pour super_admin
+                continue
             if tile.id not in current_tile_ids:
                 super_admin_role.tiles.append(tile)
+        # Retirer 'Retrait' si déjà présent par le passé
+        if payout_tile:
+            try:
+                super_admin_role.tiles.remove(payout_tile)
+            except Exception:
+                pass
         db.session.commit()
 
-    # 4. Créer l'utilisateur Super Admin 'k4d3t' s'il n'existe pas
+    # 4) Créer l'utilisateur Super Admin 'k4d3t' si absent
     if not User.query.filter_by(username='k4d3t').first() and super_admin_role:
         hashed_password = bcrypt.hashpw("spacekali".encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
         admin_user = User(
