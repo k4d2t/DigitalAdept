@@ -152,3 +152,23 @@ class EmailSendLog(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     recipient_email = db.Column(db.String(120), nullable=False)
     sent_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+
+# --- NEW: Historique des retraits ---
+class Payout(db.Model):
+    __table_args__ = (
+        db.Index('ix_payout_user_status', 'user_id', 'status'),
+        db.Index('ix_payout_external_id', 'external_id'),
+        db.Index('ix_payout_created_at', 'created_at'),
+    )
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+    amount = db.Column(db.Float, nullable=False)
+    currency = db.Column(db.String(10), nullable=False, default='XOF')
+    country_code = db.Column(db.String(5), nullable=True)
+    phone = db.Column(db.String(32), nullable=True)
+    mode = db.Column(db.String(64), nullable=True)
+    status = db.Column(db.String(20), nullable=False, default='pending')  # pending, completed, cancelled, failed
+    external_id = db.Column(db.String(120), nullable=True)  # tokenPay / reference MoneyFusion
+    provider_payload = db.Column(db.JSON, nullable=True)     # réponse brute du provider
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
