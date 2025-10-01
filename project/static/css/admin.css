@@ -2154,10 +2154,10 @@ color: var(--text);
     margin-bottom: 1em;
 }
 
-.permissions-card table {
+/*.permissions-card table {
     width: 100%;
     border-collapse: collapse;
-}
+}*/
 
 .permissions-card th, .permissions-card td {
     padding: 0.8em;
@@ -2583,4 +2583,32 @@ color: var(--text);
     padding-left: .6rem;
     padding-right: .6rem;
   }
+}
+
+
+/* Fix Rôles & Permissions: scroll interne du tableau, pas de scroll horizontal de la page */
+.roles-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  overflow-x: clip;          /* coupe tout dépassement horizontal éventuel */
+}
+
+.roles-grid > * { min-width: 0; }  /* laisse les cartes rétrécir dans la grille */
+
+.permissions-card {
+  max-width: 100%;
+  overflow-x: auto;          /* scroll interne horizontal */
+  -webkit-overflow-scrolling: touch; /* scroll fluide iOS */
+}
+
+.permissions-card table {
+  width: max-content;        /* largeur selon le contenu */
+  min-width: 680px;          /* lisible sur desktop/tablette */
+  border-collapse: collapse;
+  margin: 0;                 /* évite toute marge qui élargit */
+}
+
+.permissions-card th,
+.permissions-card td {
+  /* garde tes styles existants de padding/border si tu en as déjà plus haut */
 }
