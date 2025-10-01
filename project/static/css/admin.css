@@ -2589,20 +2589,19 @@ color: var(--text);
 }
 
 
-/* Users table: scroll horizontal interne (pas de débordement de page) */
-.users-page { overflow-x: clip; } /* coupe tout dépassement éventuel */
+/* Users: centrer le tableau de façon fiable + scroll interne si besoin */
+.users-page { overflow-x: clip; } /* coupe tout débordement de page */
 
-.users-page .table-responsive-wrapper table {
-  width: max-content;      /* largeur suit le contenu */
-  min-width: 760px;        /* lisible sur desktop/tablette */
-  margin: 0;               /* pas de marge qui élargit */
-  border-collapse: collapse;
+.users-page .table-responsive-wrapper {
+  overflow-x: auto;               /* scroll interne si trop large */
+  -webkit-overflow-scrolling: touch;
+  text-align: center;             /* centre l’inline-table ci-dessous */
 }
 
-/* Users: centrer le tableau sur desktop tout en gardant le scroll si besoin */
-.users-page .table-responsive-wrapper {
-  display: flex;
-  justify-content: center;   /* centre le tableau quand il est moins large que le conteneur */
-  overflow-x: auto;          /* conserve le scroll interne si ça dépasse */
-  -webkit-overflow-scrolling: touch;
+.users-page .table-responsive-wrapper table {
+  display: inline-table;          /* permet le centrage via text-align */
+  width: max-content;             /* suit le contenu */
+  min-width: 760px;               /* lisible sur desktop/tablette */
+  margin: 0 auto;                 /* sécurité pour certains moteurs */
+  border-collapse: collapse;
 }
