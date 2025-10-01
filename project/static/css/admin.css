@@ -2487,8 +2487,6 @@ color: var(--text);
 
 
 /* --- Payout page harmonisation --- */
-.payout-page { max-width: 1200px; margin: 0 auto; }
-
 .payout-page .form-user select,
 .payout-page .form-user input[type="text"],
 .payout-page .form-user input[type="number"] {
@@ -2605,5 +2603,36 @@ color: var(--text);
   .payout-page .form-user .balance-row,
   .payout-page .form-user .cta {
     grid-column: 1 / -1; /* pleine largeur */
+  }
+}
+
+
+/* Payout: conteneur centré + carte compacte, responsive */
+.payout-page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 0 12px;
+}
+.payout-page .payout-wrap {
+  display: flex;
+  justify-content: center;
+}
+.payout-page .form-user {
+  width: clamp(320px, 88vw, 560px) !important;
+  max-width: 560px !important;
+  margin: 0 auto !important;
+  box-sizing: border-box;
+}
+@media (min-width: 980px) {
+  .payout-page .form-user {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.9rem 1rem;
+  }
+  .payout-page .form-user label:nth-child(3),
+  .payout-page .form-user label:nth-child(4),
+  .payout-page .form-user .balance-row,
+  .payout-page .form-user .cta {
+    grid-column: 1 / -1;
   }
 }
