@@ -2483,3 +2483,35 @@ color: var(--text);
 
 /* --- Grille tuiles Paramètres: harmonisation (si inline style présent) --- */
 .settings-page .tiles { margin-top: 2rem !important; }
+
+
+/* --- Payout page harmonisation --- */
+.payout-page { max-width: 1200px; margin: 0 auto; }
+.payout-page .form-user {
+  max-width: 580px;
+  width: 100%;
+}
+.payout-page .form-user select,
+.payout-page .form-user input[type="text"],
+.payout-page .form-user input[type="number"] {
+  /* héritent déjà des styles .form-user, on ajoute juste un léger glow */
+  box-shadow: 0 2px 10px #4fc3f71a;
+}
+.payout-page .form-user .cta {
+  align-self: flex-end;
+}
+
+/*Optionnel: si tu veux des champs 2 colonnes sur desktop (garde column sur mobile)*/
+.payout-page .form-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.9rem;
+}
+@media (min-width: 740px) {
+  .payout-page .form-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .payout-page .form-grid .full {
+    grid-column: 1 / -1;
+  }
+}
