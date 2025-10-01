@@ -2488,10 +2488,7 @@ color: var(--text);
 
 /* --- Payout page harmonisation --- */
 .payout-page { max-width: 1200px; margin: 0 auto; }
-.payout-page .form-user {
-  max-width: 580px;
-  width: 100%;
-}
+
 .payout-page .form-user select,
 .payout-page .form-user input[type="text"],
 .payout-page .form-user input[type="number"] {
@@ -2517,16 +2514,6 @@ color: var(--text);
   }
 }
 
-
-/* === FIX: Payout (Retrait) - centrer et éviter tout débordement mobile === */
-.payout-page .form-user {
-  /* Étroit, centré, et jamais plus large que l’écran */
-  width: min(92vw, 580px);
-  max-width: 580px; /* garde une carte compacte sur desktop */
-  margin-left: auto;
-  margin-right: auto;
-  box-sizing: border-box;
-}
 
 
 /* Fix Rôles & Permissions: scroll interne du tableau, pas de scroll horizontal de la page */
@@ -2585,4 +2572,38 @@ color: var(--text);
   opacity: 0.6;
   cursor: not-allowed;
   filter: grayscale(0.2);
+}
+
+/* Payout: conteneur centré et carte jamais pleine largeur */
+.payout-page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 0.8rem;
+}
+
+.payout-page .payout-wrap {
+  display: flex;
+  justify-content: center;
+}
+
+.payout-page .form-user {
+  width: min(92vw, 580px);
+  max-width: 580px;
+  margin-left: auto;
+  margin-right: auto;
+  box-sizing: border-box;
+}
+
+@media (min-width: 980px) {
+  .payout-page .form-user {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.9rem 1rem;
+  }
+  .payout-page .form-user label:nth-child(3),
+  .payout-page .form-user label:nth-child(4),
+  .payout-page .form-user .balance-row,
+  .payout-page .form-user .cta {
+    grid-column: 1 / -1; /* pleine largeur */
+  }
 }
