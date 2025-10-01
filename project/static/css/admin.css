@@ -2638,10 +2638,10 @@ color: var(--text);
   color: var(--text, #142439);
 }
 
-/* Mobile cards style (optionnel si tu veux la variante carte) */
+/* Mobile cards style (optionnel si tu veux la variante carte) *//*
 @media (max-width: 740px) {
   .payout-history .table-responsive-wrapper table { min-width: 420px; }
-}
+}*/
 
 
 /* --- Payout: historique stylisé (badges + chips) --- */
@@ -2733,4 +2733,59 @@ color: var(--text);
 /* Le bouton Voir plus */
 #loadMoreHistory {
   margin-top: 0.4rem;
+}
+
+/* Payout history: version “cards” sur mobile */
+@media (max-width: 740px) {
+  .payout-history { margin-top: 1rem; }
+  .payout-history .table-responsive-wrapper {
+    overflow-x: visible; /* plus de scroll horizontal */
+  }
+  .payout-history-table thead {
+    display: none;
+  }
+  .payout-history-table,
+  .payout-history-table tbody,
+  .payout-history-table tr,
+  .payout-history-table td {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .payout-history-table tr {
+    margin-bottom: 0.9rem;
+    border: 1px solid var(--contact-input-border, #e4e8f0);
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    background: var(--contact-card-bg, #fff);
+    overflow: hidden;
+  }
+  .payout-history-table td {
+    position: relative;
+    padding: 0.8rem 1rem 0.8rem calc(50% + 10px); /* place pour le label */
+    text-align: right;
+    border: none;
+    border-bottom: 1px solid var(--contact-input-border, #e4e8f0);
+    white-space: normal; /* autorise les retours à la ligne des chips si besoin */
+  }
+  .payout-history-table td:last-child {
+    border-bottom: none;
+  }
+  .payout-history-table td::before {
+    content: attr(data-label);
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-weight: 700;
+    color: var(--primary-dark, #1976d2);
+    text-align: left;
+  }
+  /* Ajuste légèrement les chips pour mobile */
+  .payout-history-table .ref-chip,
+  .payout-history-table .amount-chip,
+  .payout-history-table .status-badge {
+    transform: translateZ(0);
+    white-space: nowrap;
+  }
 }
