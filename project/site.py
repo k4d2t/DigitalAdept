@@ -1132,7 +1132,7 @@ ADMIN_PASSWORD_HASH = bcrypt.hashpw("spacekali".encode('utf-8'), bcrypt.gensalt(
 
 DATA_FILE = 'data/site_data.json'
 
-# --- NOUVELLE FONCTION DE DÉMARRAGE POUR INITIALISER LES RÔLES/TUILES ---
+# --- Initialisation BDD: rôles, tuiles, admin par défaut (avec "Retrait") ---
 def initialize_database():
     """Crée les rôles, tuiles, permissions et l'admin par défaut."""
     # 1) super_admin
@@ -1140,47 +1140,61 @@ def initialize_database():
         db.session.add(Role(name='super_admin'))
         db.session.commit()
 
-    # 2) Tuiles par défaut (+ Retrait)
+    # 2) Tuiles (incluant "Retrait")
     default_tiles = [
-        {'name': 'Produits', 'endpoint': 'admin_products_page', 'description': 'Gérer les produits du site.'},
-        {'name': 'Annonces', 'endpoint': 'admin_announcements', 'description': 'Gérer les annonces et bannières.'},
-        {'name': 'Marketing', 'endpoint': 'admin_marketing', 'description': 'Suivre les paniers abandonnés.'},
-        {'name': 'Commentaires', 'endpoint': 'admin_comments_page', 'description': 'Modérer les commentaires.'},
-        {'name': 'Suivi', 'endpoint': 'admin_suivi', 'description': "Voir le chiffre d'affaires."},
-        {'name': 'Retrait', 'endpoint': 'admin_payout', 'description': "Demander un retrait d'argent."}, # NEW
+        {'name': 'Produits',     'endpoint': 'admin_products_page',   'description': 'Gérer les produits du site.'},
+        {'name': 'Annonces',     'endpoint': 'admin_announcements',   'description': 'Gérer les annonces et bannières.'},
+        {'name': 'Marketing',    'endpoint': 'admin_marketing',       'description': 'Suivre les paniers abandonnés.'},
+        {'name': 'Commentaires', 'endpoint': 'admin_comments_page',   'description': 'Modérer les commentaires.'},
+        {'name': 'Suivi',        'endpoint': 'admin_suivi',           'description': "Voir le chiffre d'affaires."},
+        {'name': 'Retrait',      'endpoint': 'admin_payout',          'description': "Demander un retrait d'argent."},
     ]
     for tile_data in default_tiles:
         if not Tile.query.filter_by(endpoint=tile_data['endpoint']).first():
             db.session.add(Tile(**tile_data))
     db.session.commit()
 
-    # 3) Assigner toutes les tuiles au super_admin, SAUF 'Retrait'
+    # 3) Assigner toutes les tuiles au super_admin, sauf "Retrait"
     super_admin_role = Role.query.filter_by(name='super_admin').first()
     payout_tile = Tile.query.filter_by(endpoint='admin_payout').first()
     if super_admin_role:
         all_tiles = Tile.query.all()
-        current_tile_ids = {tile.id for tile in super_admin_role.tiles}
+        try:
+            current_tiles = super_admin_role.tiles.all()
+        except Exception:
+            current_tiles = list(super_admin_role.tiles)
+        current_ids = {t.id for t in current_tiles}
+
         for tile in all_tiles:
             if tile.endpoint == 'admin_payout':
-                # exclure Retrait pour super_admin
                 continue
-            if tile.id not in current_tile_ids:
+            if tile.id not in current_ids:
                 super_admin_role.tiles.append(tile)
-        # Retirer 'Retrait' si déjà présent par le passé
+
+        # Retirer "Retrait" du super_admin uniquement si présent (évite StaleDataError)
         if payout_tile:
             try:
-                super_admin_role.tiles.remove(payout_tile)
+                present = any(t.id == payout_tile.id for t in (super_admin_role.tiles.all() if hasattr(super_admin_role.tiles, 'all') else super_admin_role.tiles))
             except Exception:
-                pass
-        db.session.commit()
+                present = False
+            if present:
+                try:
+                    super_admin_role.tiles.remove(payout_tile)
+                except Exception:
+                    pass
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            logging.exception("initialize_database: échec commit (suppression payout super_admin)")
 
-    # 4) Créer l'utilisateur Super Admin 'k4d3t' si absent
+    # 4) Créer l'utilisateur super_admin "k4d3t" si absent
     if not User.query.filter_by(username='k4d3t').first() and super_admin_role:
         hashed_password = bcrypt.hashpw("spacekali".encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
         admin_user = User(
-            username='k4d3t', 
-            password=hashed_password, 
-            role_id=super_admin_role.id, 
+            username='k4d3t',
+            password=hashed_password,
+            role_id=super_admin_role.id,
             revenue_share_percentage=100
         )
         db.session.add(admin_user)
@@ -2328,8 +2342,7 @@ def trigger_relaunch_job():
     except Exception as e:
         logging.error(f"Erreur lors de la lecture du résultat du cron job : {e}")
         
-    return response
-
+# --- Helper commissions (hors super_admin) ---
 def get_non_super_total_percentage(exclude_user_id=None):
     q = db.session.query(
         db.func.coalesce(db.func.sum(User.revenue_share_percentage), 0.0)
@@ -2513,6 +2526,7 @@ def api_admin_suivi_metrics():
     }), 200
 
 # --- NOUVELLE ROUTE POUR GÉRER LES RÔLES ET PERMISSIONS ---
+# --- Rôles & Permissions: "Suivi" forcé pour tous, "Retrait" forcé pour ≠ super_admin ---
 @app.route('/k4d3t/settings/roles', methods=['GET', 'POST'])
 def admin_settings_roles():
     if not session.get('admin_logged_in') or session.get('role') != 'super_admin':
@@ -2530,7 +2544,6 @@ def admin_settings_roles():
                 new_role = Role(name=role_name)
                 db.session.add(new_role)
                 db.session.commit()
-                # Forcer Suivi + Retrait (si non-super_admin)
                 if suivi_tile:
                     new_role.tiles.append(suivi_tile)
                 if payout_tile and role_name != 'super_admin':
@@ -2546,20 +2559,28 @@ def admin_settings_roles():
         all_roles = Role.query.all()
 
         for role in all_roles:
-            # retirer toutes les tuiles sauf Suivi et (éventuellement) Retrait si non-super
+            # Récup tuiles actuelles
             try:
                 current_tiles = role.tiles.all()
             except Exception:
                 current_tiles = list(role.tiles)
+
+            # 1) retirer toutes les tuiles sauf Suivi et Retrait si rôle ≠ super_admin
             for t in list(current_tiles):
                 must_keep = (suivi_tile and t.id == suivi_tile.id) or (payout_tile and t.id == payout_tile.id and role.name != 'super_admin')
                 if not must_keep:
                     try:
-                        role.tiles.remove(t)
+                        # retire uniquement si présent (évite StaleDataError)
+                        try:
+                            present = any(tt.id == t.id for tt in (role.tiles.all() if hasattr(role.tiles, 'all') else role.tiles))
+                        except Exception:
+                            present = True
+                        if present:
+                            role.tiles.remove(t)
                     except Exception:
                         pass
 
-            # réassigner selon formulaire (on ignore Suivi et Retrait forcés)
+            # 2) réassigner selon formulaire (ignorer Suivi/Retrait qui sont forcées)
             for perm_string in permissions:
                 if perm_string.startswith(f'role_{role.id}_'):
                     try:
@@ -2575,53 +2596,57 @@ def admin_settings_roles():
                         except Exception:
                             pass
 
-            # forcer Suivi pour tous
+            # 3) forcer Suivi pour tous
             if suivi_tile:
                 try:
-                    present_suivi = any(t.id == suivi_tile.id for t in role.tiles.all())
+                    present_suivi = any(t.id == suivi_tile.id for t in (role.tiles.all() if hasattr(role.tiles, 'all') else role.tiles))
                 except Exception:
-                    present_suivi = any(t.id == suivi_tile.id for t in role.tiles)
+                    present_suivi = False
                 if not present_suivi:
                     role.tiles.append(suivi_tile)
 
-            # forcer Retrait sur rôles ≠ super_admin, et l’enlever du super_admin
+            # 4) forcer Retrait pour ≠ super_admin, et l’enlever pour super_admin
             if payout_tile:
                 if role.name != 'super_admin':
                     try:
-                        present_payout = any(t.id == payout_tile.id for t in role.tiles.all())
+                        present_payout = any(t.id == payout_tile.id for t in (role.tiles.all() if hasattr(role.tiles, 'all') else role.tiles))
                     except Exception:
-                        present_payout = any(t.id == payout_tile.id for t in role.tiles)
+                        present_payout = False
                     if not present_payout:
                         role.tiles.append(payout_tile)
                 else:
-                    # ensure super_admin n’a pas Retrait
+                    # enlever "Retrait" de super_admin seulement si présent
                     try:
-                        role.tiles.remove(payout_tile)
+                        present_payout = any(t.id == payout_tile.id for t in (role.tiles.all() if hasattr(role.tiles, 'all') else role.tiles))
                     except Exception:
-                        pass
+                        present_payout = False
+                    if present_payout:
+                        try:
+                            role.tiles.remove(payout_tile)
+                        except Exception:
+                            pass
 
         db.session.commit()
         flash("Permissions mises à jour avec succès.", "success")
         return redirect(url_for('admin_settings_roles'))
 
-    # GET: auto-réparation Suivi / Retrait
+    # GET: auto-réparation Suivi/Retrait par rôle
     roles = Role.query.order_by(Role.id).all()
     changed = False
     for r in roles:
-        # Suivi pour tous
         if suivi_tile:
             try:
-                present = any(t.id == suivi_tile.id for t in r.tiles.all())
+                present = any(t.id == suivi_tile.id for t in (r.tiles.all() if hasattr(r.tiles, 'all') else r.tiles))
             except Exception:
-                present = any(t.id == suivi_tile.id for t in r.tiles)
+                present = False
             if not present:
                 r.tiles.append(suivi_tile); changed = True
-        # Retrait pour ≠ super_admin (et enlever chez super_admin)
+
         if payout_tile:
             try:
-                present_p = any(t.id == payout_tile.id for t in r.tiles.all())
+                present_p = any(t.id == payout_tile.id for t in (r.tiles.all() if hasattr(r.tiles, 'all') else r.tiles))
             except Exception:
-                present_p = any(t.id == payout_tile.id for t in r.tiles)
+                present_p = False
             if r.name != 'super_admin' and not present_p:
                 r.tiles.append(payout_tile); changed = True
             if r.name == 'super_admin' and present_p:
