@@ -2797,7 +2797,8 @@ def api_payout_history():
     if not session.get('admin_logged_in'):
         return jsonify({"status": "error", "message": "Non autorisé"}), 403
     user = User.query.filter_by(username=session.get('username')).first()
-    if not user or not user.role or user.role.name == 'super_admin':
+    # Autoriser TOUS les rôles (y compris super_admin)
+    if not user or not user.role:
         return jsonify({"status": "error", "message": "Non autorisé"}), 403
 
     # Params: limit/offset triés et sécurisés
