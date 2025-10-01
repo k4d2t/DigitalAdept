@@ -15,7 +15,7 @@
         <a href="{{ url_for('admin_settings_users') }}" class="tile-link">
             <section>
                 <h2>Utilisateurs</h2>
-                <p>Gérer les comptes administrateurs.</p>
+                <p>Gérer les comptes administrateurs, les attributs et commissions</p>
             </section>
         </a>
         
@@ -36,13 +36,13 @@
        
         <div class="tile-link danger-zone">
             <section>
-                <h2 style="color: var(--red);">Zone de Danger</h2>
+                <h2 style="color: var(--red);">Danger Zone</h2>
                 <p style="color: var(--text); margin-bottom: 1.5em;">
-                    L'action ci-dessous est irréversible et effacera toutes les données.
+                    No walckback possible
                 </p>
                 <form id="resetDbForm" action="{{ url_for('reset_database_secure') }}" method="POST" style="display: inline-block;">
                     <button type="button" id="resetDbButton" class="btn" style="background-color: var(--red-dark); color: white;">
-                        Réinitialiser la Base de Données
+                        Reset
                     </button>
                 </form>
             </section>
