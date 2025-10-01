@@ -8,55 +8,57 @@
   </nav>
   <h1>Demande de Retrait</h1>
 
-  <div class="form-user" style="max-width:580px;">
-    <label>Pays
-      <select id="countryCode" required>
-        <option value="" disabled selected>-- Choisir un pays --</option>
-        <option value="ci">Côte d'Ivoire</option>
-        <option value="sn">Sénégal</option>
-        <option value="bf">Burkina Faso</option>
-        <option value="bj">Bénin</option>
-        <option value="tg">Togo</option>
-        <option value="ml">Mali</option>
-        <option value="cg">Congo Brazzaville</option>
-        <option value="cm">Cameroun</option>
-        <option value="cd">Congo RDC</option>
-        <option value="ga">Gabon</option>
-        <option value="gh">Ghana</option>
-        <option value="gn">Guinée Conakry</option>
-        <option value="gw">Guinée-Bissau</option>
-        <option value="ke">Kenya</option>
-        <option value="mr">Mauritanie</option>
-        <option value="ne">Niger</option>
-        <option value="ug">Ouganda</option>
-        <option value="cf">Centrafrique</option>
-        <option value="rw">Rwanda</option>
-        <option value="sl">Sierra Leone</option>
-        <option value="tz">Tanzanie</option>
-        <option value="td">Tchad</option>
-        <option value="gm">Gambie</option>
-        <option value="et">Éthiopie</option>
-      </select>
-    </label>
+  <div class="payout-wrap">
+    <div class="form-user" style="max-width:580px;">
+      <label>Pays
+        <select id="countryCode" required>
+          <option value="" disabled selected>-- Choisir un pays --</option>
+          <option value="ci">Côte d'Ivoire</option>
+          <option value="sn">Sénégal</option>
+          <option value="bf">Burkina Faso</option>
+          <option value="bj">Bénin</option>
+          <option value="tg">Togo</option>
+          <option value="ml">Mali</option>
+          <option value="cg">Congo Brazzaville</option>
+          <option value="cm">Cameroun</option>
+          <option value="cd">Congo RDC</option>
+          <option value="ga">Gabon</option>
+          <option value="gh">Ghana</option>
+          <option value="gn">Guinée Conakry</option>
+          <option value="gw">Guinée-Bissau</option>
+          <option value="ke">Kenya</option>
+          <option value="mr">Mauritanie</option>
+          <option value="ne">Niger</option>
+          <option value="ug">Ouganda</option>
+          <option value="cf">Centrafrique</option>
+          <option value="rw">Rwanda</option>
+          <option value="sl">Sierra Leone</option>
+          <option value="tz">Tanzanie</option>
+          <option value="td">Tchad</option>
+          <option value="gm">Gambie</option>
+          <option value="et">Éthiopie</option>
+        </select>
+      </label>
 
-    <label>Méthode de retrait
-      <select id="withdraw_mode" required></select>
-    </label>
+      <label>Méthode de retrait
+        <select id="withdraw_mode" required></select>
+      </label>
 
-    <label>Numéro (ex: 05xxxxxxxxx)
-      <input type="text" id="phone" placeholder="Numéro Mobile Money" required>
-    </label>
+      <label>Numéro (ex: 05xxxxxxxxx)
+        <input type="text" id="phone" placeholder="Numéro Mobile Money" required>
+      </label>
 
-    <label>Montant
-      <input type="number" id="amount" min="1" step="0.01" placeholder="Montant à retirer" required>
-    </label>
+      <label>Montant
+        <input type="number" id="amount" min="1" step="0.01" placeholder="Montant à retirer" required>
+      </label>
 
-    <div class="balance-row" style="margin-top:-.4rem; margin-bottom:.2rem; color: var(--primary-dark);">
-      Solde disponible: <strong id="availableBalance">--</strong> XOF
+      <div class="balance-row" style="margin-top:-.4rem; margin-bottom:.2rem; color: var(--primary-dark);">
+        Solde disponible: <strong id="availableBalance">--</strong> XOF
+      </div>
+
+      <button class="cta" id="payoutSubmit">Soumettre</button>
+      <small style="opacity:.8;">Les retraits sont traités via Money Fusion. Assure-toi que ton IP serveur est autorisée et que la clé API est configurée.</small>
     </div>
-
-    <button class="cta" id="payoutSubmit">Soumettre</button>
-    <small style="opacity:.8;">Les retraits sont traités via Money Fusion. Assure-toi que ton IP serveur est autorisée et que la clé API est configurée.</small>
   </div>
 </div>
 
