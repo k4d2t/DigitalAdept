@@ -21,6 +21,8 @@ class User(db.Model):
 
     # --- NOUVEAU : Pourcentage de commission pour le CA ---
     revenue_share_percentage = db.Column(db.Float, nullable=False, default=0)
+    # AJOUTER cette ligne juste ici ↓
+    payouts = db.relationship('Payout', backref='user', lazy=True, cascade="all, delete-orphan")
 
     def __repr__(self):
         return f'<User {self.username}>'
