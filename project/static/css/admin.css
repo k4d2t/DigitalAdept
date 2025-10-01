@@ -2515,3 +2515,72 @@ color: var(--text);
     grid-column: 1 / -1;
   }
 }
+
+
+/* === FIX: Payout (Retrait) - centrer et éviter tout débordement mobile === */
+.payout-page .form-user {
+  /* Étroit, centré, et jamais plus large que l’écran */
+  width: min(92vw, 580px);
+  max-width: 580px; /* garde une carte compacte sur desktop */
+  margin-left: auto;
+  margin-right: auto;
+  box-sizing: border-box;
+}
+
+/* === Paramètres: remplacer la grille par un flex responsive, centré === */
+/* Container des tuiles de paramètres */
+.settings-page .tiles {
+  display: flex !important;              /* remplace la grid précédente */
+  flex-wrap: wrap;                       /* retour à la ligne */
+  justify-content: center;               /* centre les tuiles */
+  align-items: stretch;
+  gap: 1rem 1.2rem;                      /* espacements harmonisés */
+  max-width: 1100px;                     /* largeur contenue */
+  margin: 2rem auto !important;          /* centré, marge homogène */
+  padding: 0 .5rem;                      /* petite respiration latérale */
+}
+
+/* Chaque tuile: largeur contenue (pas 100%), pas de débordement */
+.settings-page .tiles .tile-link {
+  flex: 0 1 280px;                       /* base 280px, rétrécit si besoin */
+  width: min(92vw, 320px);               /* ne prend jamais 100% */
+  max-width: 320px;
+  min-width: 240px;                      /* limite basse pour garder le look */
+  height: 100%;
+  border-radius: 14px;                   /* garde le style existant */
+  overflow: hidden;
+}
+
+/* Contenu de la tuile: cohérent et centré */
+.settings-page .tiles .tile-link section {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 140px;
+  height: 100%;
+  padding: 1.2rem 1rem;
+  text-align: center;
+}
+
+/* Mobile: pile verticalement sans occuper 100% de la largeur */
+@media (max-width: 740px) {
+  .settings-page .tiles {
+    flex-direction: column;
+    align-items: center;                 /* center stacking */
+    gap: 0.9rem;
+  }
+  .settings-page .tiles .tile-link {
+    width: min(92vw, 480px);            /* compact, jamais plein écran */
+    max-width: 480px;
+    min-width: 240px;
+  }
+}
+
+/* Option: très petits écrans - un peu plus d’air latéral */
+@media (max-width: 400px) {
+  .settings-page .tiles {
+    padding-left: .6rem;
+    padding-right: .6rem;
+  }
+}
