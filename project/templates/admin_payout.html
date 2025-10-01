@@ -148,6 +148,20 @@ function validateAmount() {
   return !invalid;
 }
 
+function statusClass(s) {
+  s = (s || '').toLowerCase();
+  if (s === 'completed') return 'status-completed';
+  if (s === 'pending') return 'status-pending';
+  if (s === 'failed') return 'status-failed';
+  if (s === 'cancelled') return 'status-cancelled';
+  return 'status-unknown';
+}
+function statusLabel(s) {
+  if (!s) return '—';
+  s = String(s);
+  return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
+}
+
 async function loadHistory() {
   const tbody = document.getElementById('payoutHistoryBody');
   try {
@@ -160,21 +174,26 @@ async function loadHistory() {
       return;
     }
     tbody.innerHTML = items.map(it => {
-      const amount = `${it.amount.toLocaleString('fr-FR')} ${it.currency || 'XOF'}`;
+      const amount = `${Number(it.amount || 0).toLocaleString('fr-FR')} ${it.currency || 'XOF'}`;
       const ref = it.reference_short || it.reference || '—';
-      const status = it.status;
+      const st = it.status || '';
       return `<tr>
         <td data-label="Date">${it.date}</td>
-        <td data-label="Référence" title="${it.reference || ''}">${ref}</td>
-        <td data-label="Montant">${amount}</td>
-        <td data-label="Statut">${status}</td>
+        <td data-label="Référence" title="${it.reference || ''}">
+          <span class="ref-chip">${ref}</span>
+        </td>
+        <td data-label="Montant">
+          <span class="amount-chip">${amount}</span>
+        </td>
+        <td data-label="Statut">
+          <span class="status-badge ${statusClass(st)}">${statusLabel(st)}</span>
+        </td>
       </tr>`;
     }).join('');
   } catch {
     tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Erreur de chargement.</td></tr>';
   }
 }
-
 document.addEventListener('DOMContentLoaded', () => {
   const cc = document.getElementById('countryCode');
   if (cc) { cc.value = 'ci'; refreshModes(); }
