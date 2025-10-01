@@ -42,6 +42,11 @@
             <div class="kpi-detail" id="kpi-detail"></div>
         </div>
     </div>
+    <div class="kpi-card" id="kpiAvailableCard" style="display:none;">
+      <div class="kpi-title">Solde disponible</div>
+      <div class="kpi-value" id="kpiAvailableBalance">--</div>
+      <div class="kpi-detail">XOF</div>
+    </div>
 
     <!-- Graphique -->
     <div class="chart-container">
@@ -49,7 +54,37 @@
         <canvas id="revenueChart"></canvas>
     </div>
 </div>
+<script>
+async function refreshAvailableBalanceKPI() {
+  const card = document.getElementById('kpiAvailableCard');
+  const valEl = document.getElementById('kpiAvailableBalance');
+  if (!card || !valEl) return;
+  try {
+    const res = await fetch('/api/payout/balance', { credentials: 'same-origin' });
+    if (!res.ok) { card.style.display = 'none'; return; }
+    const data = await res.json();
+    if (data.status !== 'success' || typeof data.available !== 'number') { card.style.display = 'none'; return; }
+    valEl.textContent = Number(data.available).toLocaleString('fr-FR');
+    card.style.display = '';
+  } catch {
+    card.style.display = 'none';
+  }
+}
 
+document.addEventListener('DOMContentLoaded', () => {
+  refreshAvailableBalanceKPI();
+
+  // Si tu as un bouton "Filtrer" ou changements de période, relance si souhaité:
+  // Exemple si un bouton .filter-btn existe:
+  const filterBtn = document.querySelector('.filter-btn button, .filter-btn .cta, .filter-btn');
+  if (filterBtn) {
+    filterBtn.addEventListener('click', () => {
+      // On rafraîchit le solde aussi, même si le solde n’est pas censé dépendre de la période
+      refreshAvailableBalanceKPI();
+    });
+  }
+});
+</script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
