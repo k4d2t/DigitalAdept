@@ -2486,34 +2486,6 @@ color: var(--text);
 .settings-page .tiles { margin-top: 2rem !important; }
 
 
-/* --- Payout page harmonisation --- */
-.payout-page .form-user select,
-.payout-page .form-user input[type="text"],
-.payout-page .form-user input[type="number"] {
-  /* héritent déjà des styles .form-user, on ajoute juste un léger glow */
-  box-shadow: 0 2px 10px #4fc3f71a;
-}
-.payout-page .form-user .cta {
-  align-self: flex-end;
-}
-
-/*Optionnel: si tu veux des champs 2 colonnes sur desktop (garde column sur mobile)*/
-.payout-page .form-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 0.9rem;
-}
-@media (min-width: 740px) {
-  .payout-page .form-grid {
-    grid-template-columns: 1fr 1fr;
-  }
-  .payout-page .form-grid .full {
-    grid-column: 1 / -1;
-  }
-}
-
-
-
 /* Fix Rôles & Permissions: scroll interne du tableau, pas de scroll horizontal de la page */
 .roles-page {
   max-width: 1200px;
@@ -2572,67 +2544,42 @@ color: var(--text);
   filter: grayscale(0.2);
 }
 
-/* Payout: conteneur centré et carte jamais pleine largeur */
-.payout-page {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 0.8rem;
-}
-
-.payout-page .payout-wrap {
-  display: flex;
-  justify-content: center;
-}
-
-.payout-page .form-user {
-  width: min(92vw, 580px);
-  max-width: 580px;
-  margin-left: auto;
-  margin-right: auto;
-  box-sizing: border-box;
-}
-
-@media (min-width: 980px) {
-  .payout-page .form-user {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 0.9rem 1rem;
-  }
-  .payout-page .form-user label:nth-child(3),
-  .payout-page .form-user label:nth-child(4),
-  .payout-page .form-user .balance-row,
-  .payout-page .form-user .cta {
-    grid-column: 1 / -1; /* pleine largeur */
-  }
-}
-
-
-/* Payout: conteneur centré + carte compacte, responsive */
-.payout-page {
+/* Payout (Retrait): bloc unique, compact et centré (mobile ET desktop) */
+.settings-page.payout-page {
   max-width: 1100px;
   margin: 0 auto;
   padding: 0 12px;
 }
-.payout-page .payout-wrap {
-  display: flex;
-  justify-content: center;
-}
-.payout-page .form-user {
+
+/* Centre la “carte” et limite réellement la largeur, même si d'autres .css imposent width:100% */
+.settings-page.payout-page .form-user {
   width: clamp(320px, 88vw, 560px) !important;
   max-width: 560px !important;
   margin: 0 auto !important;
   box-sizing: border-box;
 }
-@media (min-width: 980px) {
-  .payout-page .form-user {
+
+/* Optionnel: 2 colonnes sur desktop, propre et lisible */
+@media (min-width: 1024px) {
+  .settings-page.payout-page .form-user {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 0.9rem 1rem;
   }
-  .payout-page .form-user label:nth-child(3),
-  .payout-page .form-user label:nth-child(4),
-  .payout-page .form-user .balance-row,
-  .payout-page .form-user .cta {
+  .settings-page.payout-page .form-user label:nth-child(3),
+  .settings-page.payout-page .form-user label:nth-child(4),
+  .settings-page.payout-page .form-user .balance-row,
+  .settings-page.payout-page .form-user .cta,
+  .settings-page.payout-page .form-user small {
     grid-column: 1 / -1;
   }
+}
+
+/* Petits plus: validation et désactivation (si pas déjà présents) */
+.settings-page.payout-page .form-user .input-error {
+  border-color: var(--red, #e74c3c) !important;
+  box-shadow: 0 0 0 2px #e74c3c22;
+}
+.settings-page.payout-page .form-user .cta:disabled {
+  opacity: 0.6; cursor: not-allowed; filter: grayscale(0.2);
 }
