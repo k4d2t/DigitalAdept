@@ -2650,6 +2650,85 @@ def admin_settings_roles():
         role_tiles_map=role_tiles_map
     )
 
+@app.route('/k4d3t/payout', methods=['GET'])
+def admin_payout():
+    if not session.get('admin_logged_in'):
+        flash("Veuillez vous connecter.", "error")
+        return redirect(url_for('admin_login'))
+    user = User.query.filter_by(username=session.get('username')).first()
+    if not user or not user.role or user.role.name == 'super_admin':
+        flash("Accès non autorisé.", "error")
+        return redirect(url_for('admin_dashboard'))
+    return render_template('admin_payout.html')
+
+
+@app.route('/api/payout/withdraw', methods=['POST'])
+def api_payout_withdraw():
+    if not session.get('admin_logged_in'):
+        return jsonify({"status": "error", "message": "Non autorisé"}), 403
+    user = User.query.filter_by(username=session.get('username')).first()
+    if not user or not user.role or user.role.name == 'super_admin':
+        return jsonify({"status": "error", "message": "Non autorisé"}), 403
+
+    data = request.get_json(silent=True) or {}
+    countryCode = (data.get('countryCode') or '').strip().lower()
+    phone = (data.get('phone') or '').strip()
+    withdraw_mode = (data.get('withdraw_mode') or '').strip().lower()
+    try:
+        amount = float(data.get('amount'))
+    except Exception:
+        amount = 0.0
+
+    if not countryCode or not phone or not withdraw_mode or amount <= 0:
+        return jsonify({"status": "error", "message": "Paramètres invalides"}), 400
+
+    private_key = os.environ.get('MONEYFUSION_PRIVATE_KEY')
+    if not private_key:
+        return jsonify({"status": "error", "message": "Clé API Money Fusion manquante (MONEYFUSION_PRIVATE_KEY)"}), 500
+
+    payload = {
+        "countryCode": countryCode,
+        "phone": phone,
+        "amount": amount,
+        "withdraw_mode": withdraw_mode,
+        "webhook_url": url_for('api_withdraw_callback', _external=True)
+    }
+
+    try:
+        r = requests.post(
+            "https://pay.moneyfusion.net/api/v1/withdraw",
+            json=payload,
+            headers={
+                "moneyfusion-private-key": private_key,
+                "Content-Type": "application/json"
+            },
+            timeout=20
+        )
+        r.raise_for_status()
+        res = r.json()
+        # Log et retour
+        log_action("payout_initiated", {"username": session.get('username'), "payload": payload, "response": res})
+        return jsonify(res), 200 if res.get("statut") else 400
+    except requests.exceptions.RequestException as e:
+        return jsonify({"status": "error", "message": f"Erreur API: {e}"}), 502
+
+
+@app.route('/api/withdraw/callback', methods=['POST'])
+def api_withdraw_callback():
+    """
+    Webhook de Money Fusion pour les retraits.
+    Attend event: payout.session.completed | payout.session.cancelled
+    """
+    try:
+        data = request.get_json(force=True)
+    except Exception:
+        return "", 400
+
+    event = data.get("event")
+    tokenPay = data.get("tokenPay")
+    # Ici tu peux persister le statut si tu ajoutes un modèle Payout plus tard
+    log_action("payout_webhook", {"event": event, "tokenPay": tokenPay, "payload": data})
+    return "", 200
 
 # --- NOUVELLE ROUTE POUR SUPPRIMER UN RÔLE ---
 @app.route('/k4d3t/settings/roles/delete/<int:role_id>', methods=['POST'])
