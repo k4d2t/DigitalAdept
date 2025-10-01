@@ -2519,10 +2519,8 @@ def admin_settings_roles():
         flash("Accès non autorisé.", "error")
         return redirect(url_for('admin_dashboard'))
 
-    # Tuile "Suivi" (verrouillée pour tous)
-    suivi_tile = Tile.query.filter(
-        (Tile.endpoint == 'admin_suivi') | (Tile.name == 'Suivi')
-    ).first()
+    suivi_tile = Tile.query.filter((Tile.endpoint == 'admin_suivi') | (Tile.name == 'Suivi')).first()
+    payout_tile = Tile.query.filter_by(endpoint='admin_payout').first()
 
     if request.method == 'POST':
         # Création d'un rôle
@@ -2532,13 +2530,12 @@ def admin_settings_roles():
                 new_role = Role(name=role_name)
                 db.session.add(new_role)
                 db.session.commit()
-                # Forcer "Suivi" pour ce rôle
+                # Forcer Suivi + Retrait (si non-super_admin)
                 if suivi_tile:
-                    try:
-                        new_role.tiles.append(suivi_tile)
-                        db.session.commit()
-                    except Exception:
-                        db.session.rollback()
+                    new_role.tiles.append(suivi_tile)
+                if payout_tile and role_name != 'super_admin':
+                    new_role.tiles.append(payout_tile)
+                db.session.commit()
                 flash(f"Le rôle '{role_name}' a été créé.", "success")
             else:
                 flash("Ce nom de rôle existe déjà.", "error")
@@ -2549,26 +2546,27 @@ def admin_settings_roles():
         all_roles = Role.query.all()
 
         for role in all_roles:
-            # 1) retirer toutes les tuiles sauf "Suivi"
+            # retirer toutes les tuiles sauf Suivi et (éventuellement) Retrait si non-super
             try:
-                current_tiles = role.tiles.all()  # lazy='dynamic'
+                current_tiles = role.tiles.all()
             except Exception:
-                current_tiles = list(role.tiles)  # collection classique
+                current_tiles = list(role.tiles)
             for t in list(current_tiles):
-                if not (suivi_tile and t.id == suivi_tile.id):
+                must_keep = (suivi_tile and t.id == suivi_tile.id) or (payout_tile and t.id == payout_tile.id and role.name != 'super_admin')
+                if not must_keep:
                     try:
                         role.tiles.remove(t)
                     except Exception:
                         pass
 
-            # 2) réassigner selon le formulaire (en ignorant "Suivi" qui est forcée)
+            # réassigner selon formulaire (on ignore Suivi et Retrait forcés)
             for perm_string in permissions:
                 if perm_string.startswith(f'role_{role.id}_'):
                     try:
                         tile_id = int(perm_string.split('_')[2])
                     except Exception:
                         continue
-                    if suivi_tile and tile_id == suivi_tile.id:
+                    if (suivi_tile and tile_id == suivi_tile.id) or (payout_tile and tile_id == payout_tile.id):
                         continue
                     tile_to_add = Tile.query.get(tile_id)
                     if tile_to_add:
@@ -2577,37 +2575,64 @@ def admin_settings_roles():
                         except Exception:
                             pass
 
-            # 3) forcer "Suivi" présent pour tous
+            # forcer Suivi pour tous
             if suivi_tile:
                 try:
-                    present = any(t.id == suivi_tile.id for t in role.tiles.all())
+                    present_suivi = any(t.id == suivi_tile.id for t in role.tiles.all())
                 except Exception:
-                    present = any(t.id == suivi_tile.id for t in role.tiles)
-                if not present:
+                    present_suivi = any(t.id == suivi_tile.id for t in role.tiles)
+                if not present_suivi:
                     role.tiles.append(suivi_tile)
+
+            # forcer Retrait sur rôles ≠ super_admin, et l’enlever du super_admin
+            if payout_tile:
+                if role.name != 'super_admin':
+                    try:
+                        present_payout = any(t.id == payout_tile.id for t in role.tiles.all())
+                    except Exception:
+                        present_payout = any(t.id == payout_tile.id for t in role.tiles)
+                    if not present_payout:
+                        role.tiles.append(payout_tile)
+                else:
+                    # ensure super_admin n’a pas Retrait
+                    try:
+                        role.tiles.remove(payout_tile)
+                    except Exception:
+                        pass
 
         db.session.commit()
         flash("Permissions mises à jour avec succès.", "success")
         return redirect(url_for('admin_settings_roles'))
 
-    # GET: on force "Suivi" pour tous les rôles existants (auto-réparation)
+    # GET: auto-réparation Suivi / Retrait
     roles = Role.query.order_by(Role.id).all()
-    if suivi_tile:
-        changed = False
-        for r in roles:
+    changed = False
+    for r in roles:
+        # Suivi pour tous
+        if suivi_tile:
             try:
                 present = any(t.id == suivi_tile.id for t in r.tiles.all())
             except Exception:
                 present = any(t.id == suivi_tile.id for t in r.tiles)
             if not present:
-                r.tiles.append(suivi_tile)
-                changed = True
-        if changed:
-            db.session.commit()
+                r.tiles.append(suivi_tile); changed = True
+        # Retrait pour ≠ super_admin (et enlever chez super_admin)
+        if payout_tile:
+            try:
+                present_p = any(t.id == payout_tile.id for t in r.tiles.all())
+            except Exception:
+                present_p = any(t.id == payout_tile.id for t in r.tiles)
+            if r.name != 'super_admin' and not present_p:
+                r.tiles.append(payout_tile); changed = True
+            if r.name == 'super_admin' and present_p:
+                try:
+                    r.tiles.remove(payout_tile); changed = True
+                except Exception:
+                    pass
+    if changed:
+        db.session.commit()
 
     tiles = Tile.query.order_by(Tile.id).all()
-
-    # mapping rôle -> liste d'IDs de tuiles (pas de set() dans Jinja)
     role_tiles_map = {}
     for r in roles:
         try:
@@ -2616,12 +2641,12 @@ def admin_settings_roles():
             tile_ids = [t.id for t in r.tiles]
         role_tiles_map[r.id] = tile_ids
 
-    suivi_tile_id = suivi_tile.id if suivi_tile else None
     return render_template(
         'admin_settings_roles.html',
         roles=roles,
         tiles=tiles,
-        suivi_tile_id=suivi_tile_id,
+        suivi_tile_id=(suivi_tile.id if suivi_tile else None),
+        payout_tile_id=(payout_tile.id if payout_tile else None),
         role_tiles_map=role_tiles_map
     )
 
