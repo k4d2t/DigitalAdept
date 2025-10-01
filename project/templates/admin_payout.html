@@ -8,7 +8,7 @@
   </nav>
   <h1>Demande de Retrait</h1>
 
-  <div class="form-user" style="max-width: 580px;">
+  <div class="form-user" style="max-width:580px;">
     <label>Pays
       <select id="countryCode" required>
         <option value="" disabled selected>-- Choisir un pays --</option>
@@ -51,6 +51,10 @@
       <input type="number" id="amount" min="1" step="0.01" placeholder="Montant à retirer" required>
     </label>
 
+    <div class="balance-row" style="margin-top:-.4rem; margin-bottom:.2rem; color: var(--primary-dark);">
+      Solde disponible: <strong id="availableBalance">--</strong> XOF
+    </div>
+
     <button class="cta" id="payoutSubmit">Soumettre</button>
     <small style="opacity:.8;">Les retraits sont traités via Money Fusion. Assure-toi que ton IP serveur est autorisée et que la clé API est configurée.</small>
   </div>
@@ -58,55 +62,33 @@
 
 <script>
 const modesByCountry = {
-  // Côte d'Ivoire
   ci: ['orange-money-ci','mtn-ci','moov-ci','wave-ci'],
-  // Senegal
   sn: ['orange-money-senegal','free-money-senegal','wave-senegal','expresso-senegal'],
-  // Burkina Faso
   bf: ['orange-money-burkina','moov-burkina-faso'],
-  // Benin
   bj: ['mtn-benin','moov-benin'],
-  // Togo
   tg: ['t-money-togo','moov-togo'],
-  // Mali
   ml: ['orange-money-mali'],
-  // Congo Brazzaville (doc: "orange-money-mali / mtn-cg")
   cg: ['orange-money-mali','mtn-cg'],
-  // Cameroun
   cm: ['orange-money-cm','mtn-cm'],
-  // Congo RDC
   cd: ['airtel-money-cd'],
-  // Gabon
   ga: ['airtel-money-ga','libertis-ga'],
-  // Ghana
   gh: ['airtel-money-gh','mtn-gh','vodafone-gh'],
-  // Guinée Conakry
   gn: ['orange-gn','mtn-gn'],
-  // Guinée-Bissau
   gw: ['mtn-gw'],
-  // Kenya
   ke: ['m-pesa-ke'],
-  // Mauritanie
   mr: ['bankily-mr'],
-  // Niger
   ne: ['airtel-money-ne','mtn-ne','mauritel-ne'],
-  // Ouganda
   ug: ['mtn-ug'],
-  // Centrafrique
   cf: ['orange-cf'],
-  // Rwanda
   rw: ['mtn-rw'],
-  // Sierra Leone
   sl: ['africell-sl','orange-sl'],
-  // Tanzanie
   tz: ['airtel-money-tz','m-pesa-tz','tigo-tz'],
-  // Tchad
   td: ['airtel-money-td','moov-td'],
-  // Gambie
   gm: ['orange-gm'],
-  // Éthiopie
   et: ['safaricom-et'],
 };
+
+let AVAILABLE_BALANCE = 0;
 
 function refreshModes() {
   const cc = document.getElementById('countryCode').value;
@@ -119,25 +101,54 @@ function refreshModes() {
   });
 }
 
-document.getElementById('countryCode').addEventListener('change', refreshModes);
+async function loadBalance() {
+  try {
+    const res = await fetch('/api/payout/balance', { credentials: 'same-origin' });
+    const data = await res.json();
+    if (res.ok && data.status === 'success') {
+      AVAILABLE_BALANCE = +data.available || 0;
+      document.getElementById('availableBalance').textContent = AVAILABLE_BALANCE.toLocaleString('fr-FR');
+      validateAmount(); // validation initiale
+    } else {
+      document.getElementById('availableBalance').textContent = '--';
+    }
+  } catch (e) {
+    document.getElementById('availableBalance').textContent = '--';
+  }
+}
+
+function validateAmount() {
+  const amountEl = document.getElementById('amount');
+  const btn = document.getElementById('payoutSubmit');
+  const val = parseFloat(amountEl.value || '0');
+  const invalid = isNaN(val) || val <= 0 || val > AVAILABLE_BALANCE;
+
+  amountEl.classList.toggle('input-error', invalid);
+  btn.disabled = invalid;
+  return !invalid;
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   const cc = document.getElementById('countryCode');
-  // Sélection par défaut: Côte d'Ivoire si dispo
   if (cc) {
     cc.value = 'ci';
     refreshModes();
   }
+  loadBalance();
+  document.getElementById('countryCode').addEventListener('change', refreshModes);
+  document.getElementById('amount').addEventListener('input', validateAmount);
 });
 
 document.getElementById('payoutSubmit').addEventListener('click', async () => {
+  if (!validateAmount()) { showNotification('Montant invalide (dépasse le solde dispo).', 'error'); return; }
   const payload = {
     countryCode: document.getElementById('countryCode').value,
     withdraw_mode: document.getElementById('withdraw_mode').value,
     phone: document.getElementById('phone').value.trim(),
     amount: document.getElementById('amount').value
   };
-  if (!payload.countryCode || !payload.withdraw_mode || !payload.phone || !(+payload.amount>0)) {
-    showNotification('Veuillez compléter tous les champs correctement.', 'error'); return;
+  if (!payload.countryCode || !payload.withdraw_mode || !payload.phone) {
+    showNotification('Veuillez compléter tous les champs.', 'error'); return;
   }
   try {
     const res = await fetch('/api/payout/withdraw', {
@@ -151,6 +162,10 @@ document.getElementById('payoutSubmit').addEventListener('click', async () => {
       showNotification(data.message || 'Erreur lors de la demande de retrait.', 'error');
     } else {
       showNotification('Retrait soumis: ' + (data.message || 'succès.'), 'success');
+      // Recharge le solde après soumission
+      loadBalance();
+      document.getElementById('amount').value = '';
+      validateAmount();
     }
   } catch (e) {
     showNotification('Erreur réseau, réessayez.', 'error');
