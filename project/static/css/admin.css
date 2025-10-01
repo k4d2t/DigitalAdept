@@ -2605,3 +2605,40 @@ color: var(--text);
   margin: 0 auto;                 /* sécurité pour certains moteurs */
   border-collapse: collapse;
 }
+
+
+/* --- Payout: historique des retraits (responsive + centré) --- */
+.payout-history { margin-top: 1rem; }
+.payout-history .table-responsive-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  text-align: center; /* pour centrer l'inline-table */
+}
+.payout-history .table-responsive-wrapper table {
+  display: inline-table;      /* centrage fiable */
+  width: max-content;         /* suit le contenu */
+  min-width: 520px;           /* lisible desktop */
+  border-collapse: collapse;
+  margin: 0 auto;
+}
+.payout-history-table th,
+.payout-history-table td {
+  padding: 0.9rem 1rem;
+  text-align: center;
+  border: 1px solid var(--contact-input-border, #e4e8f0);
+  white-space: nowrap;
+}
+.payout-history-table th {
+  background: var(--primary-dark, #1976d2);
+  color: #fff;
+  font-weight: 700;
+}
+.payout-history-table td {
+  background: var(--contact-card-bg, #fff);
+  color: var(--text, #142439);
+}
+
+/* Mobile cards style (optionnel si tu veux la variante carte) */
+@media (max-width: 740px) {
+  .payout-history .table-responsive-wrapper table { min-width: 420px; }
+}
