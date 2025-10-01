@@ -17,7 +17,11 @@
                 </label>
                 <button type="submit" class="cta">Créer</button>
             </form>
-            <p style="margin-top:1em;color:#9ec;">Note: La tuile "Suivi" est toujours autorisée et verrouillée pour tous.</p>
+            <p style="margin-top:1em;color:#9ec;">Notes:</p>
+            <ul style="margin-top:.3em;color:#9ec;line-height:1.6;">
+                <li>“Suivi” est toujours autorisé pour tous (verrouillé).</li>
+                <li>“Retrait” est autorisé pour tous les rôles sauf super_admin (verrouillé).</li>
+            </ul>
         </div>
 
         <div class="permissions-card">
@@ -42,6 +46,14 @@
                                     {% if suivi_tile_id and tile.id == suivi_tile_id %}
                                         <input type="checkbox" id="cb_{{ role.id }}_{{ tile.id }}" checked disabled>
                                         <label for="cb_{{ role.id }}_{{ tile.id }}"></label>
+                                    {% elif payout_tile_id and tile.id == payout_tile_id %}
+                                        {% if role.name == 'super_admin' %}
+                                            <input type="checkbox" id="cb_{{ role.id }}_{{ tile.id }}" disabled>
+                                            <label for="cb_{{ role.id }}_{{ tile.id }}"></label>
+                                        {% else %}
+                                            <input type="checkbox" id="cb_{{ role.id }}_{{ tile.id }}" checked disabled>
+                                            <label for="cb_{{ role.id }}_{{ tile.id }}"></label>
+                                        {% endif %}
                                     {% else %}
                                         <input
                                           type="checkbox"
