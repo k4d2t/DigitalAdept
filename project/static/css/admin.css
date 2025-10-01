@@ -2710,3 +2710,27 @@ color: var(--text);
   background: rgba(33, 150, 243, 0.12);
   border-color: #90caf9;
 }
+
+
+/* --- Payout history: tri visuel et bouton Voir plus --- */
+.payout-history-table th.sortable {
+  cursor: pointer;
+  position: relative;
+  padding-right: 1.6em;
+}
+.payout-history-table th.sortable .sort-arrow::before {
+  content: '↕';
+  position: absolute;
+  right: 8px;
+  top: 50%;
+  transform: translateY(-50%);
+  opacity: 0.45;
+  font-size: 0.9em;
+}
+.payout-history-table th.sortable.sorted-asc .sort-arrow::before { content: '↑'; opacity: 0.9; }
+.payout-history-table th.sortable.sorted-desc .sort-arrow::before { content: '↓'; opacity: 0.9; }
+
+/* Le bouton Voir plus */
+#loadMoreHistory {
+  margin-top: 0.4rem;
+}
