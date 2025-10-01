@@ -115,6 +115,11 @@ class Announcement(db.Model):
     btn_url = db.Column(db.String(255), nullable=True)
 
 class AbandonedCart(db.Model):
+    __table_args__ = (
+        db.Index('ix_ab_cart_status', 'status'),
+        db.Index('ix_ab_cart_created_at', 'created_at'),
+        db.Index('ix_ab_cart_status_created', 'status', 'created_at'),
+    )
     id = db.Column(db.Integer, primary_key=True)
     email = db.Column(db.String(120), nullable=False)
     customer_name = db.Column(db.String(120), nullable=True)
@@ -126,6 +131,7 @@ class AbandonedCart(db.Model):
     relaunch_count = db.Column(db.Integer, default=0)
     last_relaunch_at = db.Column(db.DateTime, nullable=True)
     download_links = db.relationship('DownloadLink', backref='cart', lazy=True, cascade="all, delete-orphan")
+
 
 class DownloadLink(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -142,6 +148,7 @@ class SiteSetting(db.Model):
     value = db.Column(db.String(255), nullable=False)
 
 class EmailSendLog(db.Model):
+    __table_args__ = (db.Index('ix_email_sendlog_sent_at', 'sent_at'),)
     id = db.Column(db.Integer, primary_key=True)
     recipient_email = db.Column(db.String(120), nullable=False)
     sent_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
