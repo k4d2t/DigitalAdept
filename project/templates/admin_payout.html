@@ -1,0 +1,160 @@
+{% extends "admin_base.html" %}
+{% block admin_title %}Retrait{% endblock %}
+
+{% block admin_content %}
+<div class="settings-page payout-page">
+  <nav class="admin-nav">
+    <a href="{{ url_for('admin_dashboard') }}">← Retour au tableau de bord</a>
+  </nav>
+  <h1>Demande de Retrait</h1>
+
+  <div class="form-user" style="max-width: 580px;">
+    <label>Pays
+      <select id="countryCode" required>
+        <option value="" disabled selected>-- Choisir un pays --</option>
+        <option value="ci">Côte d'Ivoire</option>
+        <option value="sn">Sénégal</option>
+        <option value="bf">Burkina Faso</option>
+        <option value="bj">Bénin</option>
+        <option value="tg">Togo</option>
+        <option value="ml">Mali</option>
+        <option value="cg">Congo Brazzaville</option>
+        <option value="cm">Cameroun</option>
+        <option value="cd">Congo RDC</option>
+        <option value="ga">Gabon</option>
+        <option value="gh">Ghana</option>
+        <option value="gn">Guinée Conakry</option>
+        <option value="gw">Guinée-Bissau</option>
+        <option value="ke">Kenya</option>
+        <option value="mr">Mauritanie</option>
+        <option value="ne">Niger</option>
+        <option value="ug">Ouganda</option>
+        <option value="cf">Centrafrique</option>
+        <option value="rw">Rwanda</option>
+        <option value="sl">Sierra Leone</option>
+        <option value="tz">Tanzanie</option>
+        <option value="td">Tchad</option>
+        <option value="gm">Gambie</option>
+        <option value="et">Éthiopie</option>
+      </select>
+    </label>
+
+    <label>Méthode de retrait
+      <select id="withdraw_mode" required></select>
+    </label>
+
+    <label>Numéro (ex: 05xxxxxxxxx)
+      <input type="text" id="phone" placeholder="Numéro Mobile Money" required>
+    </label>
+
+    <label>Montant
+      <input type="number" id="amount" min="1" step="0.01" placeholder="Montant à retirer" required>
+    </label>
+
+    <button class="cta" id="payoutSubmit">Soumettre</button>
+    <small style="opacity:.8;">Les retraits sont traités via Money Fusion. Assure-toi que ton IP serveur est autorisée et que la clé API est configurée.</small>
+  </div>
+</div>
+
+<script>
+const modesByCountry = {
+  // Côte d'Ivoire
+  ci: ['orange-money-ci','mtn-ci','moov-ci','wave-ci'],
+  // Senegal
+  sn: ['orange-money-senegal','free-money-senegal','wave-senegal','expresso-senegal'],
+  // Burkina Faso
+  bf: ['orange-money-burkina','moov-burkina-faso'],
+  // Benin
+  bj: ['mtn-benin','moov-benin'],
+  // Togo
+  tg: ['t-money-togo','moov-togo'],
+  // Mali
+  ml: ['orange-money-mali'],
+  // Congo Brazzaville (doc: "orange-money-mali / mtn-cg")
+  cg: ['orange-money-mali','mtn-cg'],
+  // Cameroun
+  cm: ['orange-money-cm','mtn-cm'],
+  // Congo RDC
+  cd: ['airtel-money-cd'],
+  // Gabon
+  ga: ['airtel-money-ga','libertis-ga'],
+  // Ghana
+  gh: ['airtel-money-gh','mtn-gh','vodafone-gh'],
+  // Guinée Conakry
+  gn: ['orange-gn','mtn-gn'],
+  // Guinée-Bissau
+  gw: ['mtn-gw'],
+  // Kenya
+  ke: ['m-pesa-ke'],
+  // Mauritanie
+  mr: ['bankily-mr'],
+  // Niger
+  ne: ['airtel-money-ne','mtn-ne','mauritel-ne'],
+  // Ouganda
+  ug: ['mtn-ug'],
+  // Centrafrique
+  cf: ['orange-cf'],
+  // Rwanda
+  rw: ['mtn-rw'],
+  // Sierra Leone
+  sl: ['africell-sl','orange-sl'],
+  // Tanzanie
+  tz: ['airtel-money-tz','m-pesa-tz','tigo-tz'],
+  // Tchad
+  td: ['airtel-money-td','moov-td'],
+  // Gambie
+  gm: ['orange-gm'],
+  // Éthiopie
+  et: ['safaricom-et'],
+};
+
+function refreshModes() {
+  const cc = document.getElementById('countryCode').value;
+  const sel = document.getElementById('withdraw_mode');
+  sel.innerHTML = '';
+  (modesByCountry[cc] || []).forEach(m => {
+    const opt = document.createElement('option');
+    opt.value = m; opt.textContent = m;
+    sel.appendChild(opt);
+  });
+}
+
+document.getElementById('countryCode').addEventListener('change', refreshModes);
+document.addEventListener('DOMContentLoaded', () => {
+  const cc = document.getElementById('countryCode');
+  // Sélection par défaut: Côte d'Ivoire si dispo
+  if (cc) {
+    cc.value = 'ci';
+    refreshModes();
+  }
+});
+
+document.getElementById('payoutSubmit').addEventListener('click', async () => {
+  const payload = {
+    countryCode: document.getElementById('countryCode').value,
+    withdraw_mode: document.getElementById('withdraw_mode').value,
+    phone: document.getElementById('phone').value.trim(),
+    amount: document.getElementById('amount').value
+  };
+  if (!payload.countryCode || !payload.withdraw_mode || !payload.phone || !(+payload.amount>0)) {
+    showNotification('Veuillez compléter tous les champs correctement.', 'error'); return;
+  }
+  try {
+    const res = await fetch('/api/payout/withdraw', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      credentials: 'same-origin',
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    if (!res.ok || data.statut === false) {
+      showNotification(data.message || 'Erreur lors de la demande de retrait.', 'error');
+    } else {
+      showNotification('Retrait soumis: ' + (data.message || 'succès.'), 'success');
+    }
+  } catch (e) {
+    showNotification('Erreur réseau, réessayez.', 'error');
+  }
+});
+</script>
+{% endblock %}
