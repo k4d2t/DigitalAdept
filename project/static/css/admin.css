@@ -2615,13 +2615,18 @@ color: var(--text);
 
 /* Users table: scroll horizontal interne (pas de débordement de page) */
 .users-page { overflow-x: clip; } /* coupe tout dépassement éventuel */
-.users-page .table-responsive-wrapper {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-}
+
 .users-page .table-responsive-wrapper table {
   width: max-content;      /* largeur suit le contenu */
   min-width: 760px;        /* lisible sur desktop/tablette */
   margin: 0;               /* pas de marge qui élargit */
   border-collapse: collapse;
+}
+
+/* Users: centrer le tableau sur desktop tout en gardant le scroll si besoin */
+.users-page .table-responsive-wrapper {
+  display: flex;
+  justify-content: center;   /* centre le tableau quand il est moins large que le conteneur */
+  overflow-x: auto;          /* conserve le scroll interne si ça dépasse */
+  -webkit-overflow-scrolling: touch;
 }
