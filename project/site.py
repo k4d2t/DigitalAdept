@@ -25,6 +25,7 @@ from sqlalchemy.orm import joinedload
 import logging
 from flask_sqlalchemy import SQLAlchemy
 from models import *
+from sqlalchemy import text 
 
 # --- Logging robuste en prod ---
 logging.basicConfig(
@@ -1236,6 +1237,7 @@ def admin_login():
 
     return render_template('admin_login.html')
     
+# --- Dashboard: tuiles via JOIN (1 requête, plus rapide) ---
 @cache.cached(timeout=300)
 @app.route('/k4d3t/dashboard')
 def admin_dashboard():
@@ -1243,23 +1245,21 @@ def admin_dashboard():
         flash("Veuillez vous connecter.", "error")
         return redirect(url_for('admin_login'))
 
-    user = User.query.options(
-        joinedload(User.role)
-    ).filter_by(username=session.get('username')).first()
-
+    user = User.query.options(joinedload(User.role)).filter_by(username=session.get('username')).first()
     if not user:
         session.clear()
         flash("Session invalide, veuillez vous reconnecter.", "error")
         return redirect(url_for('admin_login'))
 
-    # Récupère les tuiles du rôle de manière robuste (lazy list ou dynamic query)
-    if user.role:
-        try:
-            user_tiles = user.role.tiles.all()  # si lazy='dynamic'
-        except Exception:
-            user_tiles = list(user.role.tiles)  # si collection classique
-    else:
-        user_tiles = []
+    # 1 seule requête pour charger les tuiles du rôle
+    user_tiles = (
+        db.session.query(Tile)
+        .join(role_tiles, role_tiles.c.tile_id == Tile.id)
+        .join(Role, Role.id == role_tiles.c.role_id)
+        .filter(Role.id == user.role_id)
+        .order_by(Tile.id)
+        .all()
+    )
 
     log_action("access_dashboard", {"role": session.get('role')})
     return render_template('admin_dashboard.html', user_tiles=user_tiles)
@@ -2656,13 +2656,14 @@ def admin_settings_roles():
         db.session.commit()
 
     tiles = Tile.query.order_by(Tile.id).all()
+    # NOUVEAU: role_tiles_map via 1 seul SELECT sur l’association (pas de .tiles.all() par rôle)
+    pairs = db.session.query(role_tiles.c.role_id, role_tiles.c.tile_id).all()
     role_tiles_map = {}
     for r in roles:
-        try:
-            tile_ids = [t.id for t in r.tiles.all()]
-        except Exception:
-            tile_ids = [t.id for t in r.tiles]
-        role_tiles_map[r.id] = tile_ids
+        role_tiles_map[r.id] = []
+    for rid, tid in pairs:
+        if rid in role_tiles_map:
+            role_tiles_map[rid].append(tid)
 
     return render_template(
         'admin_settings_roles.html',
@@ -2672,7 +2673,6 @@ def admin_settings_roles():
         payout_tile_id=(payout_tile.id if payout_tile else None),
         role_tiles_map=role_tiles_map
     )
-
 @app.route('/k4d3t/payout', methods=['GET'])
 def admin_payout():
     if not session.get('admin_logged_in'):
