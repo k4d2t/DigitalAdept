@@ -2683,7 +2683,59 @@ def admin_payout():
         flash("Accès non autorisé.", "error")
         return redirect(url_for('admin_dashboard'))
     return render_template('admin_payout.html')
+    
+# --- Helper: solde disponible pour un utilisateur (commission - retraits déjà payés) ---
+def get_user_available_balance(user):
+    """
+    Calcule le solde disponible = (Total CA complété × % commission du user) - retraits déjà 'completed'.
+    Note: super_admin n'a pas de solde de retrait (retourne 0).
+    Si un modèle Payout existe, on soustrait les retraits terminés. Sinon on ignore sans casser.
+    """
+    if not user or not user.role or user.role.name == 'super_admin':
+        return 0.0
 
+    # 1) Total CA complété (toutes périodes)
+    total_completed_revenue = db.session.query(
+        db.func.coalesce(db.func.sum(AbandonedCart.total_price), 0.0)
+    ).filter(AbandonedCart.status == 'completed').scalar() or 0.0
+
+    # 2) Commission brute du user (modèle actuel = % global sur tout le CA)
+    user_pct = float(user.revenue_share_percentage or 0.0)
+    gross_commission = total_completed_revenue * (user_pct / 100.0)
+
+    # 3) Total déjà retiré (si table Payout existe, sinon 0)
+    withdrawn_total = 0.0
+    try:
+        # Optionnel: si vous avez un modèle Payout(user_id, amount, status)
+        from models import Payout  # type: ignore
+        withdrawn_total = db.session.query(
+            db.func.coalesce(db.func.sum(Payout.amount), 0.0)
+        ).filter(
+            Payout.user_id == user.id,
+            Payout.status == 'completed'
+        ).scalar() or 0.0
+    except Exception:
+        # Aucun modèle Payout défini -> on ne soustrait rien
+        withdrawn_total = 0.0
+
+    available = max(0.0, gross_commission - withdrawn_total)
+    return float(available)
+
+    # --- API: solde disponible du user connecté pour la tuile Retrait ---
+@app.route('/api/payout/balance', methods=['GET'])
+def api_payout_balance():
+    if not session.get('admin_logged_in'):
+        return jsonify({"status": "error", "message": "Non autorisé"}), 403
+    user = User.query.filter_by(username=session.get('username')).first()
+    if not user or not user.role or user.role.name == 'super_admin':
+        return jsonify({"status": "error", "message": "Non autorisé"}), 403
+
+    available = get_user_available_balance(user)
+    return jsonify({
+        "status": "success",
+        "available": round(float(available), 2),
+        "currency": "XOF"
+    }), 200
 
 @app.route('/api/payout/withdraw', methods=['POST'])
 def api_payout_withdraw():
@@ -2704,6 +2756,14 @@ def api_payout_withdraw():
 
     if not countryCode or not phone or not withdraw_mode or amount <= 0:
         return jsonify({"status": "error", "message": "Paramètres invalides"}), 400
+
+    # Validation côté serveur: ne pas dépasser le solde disponible
+    available = get_user_available_balance(user)
+    if amount > available + 1e-9:
+        return jsonify({
+            "status": "error",
+            "message": f"Montant supérieur au solde disponible. Solde: {round(float(available),2)} XOF."
+        }), 400
 
     private_key = os.environ.get('MONEYFUSION_PRIVATE_KEY')
     if not private_key:
@@ -2729,12 +2789,10 @@ def api_payout_withdraw():
         )
         r.raise_for_status()
         res = r.json()
-        # Log et retour
         log_action("payout_initiated", {"username": session.get('username'), "payload": payload, "response": res})
         return jsonify(res), 200 if res.get("statut") else 400
     except requests.exceptions.RequestException as e:
         return jsonify({"status": "error", "message": f"Erreur API: {e}"}), 502
-
 
 @app.route('/api/withdraw/callback', methods=['POST'])
 def api_withdraw_callback():
