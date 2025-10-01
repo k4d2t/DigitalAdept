@@ -1326,6 +1326,7 @@ def admin_settings_users():
 
 
 # --- Inline edit: empêche de dépasser 100% hors super_admin ---
+# --- Utilisateurs: édition inline (username/role/commission) avec plafond % ---
 @app.route('/api/admin/users/<int:user_id>', methods=['PATCH'])
 def api_admin_update_user(user_id):
     if not session.get('admin_logged_in') or session.get('role') != 'super_admin':
@@ -1353,7 +1354,6 @@ def api_admin_update_user(user_id):
 
     target_share = float(new_share) if new_share is not None else float(user.revenue_share_percentage or 0.0)
 
-    # Si le rôle cible n'est pas super_admin, vérifier que la somme reste <= 100
     if target_role and target_role.name != 'super_admin':
         total_after = get_non_super_total_percentage(exclude_user_id=user.id) + target_share
         if total_after > 100.0 + 1e-9:
@@ -1367,7 +1367,7 @@ def api_admin_update_user(user_id):
 
     db.session.commit()
     return jsonify({"status": "success", "message": "Utilisateur mis à jour"}), 200
-
+    
 @app.route('/api/admin/users/<int:user_id>/password', methods=['POST'])
 def api_admin_update_user_password(user_id):
     if not session.get('admin_logged_in') or session.get('role') != 'super_admin':
@@ -2352,6 +2352,7 @@ def get_non_super_total_percentage(exclude_user_id=None):
     return float(q.scalar() or 0.0)
 
 # --- NOUVELLE ROUTE POUR LA TUILE "SUIVI" ---
+# --- Suivi (page) avec périodes + % super_admin = 100 - somme autres ---
 @app.route('/k4d3t/suivi')
 def admin_suivi():
     if not session.get('admin_logged_in'):
@@ -2397,8 +2398,6 @@ def admin_suivi():
     )
     total_revenue = base_query.with_entities(db.func.sum(AbandonedCart.total_price)).scalar() or 0.0
 
-    # Part utilisateur
-    effective_pct = 0.0
     if user.role and user.role.name == 'super_admin':
         other_pct = get_non_super_total_percentage()
         effective_pct = max(0.0, 100.0 - other_pct)
@@ -2436,7 +2435,7 @@ def admin_suivi():
     )
 
     
-# --- API Suivi (AJAX): même logique pour le calcul de la part super_admin ---
+# --- Suivi (API AJAX): même logique, pas de reload page ---
 @app.route('/api/admin/suivi/metrics', methods=['GET'])
 def api_admin_suivi_metrics():
     if not session.get('admin_logged_in'):
@@ -2503,8 +2502,7 @@ def api_admin_suivi_metrics():
         db.func.to_char(AbandonedCart.created_at, group_by_format)
     ).all()
 
-    labels = []
-    data = []
+    labels, data = [], []
     for key, amount in rows:
         try:
             dt = datetime.strptime(key, label_in)
