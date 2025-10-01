@@ -2771,11 +2771,28 @@ def delete_role(role_id):
         
     return redirect(url_for('admin_settings_roles'))
 
+@app.route('/_debug/ip')
+def debug_ip():
+    if not session.get('admin_logged_in'):  # simple protection
+        return "Unauthorized", 403
+    try:
+        ip = requests.get('https://api.ipify.org', timeout=5).text.strip()
+        return f"Egress IP: {ip}"
+    except Exception as e:
+        return f"Error: {e}", 500
+        
         
 # --- MODIFICATION DANS LA FONCTION DE DÉMARRAGE `if __name__ == '__main__':` ---
 # Remplacez votre bloc `if __name__ == '__main__':` par celui-ci pour tout initialiser correctement.
 if __name__ == '__main__':
     with app.app_context():
+
+        try:
+            ip = requests.get('https://api.ipify.org', timeout=5).text.strip()
+            logger.info(f"Egress IP (public): {ip}")
+        except Exception as e:
+            logger.warning(f"Impossible de récupérer l’IP publique: {e}")
+    
         db.create_all()
         initialize_database() # Appel de la nouvelle fonction
 
