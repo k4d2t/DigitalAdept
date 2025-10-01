@@ -2803,7 +2803,7 @@ def api_payout_balance():
         "currency": "XOF"
     }), 200
 
-# --- Historique des retraits (user courant) ---
+# --- Historique des retraits (user courant) AVEC tri/offset/limit ---
 @app.route('/api/payout/history', methods=['GET'])
 def api_payout_history():
     if not session.get('admin_logged_in'):
@@ -2812,25 +2812,64 @@ def api_payout_history():
     if not user or not user.role or user.role.name == 'super_admin':
         return jsonify({"status": "error", "message": "Non autorisé"}), 403
 
-    rows = Payout.query.filter_by(user_id=user.id).order_by(Payout.created_at.desc()).limit(100).all()
+    # Params: limit/offset triés et sécurisés
+    try:
+        limit = int(request.args.get('limit', 10))
+    except Exception:
+        limit = 10
+    limit = max(1, min(limit, 50))  # entre 1 et 50
+
+    try:
+        offset = int(request.args.get('offset', 0))
+    except Exception:
+        offset = 0
+    offset = max(0, offset)
+
+    sort_by = (request.args.get('sort_by') or 'created_at').lower()
+    sort_dir = (request.args.get('sort_dir') or 'desc').lower()
+    sort_dir = 'asc' if sort_dir == 'asc' else 'desc'
+
+    # Mapping de tri sécurisé
+    sort_map = {
+        'created_at': Payout.created_at,
+        'amount': Payout.amount,
+        'status': Payout.status,
+        'external_id': Payout.external_id
+    }
+    order_col = sort_map.get(sort_by, Payout.created_at)
+    order_clause = order_col.asc() if sort_dir == 'asc' else order_col.desc()
+
+    base_q = Payout.query.filter_by(user_id=user.id)
+    total_count = base_q.count()
+
+    rows = base_q.order_by(order_clause).offset(offset).limit(limit).all()
+
     def short_id(x):
         if not x: return None
         return x if len(x) <= 10 else f"{x[:4]}…{x[-4:]}"
-    out = []
-    for p in rows:
-        out.append({
-            "id": p.id,
-            "date": p.created_at.strftime('%Y-%m-%d %H:%M'),
-            "amount": float(p.amount),
-            "currency": p.currency or "XOF",
-            "status": p.status,
-            "reference": p.external_id,
-            "reference_short": short_id(p.external_id),
-            "phone": p.phone,
-            "mode": p.mode
-        })
-    return jsonify({"status": "success", "items": out}), 200
+    items = [{
+        "id": p.id,
+        "date": p.created_at.strftime('%Y-%m-%d %H:%M'),
+        "amount": float(p.amount),
+        "currency": p.currency or "XOF",
+        "status": p.status,
+        "reference": p.external_id,
+        "reference_short": short_id(p.external_id),
+        "phone": p.phone,
+        "mode": p.mode
+    } for p in rows]
 
+    next_offset = offset + len(items)
+    has_more = next_offset < total_count
+
+    return jsonify({
+        "status": "success",
+        "items": items,
+        "total": total_count,
+        "has_more": has_more,
+        "next_offset": next_offset
+    }), 200
+    
 @app.route('/api/payout/withdraw', methods=['POST'])
 def api_payout_withdraw():
     if not session.get('admin_logged_in'):
