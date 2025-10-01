@@ -2611,3 +2611,17 @@ color: var(--text);
   cursor: not-allowed;
   filter: grayscale(0.2);
 }
+
+
+/* Users table: scroll horizontal interne (pas de débordement de page) */
+.users-page { overflow-x: clip; } /* coupe tout dépassement éventuel */
+.users-page .table-responsive-wrapper {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.users-page .table-responsive-wrapper table {
+  width: max-content;      /* largeur suit le contenu */
+  min-width: 760px;        /* lisible sur desktop/tablette */
+  margin: 0;               /* pas de marge qui élargit */
+  border-collapse: collapse;
+}
