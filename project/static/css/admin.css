@@ -2556,9 +2556,24 @@ color: var(--text);
 /* Carte compacte et centrée, sans « plein écran » */
 .settings-page.payout-page .form-user {
   max-width: 520px !important;  /* un peu plus étroit */
-  width: auto !important;       /* évite d’étirer en vw */
+ /*width: auto !important;       /* évite d’étirer en vw */
   margin: 0 auto !important;
   box-sizing: border-box;
+}
+
+/* Payout: largeur contrôlée sur mobile/tablette */
+@media (max-width: 1024px) {
+  .settings-page.payout-page .form-user {
+    width: 80% !important;   /* ce que tu as validé à l’inspecteur */
+  }
+}
+
+/* Option: sur très petits écrans, un peu plus large pour le confort
+   (garde si besoin; sinon, tu peux le retirer) */
+@media (max-width: 400px) {
+  .settings-page.payout-page .form-user {
+    width: 86% !important;
+  }
 }
 
 /* Empêche des enfants internes d’élargir la carte */
