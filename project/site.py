@@ -1274,6 +1274,13 @@ def admin_settings():
 
 
 # --- Ajouter un utilisateur: empêche de dépasser 100% hors super_admin ---
+# Page Users (GET) servie via cache 60s
+@cache.cached(timeout=60)
+def cached_admin_settings_users_page():
+    users = User.query.options(joinedload(User.role)).all()
+    roles = Role.query.order_by(Role.name).all()
+    return render_template('admin_settings_users.html', users=users, roles=roles)
+
 @app.route('/k4d3t/settings/users', methods=['GET', 'POST'])
 def admin_settings_users():
     if session.get('role') != 'super_admin':
@@ -1301,7 +1308,6 @@ def admin_settings_users():
         except Exception:
             new_share = 0.0
 
-        # Si on ajoute un non-super_admin, vérifier le plafond 100%
         if role and role.name != 'super_admin':
             total_after = get_non_super_total_percentage() + new_share
             if total_after > 100.0 + 1e-9:
@@ -1317,14 +1323,17 @@ def admin_settings_users():
         )
         db.session.add(user)
         db.session.commit()
+        # Invalider le cache de la page Users
+        try:
+            cache.delete_memoized(cached_admin_settings_users_page)
+        except Exception:
+            pass
         flash("Nouvel administrateur ajouté avec succès.", "success")
         return redirect(url_for('admin_settings_users'))
 
-    users = User.query.options(joinedload(User.role)).all()
-    roles = Role.query.order_by(Role.name).all()
-    return render_template('admin_settings_users.html', users=users, roles=roles)
-
-
+    # GET
+    return cached_admin_settings_users_page()
+    
 # --- Inline edit: empêche de dépasser 100% hors super_admin ---
 # --- Utilisateurs: édition inline (username/role/commission) avec plafond % ---
 @app.route('/api/admin/users/<int:user_id>', methods=['PATCH'])
@@ -1366,6 +1375,10 @@ def api_admin_update_user(user_id):
     user.revenue_share_percentage = target_share
 
     db.session.commit()
+    try:
+        cache.delete_memoized(cached_admin_settings_users_page)
+    except Exception:
+        pass
     return jsonify({"status": "success", "message": "Utilisateur mis à jour"}), 200
     
 @app.route('/api/admin/users/<int:user_id>/password', methods=['POST'])
@@ -1419,6 +1432,12 @@ def delete_user(username):
         return redirect(url_for('admin_settings_users'))
     db.session.delete(user)
     db.session.commit()
+    try:
+        cache.delete_memoized(cached_admin_settings_users_page)
+    except Exception:
+        pass
+    flash("Utilisateur supprimé avec succès.", "success")
+    return redirect(url_for('admin_settings_users'))
     flash("Utilisateur supprimé avec succès.", "success")
     return redirect(url_for('admin_settings_users'))
 
@@ -2523,6 +2542,54 @@ def api_admin_suivi_metrics():
         "data": data
     }), 200
 
+@cache.cached(timeout=60)
+def cached_admin_settings_roles_page():
+    suivi_tile = Tile.query.filter((Tile.endpoint == 'admin_suivi') | (Tile.name == 'Suivi')).first()
+    payout_tile = Tile.query.filter_by(endpoint='admin_payout').first()
+
+    roles = Role.query.order_by(Role.id).all()
+    changed = False
+    # Auto-réparation Suivi/Retrait
+    for r in roles:
+        if suivi_tile:
+            try:
+                present = any(t.id == suivi_tile.id for t in (r.tiles.all() if hasattr(r.tiles, 'all') else r.tiles))
+            except Exception:
+                present = False
+            if not present:
+                r.tiles.append(suivi_tile); changed = True
+
+        if payout_tile:
+            try:
+                present_p = any(t.id == payout_tile.id for t in (r.tiles.all() if hasattr(r.tiles, 'all') else r.tiles))
+            except Exception:
+                present_p = False
+            if r.name != 'super_admin' and not present_p:
+                r.tiles.append(payout_tile); changed = True
+            if r.name == 'super_admin' and present_p:
+                try:
+                    r.tiles.remove(payout_tile); changed = True
+                except Exception:
+                    pass
+    if changed:
+        db.session.commit()
+
+    tiles = Tile.query.order_by(Tile.id).all()
+    pairs = db.session.query(role_tiles.c.role_id, role_tiles.c.tile_id).all()
+    role_tiles_map = {r.id: [] for r in roles}
+    for rid, tid in pairs:
+        if rid in role_tiles_map:
+            role_tiles_map[rid].append(tid)
+
+    return render_template(
+        'admin_settings_roles.html',
+        roles=roles,
+        tiles=tiles,
+        suivi_tile_id=(suivi_tile.id if suivi_tile else None),
+        payout_tile_id=(payout_tile.id if payout_tile else None),
+        role_tiles_map=role_tiles_map
+    )
+
 # --- NOUVELLE ROUTE POUR GÉRER LES RÔLES ET PERMISSIONS ---
 # --- Rôles & Permissions: "Suivi" forcé pour tous, "Retrait" forcé pour ≠ super_admin ---
 @app.route('/k4d3t/settings/roles', methods=['GET', 'POST'])
@@ -2625,9 +2692,15 @@ def admin_settings_roles():
                             pass
 
         db.session.commit()
+        try:
+            cache.delete_memoized(cached_admin_settings_roles_page)
+        except Exception:
+            pass
         flash("Permissions mises à jour avec succès.", "success")
         return redirect(url_for('admin_settings_roles'))
 
+    # GET via cache
+    return cached_admin_settings_roles_page()
     # GET: auto-réparation Suivi/Retrait par rôle
     roles = Role.query.order_by(Role.id).all()
     changed = False
@@ -2850,6 +2923,8 @@ def ensure_admin_indexes():
                 conn.execute(text("CREATE INDEX IF NOT EXISTS ix_ab_cart_created_at ON abandoned_cart (created_at)"))
                 conn.execute(text("CREATE INDEX IF NOT EXISTS ix_ab_cart_status_created ON abandoned_cart (status, created_at)"))
                 conn.execute(text("CREATE INDEX IF NOT EXISTS ix_email_sendlog_sent_at ON email_send_log (sent_at)"))
+                conn.execute(text('CREATE INDEX IF NOT EXISTS ix_user_role_id ON "user" (role_id)'))
+                conn.execute(text("CREATE INDEX IF NOT EXISTS ix_role_tiles_role ON role_tiles (role_id)"))
     except Exception as e:
         logging.warning(f"ensure_admin_indexes: {e}")
         
