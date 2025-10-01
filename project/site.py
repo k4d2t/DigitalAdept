@@ -2758,11 +2758,11 @@ def admin_payout():
     return render_template('admin_payout.html')
     
 # --- Helper: solde disponible pour un utilisateur (commission - retraits déjà payés) ---
+# --- Helper: solde disponible pour un utilisateur (commission - retraits déjà payés) ---
 def get_user_available_balance(user):
     """
     Calcule le solde disponible = (Total CA complété × % commission du user) - retraits déjà 'completed'.
     Note: super_admin n'a pas de solde de retrait (retourne 0).
-    Si un modèle Payout existe, on soustrait les retraits terminés. Sinon on ignore sans casser.
     """
     if not user or not user.role or user.role.name == 'super_admin':
         return 0.0
@@ -2776,20 +2776,13 @@ def get_user_available_balance(user):
     user_pct = float(user.revenue_share_percentage or 0.0)
     gross_commission = total_completed_revenue * (user_pct / 100.0)
 
-    # 3) Total déjà retiré (si table Payout existe, sinon 0)
-    withdrawn_total = 0.0
-    try:
-        # Optionnel: si vous avez un modèle Payout(user_id, amount, status)
-        from models import Payout  # type: ignore
-        withdrawn_total = db.session.query(
-            db.func.coalesce(db.func.sum(Payout.amount), 0.0)
-        ).filter(
-            Payout.user_id == user.id,
-            Payout.status == 'completed'
-        ).scalar() or 0.0
-    except Exception:
-        # Aucun modèle Payout défini -> on ne soustrait rien
-        withdrawn_total = 0.0
+    # 3) Total déjà retiré (payouts status 'completed')
+    withdrawn_total = db.session.query(
+        db.func.coalesce(db.func.sum(Payout.amount), 0.0)
+    ).filter(
+        Payout.user_id == user.id,
+        Payout.status == 'completed'
+    ).scalar() or 0.0
 
     available = max(0.0, gross_commission - withdrawn_total)
     return float(available)
@@ -2809,6 +2802,34 @@ def api_payout_balance():
         "available": round(float(available), 2),
         "currency": "XOF"
     }), 200
+
+# --- Historique des retraits (user courant) ---
+@app.route('/api/payout/history', methods=['GET'])
+def api_payout_history():
+    if not session.get('admin_logged_in'):
+        return jsonify({"status": "error", "message": "Non autorisé"}), 403
+    user = User.query.filter_by(username=session.get('username')).first()
+    if not user or not user.role or user.role.name == 'super_admin':
+        return jsonify({"status": "error", "message": "Non autorisé"}), 403
+
+    rows = Payout.query.filter_by(user_id=user.id).order_by(Payout.created_at.desc()).limit(100).all()
+    def short_id(x):
+        if not x: return None
+        return x if len(x) <= 10 else f"{x[:4]}…{x[-4:]}"
+    out = []
+    for p in rows:
+        out.append({
+            "id": p.id,
+            "date": p.created_at.strftime('%Y-%m-%d %H:%M'),
+            "amount": float(p.amount),
+            "currency": p.currency or "XOF",
+            "status": p.status,
+            "reference": p.external_id,
+            "reference_short": short_id(p.external_id),
+            "phone": p.phone,
+            "mode": p.mode
+        })
+    return jsonify({"status": "success", "items": out}), 200
 
 @app.route('/api/payout/withdraw', methods=['POST'])
 def api_payout_withdraw():
@@ -2850,6 +2871,17 @@ def api_payout_withdraw():
         "webhook_url": url_for('api_withdraw_callback', _external=True)
     }
 
+    def pick_external_id(res_json):
+        # Essaie différents champs possibles
+        for k in ("tokenPay", "token", "reference", "ref", "transaction_id"):
+            v = res_json.get(k)
+            if v: return v
+        data = res_json.get("data") or {}
+        for k in ("tokenPay", "token", "reference", "ref", "transaction_id"):
+            v = (data.get(k) if isinstance(data, dict) else None)
+            if v: return v
+        return None
+
     try:
         r = requests.post(
             "https://pay.moneyfusion.net/api/v1/withdraw",
@@ -2862,10 +2894,51 @@ def api_payout_withdraw():
         )
         r.raise_for_status()
         res = r.json()
-        log_action("payout_initiated", {"username": session.get('username'), "payload": payload, "response": res})
-        return jsonify(res), 200 if res.get("statut") else 400
+        statut_ok = bool(res.get("statut"))
+        ext_id = pick_external_id(res) if statut_ok else None
+
+        # Enregistrer la demande de retrait
+        payout = Payout(
+            user_id=user.id,
+            amount=amount,
+            currency="XOF",
+            country_code=countryCode,
+            phone=phone,
+            mode=withdraw_mode,
+            status='pending' if statut_ok else 'failed',
+            external_id=ext_id,
+            provider_payload=res
+        )
+        db.session.add(payout)
+        db.session.commit()
+
+        # Log + réponse
+        log_action("payout_initiated", {
+            "username": session.get('username'),
+            "payload": payload,
+            "response": res,
+            "payout_id": payout.id
+        })
+
+        # Renvoie statut HTTP 200 si statut_ok sinon 400
+        return jsonify(res), 200 if statut_ok else 400
     except requests.exceptions.RequestException as e:
+        # Enregistrer l'échec
+        payout = Payout(
+            user_id=user.id,
+            amount=amount,
+            currency="XOF",
+            country_code=countryCode,
+            phone=phone,
+            mode=withdraw_mode,
+            status='failed',
+            external_id=None,
+            provider_payload={"error": str(e)}
+        )
+        db.session.add(payout)
+        db.session.commit()
         return jsonify({"status": "error", "message": f"Erreur API: {e}"}), 502
+
 
 @app.route('/api/withdraw/callback', methods=['POST'])
 def api_withdraw_callback():
@@ -2878,10 +2951,33 @@ def api_withdraw_callback():
     except Exception:
         return "", 400
 
-    event = data.get("event")
-    tokenPay = data.get("tokenPay")
-    # Ici tu peux persister le statut si tu ajoutes un modèle Payout plus tard
-    log_action("payout_webhook", {"event": event, "tokenPay": tokenPay, "payload": data})
+    event = (data.get("event") or "").lower()
+    tokenPay = data.get("tokenPay") or (data.get("data", {}) if isinstance(data.get("data"), dict) else {}).get("tokenPay")
+
+    new_status = None
+    if "completed" in event:
+        new_status = "completed"
+    elif "cancel" in event or "failed" in event or "error" in event:
+        new_status = "cancelled"
+
+    updated = False
+    if tokenPay and new_status:
+        payout = Payout.query.filter_by(external_id=tokenPay).order_by(Payout.id.desc()).first()
+        if payout:
+            payout.status = new_status
+            payout.updated_at = datetime.now(timezone.utc)
+            # merge/append webhook payload
+            try:
+                existing = payout.provider_payload or {}
+                if isinstance(existing, dict):
+                    existing["webhook_last"] = data
+                    payout.provider_payload = existing
+            except Exception:
+                payout.provider_payload = data
+            db.session.commit()
+            updated = True
+
+    log_action("payout_webhook", {"event": event, "tokenPay": tokenPay, "updated": updated, "payload": data})
     return "", 200
 
 # --- NOUVELLE ROUTE POUR SUPPRIMER UN RÔLE ---
