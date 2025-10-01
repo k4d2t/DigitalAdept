@@ -2839,6 +2839,19 @@ def debug_ip():
     except Exception as e:
         return f"Error: {e}", 500
         
+
+
+# --- Création des index en prod si manquants (PostgreSQL) ---
+def ensure_admin_indexes():
+    try:
+        if db.engine.dialect.name in ('postgresql', 'postgres'):
+            with db.engine.connect() as conn:
+                conn.execute(text("CREATE INDEX IF NOT EXISTS ix_ab_cart_status ON abandoned_cart (status)"))
+                conn.execute(text("CREATE INDEX IF NOT EXISTS ix_ab_cart_created_at ON abandoned_cart (created_at)"))
+                conn.execute(text("CREATE INDEX IF NOT EXISTS ix_ab_cart_status_created ON abandoned_cart (status, created_at)"))
+                conn.execute(text("CREATE INDEX IF NOT EXISTS ix_email_sendlog_sent_at ON email_send_log (sent_at)"))
+    except Exception as e:
+        logging.warning(f"ensure_admin_indexes: {e}")
         
 # --- MODIFICATION DANS LA FONCTION DE DÉMARRAGE `if __name__ == '__main__':` ---
 # Remplacez votre bloc `if __name__ == '__main__':` par celui-ci pour tout initialiser correctement.
@@ -2850,7 +2863,7 @@ if __name__ == '__main__':
             logger.info(f"Egress IP (public): {ip}")
         except Exception as e:
             logger.warning(f"Impossible de récupérer l’IP publique: {e}")
-    
+        ensure_admin_indexes() 
         db.create_all()
         initialize_database() # Appel de la nouvelle fonction
 
