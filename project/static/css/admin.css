@@ -2467,3 +2467,19 @@ color: var(--text);
     padding: 1.2rem 1rem;
   }
 }
+
+
+/* --- Suivi: respiration du filtre vs KPIs --- */
+.suivi-page .filter-card { margin-bottom: 1.6em; }
+.suivi-page .filter-card + .suivi-kpis { margin-top: 0.8em; }
+
+/* --- Paramètres: largeur contenue comme Suivi --- */
+.settings-page { max-width: 1200px; margin: 0 auto; }
+
+/* --- Rôles & Permissions: éviter chevauchement et permettre scroll --- */
+.roles-grid > * { min-width: 0; } /* évite que le milieu pousse le 3e bloc */
+.permissions-card { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.permissions-card table { min-width: 760px; } /* assez large pour éviter la casse */
+
+/* --- Grille tuiles Paramètres: harmonisation (si inline style présent) --- */
+.settings-page .tiles { margin-top: 2rem !important; }
