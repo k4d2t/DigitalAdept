@@ -9,7 +9,7 @@
   <h1>Demande de Retrait</h1>
 
   <div class="payout-wrap">
-    <div class="form-user" style="max-width:580px;">
+    <div class="form-user">
       <label>Pays
         <select id="countryCode" required>
           <option value="" disabled selected>-- Choisir un pays --</option>
@@ -110,11 +110,11 @@ async function loadBalance() {
     if (res.ok && data.status === 'success') {
       AVAILABLE_BALANCE = +data.available || 0;
       document.getElementById('availableBalance').textContent = AVAILABLE_BALANCE.toLocaleString('fr-FR');
-      validateAmount(); // validation initiale
+      validateAmount();
     } else {
       document.getElementById('availableBalance').textContent = '--';
     }
-  } catch (e) {
+  } catch {
     document.getElementById('availableBalance').textContent = '--';
   }
 }
@@ -132,10 +132,7 @@ function validateAmount() {
 
 document.addEventListener('DOMContentLoaded', () => {
   const cc = document.getElementById('countryCode');
-  if (cc) {
-    cc.value = 'ci';
-    refreshModes();
-  }
+  if (cc) { cc.value = 'ci'; refreshModes(); }
   loadBalance();
   document.getElementById('countryCode').addEventListener('change', refreshModes);
   document.getElementById('amount').addEventListener('input', validateAmount);
@@ -164,12 +161,11 @@ document.getElementById('payoutSubmit').addEventListener('click', async () => {
       showNotification(data.message || 'Erreur lors de la demande de retrait.', 'error');
     } else {
       showNotification('Retrait soumis: ' + (data.message || 'succès.'), 'success');
-      // Recharge le solde après soumission
       loadBalance();
       document.getElementById('amount').value = '';
       validateAmount();
     }
-  } catch (e) {
+  } catch {
     showNotification('Erreur réseau, réessayez.', 'error');
   }
 });
