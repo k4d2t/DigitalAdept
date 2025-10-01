@@ -62,21 +62,37 @@
   </div>
 
   <h2 style="margin-top:2rem; text-align:center; color: var(--primary-dark);">Historique des retraits</h2>
+
   <div class="payout-history">
     <div class="table-responsive-wrapper">
-      <table class="payout-history-table">
+      <table class="payout-history-table" id="payoutHistoryTable">
         <thead>
           <tr>
-            <th>Date</th>
-            <th>Référence</th>
-            <th>Montant</th>
-            <th>Statut</th>
+            <th class="sortable" data-sort="created_at">
+              Date
+              <span class="sort-arrow"></span>
+            </th>
+            <th class="sortable" data-sort="external_id">
+              Référence
+              <span class="sort-arrow"></span>
+            </th>
+            <th class="sortable" data-sort="amount">
+              Montant
+              <span class="sort-arrow"></span>
+            </th>
+            <th class="sortable" data-sort="status">
+              Statut
+              <span class="sort-arrow"></span>
+            </th>
           </tr>
         </thead>
         <tbody id="payoutHistoryBody">
           <tr><td colspan="4" style="text-align:center;">Chargement…</td></tr>
         </tbody>
       </table>
+    </div>
+    <div style="text-align:center; margin-top: 0.8rem;">
+      <button id="loadMoreHistory" class="cta" style="min-width:220px;">Voir plus</button>
     </div>
   </div>
 </div>
@@ -111,6 +127,7 @@ const modesByCountry = {
 
 let AVAILABLE_BALANCE = 0;
 
+// Payout form helpers
 function refreshModes() {
   const cc = document.getElementById('countryCode').value;
   const sel = document.getElementById('withdraw_mode');
@@ -148,6 +165,13 @@ function validateAmount() {
   return !invalid;
 }
 
+// History sorting/pagination state
+const HISTORY_PAGE_SIZE = 10;
+let histSortBy = 'created_at';
+let histSortDir = 'desc';
+let histNextOffset = 0;
+let histHasMore = true;
+
 function statusClass(s) {
   s = (s || '').toLowerCase();
   if (s === 'completed') return 'status-completed';
@@ -162,45 +186,97 @@ function statusLabel(s) {
   return s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
 }
 
-async function loadHistory() {
+async function fetchHistoryPage(offset, append) {
   const tbody = document.getElementById('payoutHistoryBody');
+  const btn = document.getElementById('loadMoreHistory');
+  btn.disabled = true;
+
   try {
-    const res = await fetch('/api/payout/history', { credentials: 'same-origin' });
+    const url = new URL('/api/payout/history', window.location.origin);
+    url.searchParams.set('limit', HISTORY_PAGE_SIZE);
+    url.searchParams.set('offset', offset);
+    url.searchParams.set('sort_by', histSortBy);
+    url.searchParams.set('sort_dir', histSortDir);
+
+    const res = await fetch(url, { credentials: 'same-origin' });
     const data = await res.json();
     if (!res.ok || data.status !== 'success') throw new Error();
+
     const items = data.items || [];
-    if (items.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Aucun retrait pour le moment.</td></tr>';
-      return;
+    if (!append) {
+      tbody.innerHTML = '';
     }
-    tbody.innerHTML = items.map(it => {
-      const amount = `${Number(it.amount || 0).toLocaleString('fr-FR')} ${it.currency || 'XOF'}`;
-      const ref = it.reference_short || it.reference || '—';
-      const st = it.status || '';
-      return `<tr>
-        <td data-label="Date">${it.date}</td>
-        <td data-label="Référence" title="${it.reference || ''}">
-          <span class="ref-chip">${ref}</span>
-        </td>
-        <td data-label="Montant">
-          <span class="amount-chip">${amount}</span>
-        </td>
-        <td data-label="Statut">
-          <span class="status-badge ${statusClass(st)}">${statusLabel(st)}</span>
-        </td>
-      </tr>`;
-    }).join('');
+    if (items.length === 0 && !append) {
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Aucun retrait pour le moment.</td></tr>';
+    } else {
+      const rowsHtml = items.map(it => {
+        const amount = `${Number(it.amount || 0).toLocaleString('fr-FR')} ${it.currency || 'XOF'}`;
+        const ref = it.reference_short || it.reference || '—';
+        const st = it.status || '';
+        return `<tr>
+          <td data-label="Date">${it.date}</td>
+          <td data-label="Référence" title="${it.reference || ''}"><span class="ref-chip">${ref}</span></td>
+          <td data-label="Montant"><span class="amount-chip">${amount}</span></td>
+          <td data-label="Statut"><span class="status-badge ${statusClass(st)}">${statusLabel(st)}</span></td>
+        </tr>`;
+      }).join('');
+      if (append) {
+        tbody.insertAdjacentHTML('beforeend', rowsHtml);
+      } else {
+        tbody.innerHTML = rowsHtml;
+      }
+    }
+
+    histHasMore = !!data.has_more;
+    histNextOffset = data.next_offset || (offset + items.length);
+    btn.style.display = histHasMore ? 'inline-block' : 'none';
   } catch {
-    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Erreur de chargement.</td></tr>';
+    if (!append) {
+      tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">Erreur de chargement.</td></tr>';
+    }
+    btn.style.display = 'inline-block';
+  } finally {
+    btn.disabled = !histHasMore;
   }
 }
+
+function resetAndLoadHistory() {
+  histNextOffset = 0;
+  histHasMore = true;
+  fetchHistoryPage(0, /*append*/ false);
+}
+
+function setupSortHeaders() {
+  const ths = document.querySelectorAll('#payoutHistoryTable th.sortable');
+  ths.forEach(th => {
+    th.addEventListener('click', () => {
+      const col = th.getAttribute('data-sort');
+      if (col === histSortBy) {
+        histSortDir = (histSortDir === 'asc') ? 'desc' : 'asc';
+      } else {
+        histSortBy = col;
+        histSortDir = 'desc'; // par défaut
+      }
+      // UI arrows
+      ths.forEach(x => x.classList.remove('sorted-asc', 'sorted-desc'));
+      th.classList.add(histSortDir === 'asc' ? 'sorted-asc' : 'sorted-desc');
+      resetAndLoadHistory();
+    });
+  });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
   const cc = document.getElementById('countryCode');
   if (cc) { cc.value = 'ci'; refreshModes(); }
   loadBalance();
-  loadHistory();
+  setupSortHeaders();
+  resetAndLoadHistory();
+
   document.getElementById('countryCode').addEventListener('change', refreshModes);
   document.getElementById('amount').addEventListener('input', validateAmount);
+  document.getElementById('loadMoreHistory').addEventListener('click', () => {
+    if (histHasMore) fetchHistoryPage(histNextOffset, /*append*/ true);
+  });
 });
 
 document.getElementById('payoutSubmit').addEventListener('click', async () => {
@@ -226,9 +302,9 @@ document.getElementById('payoutSubmit').addEventListener('click', async () => {
       showNotification(data.message || 'Erreur lors de la demande de retrait.', 'error');
     } else {
       showNotification('Retrait soumis: ' + (data.message || 'succès.'), 'success');
-      // Recharge le solde et l'historique après soumission
+      // Mise à jour solde et historique (on repart de la page 1, tri courant)
       loadBalance();
-      loadHistory();
+      resetAndLoadHistory();
       document.getElementById('amount').value = '';
       validateAmount();
     }
