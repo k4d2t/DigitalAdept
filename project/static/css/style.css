@@ -2744,3 +2744,98 @@ display: none;
     padding: 1.3em 0.3em 1.3em 0.8em;
     line-height: 1.6;
 }
+
+
+/* === Locale switcher (pays/devise/langue) === */
+.locale-switch-wrap {
+  position: relative;
+  display: inline-block;
+}
+.locale-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: var(--nav-bg-glass);
+  border: 1.4px solid #4fc3f744;
+  box-shadow: var(--neon);
+  color: var(--text);
+  cursor: pointer;
+  min-width: 44px;
+}
+.locale-switch .flag {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: inline-block;
+  box-shadow: 0 0 6px #0002;
+  background-size: cover;
+  background-position: center;
+}
+.locale-panel {
+  position: absolute;
+  right: 0;
+  top: 110%;
+  min-width: 260px;
+  max-width: 320px;
+  background: var(--contact-card-bg, #fff);
+  color: var(--contact-text, #142439);
+  border: 1px solid var(--contact-border, #e4e8f0);
+  border-radius: 12px;
+  box-shadow: 0 8px 32px #0002;
+  padding: 10px;
+  z-index: 10001;
+  display: none;
+}
+.locale-panel.open { display: block; animation: slideIn .18s ease-out; }
+.locale-search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border: 1px solid var(--contact-input-border, #cdd1e6);
+  border-radius: 10px;
+  background: var(--contact-input-bg, #f2f4fa);
+  margin-bottom: 8px;
+}
+.locale-search input {
+  background: transparent;
+  border: none;
+  outline: none;
+  width: 100%;
+  color: inherit;
+  font: 500 0.95rem 'Google Sans','Roboto',Arial,sans-serif;
+}
+.country-list {
+  max-height: 300px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.country-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background .16s;
+}
+.country-item:hover { background: #4fc3f70d; }
+.country-item .flag {
+  width: 20px; height: 20px; border-radius: 50%; box-shadow: 0 0 4px #0002; background-size: cover; background-position: center;
+}
+.country-item .label {
+  display: flex; flex-direction: column; line-height: 1.2;
+}
+.country-item .label .name { font-weight: 700; font-size: .95rem; }
+.country-item .label .meta { font-size: .82rem; opacity: .7; }
+
+/* Compact sur mobile */
+@media (max-width: 600px) {
+  .locale-panel { right: 6px; left: 6px; max-width: none;}
+  .locale-switch { padding: 6px 8px; }
+}
