@@ -908,28 +908,56 @@ def messages():
 @app.route("/payer", methods=["POST"])
 def payer():
     """
-    Reçoit les données du frontend, les transmet à MoneyFusion et renvoie la réponse.
+    Reçoit les données du frontend, les convertit en XOF si nécessaire,
+    et les transmet à MoneyFusion.
     """
     data = request.json
     MONEYFUSION_API_URL = "https://www.pay.moneyfusion.net/Digital_Adept/a5f4d44ad70069fa/pay/"
-    
-    # Log pour voir ce qu'on envoie (utile pour le débogage)
-    logging.info(f"Payload envoyé à MoneyFusion: {data}")
+
+    logging.info(f"Payload reçu du frontend: {data}")
 
     try:
-        response = requests.post(MONEYFUSION_API_URL, json=data, timeout=15)
-        
-        # Log de la réponse brute
-        logging.info(f"Réponse brute de MoneyFusion: {response.status_code} '{response.text}'")
+        # Devise sélectionnée côté client
+        sel_currency = (data.get("currency") or "XOF").upper()
 
-        response.raise_for_status()  # Lève une exception pour les erreurs HTTP (4xx, 5xx)
+        # Conversion vers XOF si nécessaire en s'appuyant sur les taux base XOF
+        if sel_currency != "XOF":
+            rates = get_fx_rates_base_xof()  # base=XOF
+            rate = float(rates.get(sel_currency) or 0)
+            # Si base = XOF, pour convertir une somme dans sel_currency en XOF: amount_xof = amount / rate
+            def to_xof(amount):
+                try:
+                    return float(amount) / rate if rate > 0 else float(amount)
+                except Exception:
+                    return float(amount)
+
+            # Convertit total et les lignes article -> XOF
+            data["totalPrice"] = to_xof(data.get("totalPrice") or 0)
+            try:
+                article_list = data.get("article") or []
+                if article_list and isinstance(article_list, list) and isinstance(article_list[0], dict):
+                    conv = {}
+                    for k, v in article_list[0].items():
+                        conv[k] = to_xof(v)
+                    data["article"] = [conv]
+            except Exception:
+                pass
+
+            # On force currency à XOF pour l'appel provider
+            data["currency"] = "XOF"
+        else:
+            data["currency"] = "XOF"  # explicite
+
+        logging.info(f"Payload converti (XOF) vers MoneyFusion: {data}")
+
+        response = requests.post(MONEYFUSION_API_URL, json=data, timeout=15)
+        logging.info(f"Réponse brute de MoneyFusion: {response.status_code} '{response.text}'")
+        response.raise_for_status()
         response_data = response.json()
 
-        # Si MoneyFusion renvoie un statut "false"
         if not response_data.get("statut"):
             return jsonify({"error": response_data.get("message", "Erreur inconnue de l'API de paiement.")}), 400
-        
-        # Si tout est OK, on renvoie la réponse complète de MoneyFusion
+
         return jsonify(response_data), 200
 
     except requests.exceptions.Timeout:
@@ -944,7 +972,6 @@ def payer():
     except Exception as e:
         logging.error(f"Erreur inattendue dans /payer: {e}")
         return jsonify({"error": "Une erreur serveur interne est survenue."}), 500
-
 
 @app.route('/api/checkout/prepare', methods=['POST'])
 def prepare_checkout():
