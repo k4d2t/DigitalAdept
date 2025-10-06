@@ -766,12 +766,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 // === Locale Switcher (TOUS pays + auto-détection + conversion prix, drapeaux via jsDelivr <img>) ===
+// AMÉLIORÉ: application immédiate sans flash via cache localStorage des taux & de la locale
 document.addEventListener('DOMContentLoaded', () => {
   const SUPPORTED = ['XOF','USD','EUR','GBP','AED','RUB','CNY','JPY'];
   const SYMBOL = { XOF:'XOF', USD:'$', EUR:'€', GBP:'£', AED:'د.إ', RUB:'₽', CNY:'¥', JPY:'¥' };
   const XOF_ZONE = new Set(['CI','SN','BJ','BF','TG','ML','NE','GW']);
   let RATES_XOF = null;
 
+  // CDN preconnect
   (function preconnectCDNs() {
     const head = document.head || document.getElementsByTagName('head')[0];
     ['https://cdn.jsdelivr.net','https://restcountries.com','https://ipapi.co'].forEach(href => {
@@ -782,11 +784,29 @@ document.addEventListener('DOMContentLoaded', () => {
 
   const flagUrl = cc => `https://cdn.jsdelivr.net/gh/lipis/flag-icons@6.6.6/flags/1x1/${String(cc||'').toLowerCase()}.svg`;
 
+  // Cache des taux en localStorage pour conversion immédiate
+  function saveRatesCache(rates) {
+    try { localStorage.setItem('da_fx_rates', JSON.stringify({ rates, ts: Date.now() })); } catch {}
+  }
+  function loadRatesCache(maxAgeMs = 6*60*60*1000) {
+    try {
+      const raw = localStorage.getItem('da_fx_rates');
+      if (!raw) return null;
+      const obj = JSON.parse(raw);
+      if (!obj || !obj.rates) return null;
+      if (typeof obj.ts === 'number' && (Date.now() - obj.ts) <= maxAgeMs) return obj.rates;
+      return obj.rates; // même périmé, on peut l’utiliser en premier rendu
+    } catch { return null; }
+  }
+
   async function loadRates() {
     try {
-      const r = await fetch('/api/fx-rates', { credentials:'same-origin' });
+      const r = await fetch('/api/fx-rates', { credentials:'same-origin', cache:'no-store' });
       const j = await r.json();
-      if (j && j.status === 'success') RATES_XOF = j.rates || null;
+      if (j && j.status === 'success' && j.rates) {
+        RATES_XOF = j.rates;
+        saveRatesCache(RATES_XOF);
+      }
     } catch {}
   }
 
@@ -811,7 +831,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   function ensureDatasetForPrice(el) {
     if (!el.dataset.basePrice) {
-      // Convert only simple leaf nodes, unless explicitly annotated
       if (!el.hasAttribute('data-price') && el.children && el.children.length > 0) return false;
       let basePrice = parseFloat(el.getAttribute('data-price') || 'NaN');
       let baseCur = (el.getAttribute('data-currency') || '').toUpperCase();
@@ -824,6 +843,20 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!el.hasAttribute('data-currency')) el.setAttribute('data-currency', baseCur);
     }
     return true;
+  }
+
+  function annotateLikelyPriceSpans() {
+    // Si certains templates n'ont pas data-attributes, on les ajoute aux spans feuilles présentant un prix
+    const containers = document.querySelectorAll('.product-bottom, .product-price-detailed, .product-info, .products-list, .featured-list');
+    containers.forEach(c => {
+      c.querySelectorAll('span').forEach(sp => {
+        if (sp.children && sp.children.length > 0) return;
+        const txt = sp.textContent || '';
+        if (/\d/.test(txt)) { // il y a des chiffres
+          ensureDatasetForPrice(sp);
+        }
+      });
+    });
   }
 
   function convertAmountViaXOF(amount, fromCur, toCur) {
@@ -907,7 +940,7 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch { return null; }
   }
 
-  // Replace #gmt-time with the switcher
+  // Remplacer #gmt-time par le switcher
   const timeEl = document.getElementById('gmt-time');
   const wrap = document.createElement('div');
   wrap.className = 'locale-switch-wrap';
@@ -924,7 +957,7 @@ document.addEventListener('DOMContentLoaded', () => {
   `;
   if (timeEl && timeEl.parentNode) timeEl.parentNode.replaceChild(wrap, timeEl);
   else {
-    const navRight = document.querySelector('.nav-right');
+    const navRight = document.querySelector('.right-nav, .nav-right');
     if (navRight) navRight.appendChild(wrap);
   }
 
@@ -936,6 +969,19 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let ALL_LOCALES = [];
   let CURRENT = { country:'ci', currency:'XOF', lang:'fr' };
+
+  function saveLocale(sel) {
+    try { localStorage.setItem('da_locale', JSON.stringify(sel)); } catch {}
+  }
+  function loadLocale() {
+    try {
+      const raw = localStorage.getItem('da_locale');
+      if (!raw) return null;
+      const obj = JSON.parse(raw);
+      if (obj && obj.country) return obj;
+      return null;
+    } catch { return null; }
+  }
 
   function prefetchFlag(code) {
     if (!code) return;
@@ -970,7 +1016,6 @@ document.addEventListener('DOMContentLoaded', () => {
             <span class="meta">${curr} • ${lang}</span>
           </div>
         `;
-        // FIX: normalize selection payload to {country, currency, lang}
         item.addEventListener('click', () => selectCountry({ country: it.code, currency: it.currency, lang: it.lang }));
         list.appendChild(item);
       });
@@ -995,7 +1040,7 @@ document.addEventListener('DOMContentLoaded', () => {
   search.addEventListener('input', () => mountList(search.value));
 
   function persistSelection(sel) {
-    try { localStorage.setItem('da_country', sel.country); } catch {}
+    saveLocale(sel);
     fetch('/api/locale', {
       method:'POST', headers:{'Content-Type':'application/json'},
       credentials:'same-origin',
@@ -1007,31 +1052,43 @@ document.addEventListener('DOMContentLoaded', () => {
   function applySelection(sel, persist=false) {
     CURRENT = sel;
     setFlag(sel.country);
-    if (RATES_XOF) convertDisplayedPrices(sel.currency);
-    requestAnimationFrame(() => { if (RATES_XOF) convertDisplayedPrices(sel.currency); });
+    annotateLikelyPriceSpans();
+    if (RATES_XOF) {
+      convertDisplayedPrices(sel.currency);
+      requestAnimationFrame(() => convertDisplayedPrices(sel.currency));
+    }
     if (persist) persistSelection(sel);
   }
 
   async function selectCountry(sel) {
-    if (!RATES_XOF) await loadRates();
+    if (!RATES_XOF) {
+      // si pas de taux en mémoire, tente le cache local avant le réseau
+      RATES_XOF = loadRatesCache() || null;
+      if (!RATES_XOF) await loadRates();
+    }
     applySelection(sel, true);
     closePanel();
   }
 
   async function initLocale() {
-    ALL_LOCALES = await fetchAllCountries();
-    let chosen = null;
+    // Étape 0: annoter tout de suite les prix candidats
+    annotateLikelyPriceSpans();
 
-    // 1) LocalStorage FIRST (persist across pages reliably)
-    try {
-      const stored = String(localStorage.getItem('da_country') || '').toLowerCase();
-      if (stored) {
-        const found = ALL_LOCALES.find(x => x.code === stored);
-        if (found) chosen = { country: found.code, currency: found.currency, lang: found.lang };
+    // Étape 1: Appliquer immédiatement depuis le cache local (aucun réseau)
+    let chosen = loadLocale();
+    if (chosen && chosen.country && chosen.currency) {
+      setFlag(chosen.country);
+      RATES_XOF = loadRatesCache() || null;
+      if (RATES_XOF) {
+        convertDisplayedPrices(chosen.currency);
+        requestAnimationFrame(() => convertDisplayedPrices(chosen.currency));
       }
-    } catch {}
+    }
 
-    // 2) Session (API) if nothing from localStorage
+    // Étape 2: Charger la liste des pays (asynchrone)
+    ALL_LOCALES = await fetchAllCountries();
+
+    // Étape 3: Si aucune locale trouvée en cache, essayer la session puis la géoloc
     if (!chosen) {
       try {
         const r = await fetch('/api/locale', { credentials:'same-origin', cache:'no-store' });
@@ -1043,23 +1100,24 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       } catch {}
     }
-
-    // 3) Geo-IP if still nothing
     if (!chosen) {
       const geo = await geolocateCountry();
       const found = ALL_LOCALES.find(x => x.code === geo);
       if (found) chosen = { country: found.code, currency: found.currency, lang: found.lang };
     }
-
-    // 4) Fallback CI
     if (!chosen) {
       const ci = ALL_LOCALES.find(x => x.code === 'ci') || { code:'ci', currency:'XOF', lang:'fr' };
       chosen = { country: ci.code, currency: ci.currency, lang: ci.lang };
     }
 
-    setFlag(chosen.country);
-    await loadRates();
-    // Apply AND persist immediately so the session is stabilized
+    // Étape 4: Charger/rafraîchir les taux et appliquer proprement (et persister)
+    if (!RATES_XOF) {
+      // si on n’a pas eu de cache exploitable, on charge réseau
+      await loadRates();
+    } else {
+      // on rafraîchit en arrière-plan pour la prochaine page
+      loadRates();
+    }
     applySelection(chosen, true);
   }
 
