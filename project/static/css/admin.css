@@ -2789,3 +2789,17 @@ color: var(--text);
     white-space: nowrap;
   }
 }
+
+
+/* Ajouts/corrections pour le sélecteur de pays */
+.locale-switch .flag {
+  background-size: contain;   /* meilleure netteté */
+  background-repeat: no-repeat;
+  background-position: center;
+  font-size: 0;               /* masque tout texte/abbr résiduel */
+}
+.country-item .flag {
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: center;
+}
