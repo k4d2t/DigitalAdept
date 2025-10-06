@@ -947,6 +947,7 @@ document.addEventListener('DOMContentLoaded', () => {
   wrap.innerHTML = `
     <button id="localeSwitchBtn" class="locale-switch" aria-haspopup="listbox" aria-expanded="false" title="Choisir un pays">
       <img id="localeFlagImg" class="flag" alt="flag" />
+      <span id="localeLang" class="locale-code">FR</span>
     </button>
     <div id="localePanel" class="locale-panel" role="listbox" aria-label="Choisir un pays">
       <div class="locale-search">
@@ -966,6 +967,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const list = document.getElementById('countryList');
   const search = document.getElementById('localeSearch');
   const flagImg = document.getElementById('localeFlagImg');
+  const langEl = document.getElementById('localeLang'); // AJOUT
+
 
   let ALL_LOCALES = [];
   let CURRENT = { country:'ci', currency:'XOF', lang:'fr' };
@@ -1052,6 +1055,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function applySelection(sel, persist=false) {
     CURRENT = sel;
     setFlag(sel.country);
+    if (langEl) langEl.textContent = String(sel.lang || 'fr').toUpperCase(); // AJOUT: langue à côté du drapeau
     annotateLikelyPriceSpans();
     if (RATES_XOF) {
       convertDisplayedPrices(sel.currency);
