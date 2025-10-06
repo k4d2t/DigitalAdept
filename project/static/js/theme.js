@@ -1088,7 +1088,6 @@ document.addEventListener('DOMContentLoaded', () => {
         curEl.textContent = String(chosen.currency || 'XOF').toUpperCase();
       }
       applySelection(chosen, true);
-      })();
     })();
 
 // --- Initialisation globale ---
