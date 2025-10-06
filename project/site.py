@@ -135,6 +135,19 @@ LOCALE_MAP = {
 
 SUPPORTED_CURRENCIES = ["XOF", "USD", "EUR", "GBP", "AED", "RUB", "CNY", "JPY"]
 
+
+def flag_emoji_from_code(code2):
+    """
+    Transforme un code pays ISO alpha-2 (ex: 'tg') en emoji drapeau (🇹🇬).
+    """
+    try:
+        cc = (code2 or '').strip().upper()
+        if len(cc) != 2: 
+            return '🌐'
+        return ''.join(chr(127397 + ord(c)) for c in cc)
+    except Exception:
+        return '🌐'
+        
 # Cache 6h des taux (base = XOF pour simplifier conversions vers XOF)
 @cache.cached(timeout=21600, key_prefix="fx_rates_xof")
 def get_fx_rates_base_xof():
@@ -190,31 +203,35 @@ def api_locale():
             session['lang'] = entry['lang']
             return jsonify({"status":"success","country":code,"currency":entry['currency'],"lang":entry['lang']}), 200
 
-        # Pays non présent dans LOCALE_MAP: on accepte si currency/lang fournis
-        SUPPORTED = set(SUPPORTED_CURRENCIES)  # ["XOF","USD","EUR","GBP","AED","RUB","CNY","JPY"]
+        SUPPORTED = set(SUPPORTED_CURRENCIES)
         if currency in SUPPORTED and lang:
             session['country'] = code or 'ci'
             session['currency'] = currency
             session['lang'] = lang
             return jsonify({"status":"success","country": session['country'],"currency": currency,"lang": lang}), 200
 
-        # Fallback sûr
         session['country'] = 'ci'
         session['currency'] = 'XOF'
         session['lang'] = 'fr'
         return jsonify({"status":"success","country":"ci","currency":"XOF","lang":"fr"}), 200
 
     # GET
-    code = (session.get('country') or '').lower()
-    entry = LOCALE_MAP.get(code) or LOCALE_MAP.get('ci')
+    code = (session.get('country') or 'ci').lower()
+    entry = LOCALE_MAP.get(code)
+    # Utilise la session si non listé dans LOCALE_MAP
+    currency = session.get('currency') or (entry['currency'] if entry else 'XOF')
+    lang = session.get('lang') or (entry['lang'] if entry else 'fr')
+    name = (entry['name'] if entry else code.upper())
+    flag = (entry['flag'] if entry else flag_emoji_from_code(code))
     return jsonify({
         "status":"success",
-        "country": code or 'ci',
-        "currency": entry['currency'],
-        "lang": entry['lang'],
-        "flag": entry['flag'],
-        "name": entry['name']
+        "country": code,
+        "currency": currency,
+        "lang": lang,
+        "flag": flag,
+        "name": name
     }), 200
+
 
 @app.route('/api/fx-rates', methods=['GET'])
 def api_fx_rates():
