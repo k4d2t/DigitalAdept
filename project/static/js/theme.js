@@ -803,246 +803,258 @@ window.initProductPage = function () {
     }
 })();
 
- function pickSupportedCurrency(cc, countryCurrency, region) {
-    const cur = String(countryCurrency || '').toUpperCase();
-    if (SUPPORTED.includes(cur)) return cur;
-    const regionLC = String(region || '').toLowerCase();
-    if (XOF_ZONE.has(String(cc || '').toUpperCase())) return 'XOF';
-    if (regionLC === 'europe') return 'EUR';
-    if (regionLC.includes('america')) return 'USD';
-    if (['asia','africa'].includes(regionLC) && cur.startsWith('A')) return 'AED';
-    if (regionLC === 'asia') return 'CNY';
-    return 'USD';
-  }
+// ===== Locale Switcher (flag + currency on button, conversion, responsive panel) =====
+// S'exécute une fois que le DOM est prêt pour éviter les erreurs
+document.addEventListener('DOMContentLoaded', () => {
+    // Config
+    const SUPPORTED = ['XOF','USD','EUR','GBP','AED','RUB','CNY','JPY'];
+    const XOF_ZONE = new Set(['CI','SN','BJ','BF','TG','ML','NE','GW']);
+    const SYMBOL = { XOF:'XOF', USD:'$', EUR:'€', GBP:'£', AED:'د.إ', RUB:'₽', CNY:'¥', JPY:'¥' };
+    let RATES_XOF = null;
 
-  async function fetchAllCountries() {
-    try {
-      const url = 'https://restcountries.com/v3.1/all?fields=cca2,name,currencies,languages,region';
-      const r = await fetch(url, { cache: 'force-cache' });
-      const arr = await r.json();
-      const list = arr.map(it => {
-        const code = String(it.cca2 || '').toLowerCase();
-        const name = (it.name && it.name.common) ? it.name.common : code.toUpperCase();
-        const region = it.region || '';
-        const cur = it.currencies ? Object.keys(it.currencies)[0] : '';
-        const langCode = it.languages ? Object.keys(it.languages)[0] : 'en';
-        const currency = pickSupportedCurrency(code, cur, region);
-        return { code, name, currency, lang: langCode || 'en', region };
-      }).filter(x => x.code);
-      list.sort((a,b) => a.name.localeCompare(b.name, 'fr'));
-      return list;
-    } catch {
-      return [
-        {code:'ci', name:"Côte d'Ivoire", currency:'XOF', lang:'fr'},
-        {code:'sn', name:'Sénégal', currency:'XOF', lang:'fr'},
-        {code:'tg', name:'Togo', currency:'XOF', lang:'fr'},
-        {code:'fr', name:'France', currency:'EUR', lang:'fr'},
-        {code:'us', name:'United States', currency:'USD', lang:'en'},
-        {code:'gb', name:'United Kingdom', currency:'GBP', lang:'en'},
-        {code:'ae', name:'United Arab Emirates', currency:'AED', lang:'ar'},
-        {code:'ru', name:'Russia', currency:'RUB', lang:'ru'},
-        {code:'cn', name:'China', currency:'CNY', lang:'zh'},
-        {code:'jp', name:'Japan', currency:'JPY', lang:'ja'}
-      ];
+    // Flag CDN
+    const flagUrl = cc => `https://cdn.jsdelivr.net/gh/lipis/flag-icons@6.6.6/flags/1x1/${String(cc||'').toLowerCase()}.svg`;
+
+    // Cache des taux FX
+    function saveRatesCache(rates) {
+      try { localStorage.setItem('da_fx_rates', JSON.stringify({ rates, ts: Date.now() })); } catch {}
     }
-  }
-
-  async function geolocateCountry() {
-    try {
-      const r = await fetch('https://ipapi.co/json/', { cache: 'no-store' });
-      const j = await r.json();
-      return (j && j.country) ? String(j.country).toLowerCase() : null;
-    } catch { return null; }
-  }
-
-  // Remplacer #gmt-time par le switcher
-  const timeEl = document.getElementById('gmt-time');
-  const wrap = document.createElement('div');
-  wrap.className = 'locale-switch-wrap';
-  wrap.innerHTML = `
-    <button id="localeSwitchBtn" class="locale-switch" aria-haspopup="listbox" aria-expanded="false" title="Choisir un pays">
-      <img id="localeFlagImg" class="flag" alt="flag" />
-      <span id="localeCur" class="locale-code">XOF</span>
-    </button>
-    <div id="localePanel" class="locale-panel" role="listbox" aria-label="Choisir un pays">
-      <div class="locale-search">
-        <input id="localeSearch" type="search" placeholder="Rechercher un pays..." autocomplete="off" />
-      </div>
-      <div class="country-list" id="countryList"></div>
-    </div>
-  `;
-  if (timeEl && timeEl.parentNode) timeEl.parentNode.replaceChild(wrap, timeEl);
-  else {
-    const navRight = document.querySelector('.right-nav, .nav-right');
-    if (navRight) navRight.appendChild(wrap);
-  }
-
-  const btn = document.getElementById('localeSwitchBtn');
-  const panel = document.getElementById('localePanel');
-  const list = document.getElementById('countryList');
-  const search = document.getElementById('localeSearch');
-  const flagImg = document.getElementById('localeFlagImg');
-  const langEl = document.getElementById('localeCur'); // AJOUT
-
-
-  let ALL_LOCALES = [];
-  let CURRENT = { country:'ci', currency:'XOF', lang:'fr' };
-
-  function saveLocale(sel) {
-    try { localStorage.setItem('da_locale', JSON.stringify(sel)); } catch {}
-  }
-  function loadLocale() {
-    try {
-      const raw = localStorage.getItem('da_locale');
-      if (!raw) return null;
-      const obj = JSON.parse(raw);
-      if (obj && obj.country) return obj;
-      return null;
-    } catch { return null; }
-  }
-
-  function prefetchFlag(code) {
-    if (!code) return;
-    const img = new Image(); img.decoding='async'; img.src = flagUrl(code);
-  }
-
-  function setFlag(code) {
-    if (!code) { flagImg.removeAttribute('src'); return; }
-    const url = flagUrl(code);
-    flagImg.src = url;
-    flagImg.alt = (String(code||'').toUpperCase()) + ' flag';
-    prefetchFlag(code);
-  }
-
-  function mountList(filterText) {
-    const q = String(filterText || '').trim().toLowerCase();
-    list.innerHTML = '';
-    ALL_LOCALES
-      .filter(it => !q || it.name.toLowerCase().includes(q) || String(it.currency||'').toLowerCase().includes(q) || it.code.includes(q))
-      .forEach(it => {
-        const item = document.createElement('div');
-        item.className = 'country-item';
-        item.setAttribute('role', 'option');
-        item.dataset.country = it.code;
-        const cc = it.code || 'ci';
-        const curr = String(it.currency || 'USD').toUpperCase();
-        const lang = String(it.lang || 'en').toUpperCase();
-        item.innerHTML = `
-          <img class="flag" src="${flagUrl(cc)}" alt="${cc.toUpperCase()} flag" loading="lazy" />
-          <div class="label">
-            <span class="name">${it.name}</span>
-            <span class="meta">${curr} • ${lang}</span>
-          </div>
-        `;
-        item.addEventListener('click', () => selectCountry({ country: it.code, currency: it.currency, lang: it.lang }));
-        list.appendChild(item);
-      });
-  }
-
-  function openPanel() {
-    panel.classList.add('open');
-    btn.setAttribute('aria-expanded','true');
-    search.value = '';
-    mountList('');
-    setTimeout(() => search.focus(), 10);
-  }
-  function closePanel() {
-    panel.classList.remove('open');
-    btn.setAttribute('aria-expanded','false');
-  }
-  btn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    if (panel.classList.contains('open')) closePanel(); else openPanel();
-  });
-  document.addEventListener('click', (e) => { if (!panel.contains(e.target) && e.target !== btn) closePanel(); });
-  search.addEventListener('input', () => mountList(search.value));
-
-  function persistSelection(sel) {
-    saveLocale(sel);
-    fetch('/api/locale', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      credentials:'same-origin',
-      body: JSON.stringify({ country: sel.country, currency: sel.currency, lang: sel.lang })
-    }).catch(()=>{});
-    document.documentElement.lang = sel.lang || 'fr';
-  }
-
- function applySelection(sel, persist=false) {
-  CURRENT = sel;
-  setFlag(sel.country);
-  // Au repli, afficher la devise (ex: EUR, USD, XOF) au lieu de la langue
-  if (curEl) curEl.textContent = String(sel.currency || 'XOF').toUpperCase();
-
-  annotateLikelyPriceSpans?.();
-  if (typeof RATES_XOF !== 'undefined' && RATES_XOF) {
-    convertDisplayedPrices?.(sel.currency);
-    requestAnimationFrame(() => convertDisplayedPrices?.(sel.currency));
-  }
-  if (persist) persistSelection(sel);
-}
-  async function selectCountry(sel) {
-    if (!RATES_XOF) {
-      // si pas de taux en mémoire, tente le cache local avant le réseau
-      RATES_XOF = loadRatesCache() || null;
-      if (!RATES_XOF) await loadRates();
-    }
-    applySelection(sel, true);
-    closePanel();
-  }
-
-  async function initLocale() {
-    // Étape 0: annoter tout de suite les prix candidats
-    annotateLikelyPriceSpans();
-
-    // Étape 1: Appliquer immédiatement depuis le cache local (aucun réseau)
-    let chosen = loadLocale();
-    if (chosen && chosen.country && chosen.currency) {
-      setFlag(chosen.country);
-      RATES_XOF = loadRatesCache() || null;
-      if (RATES_XOF) {
-        convertDisplayedPrices(chosen.currency);
-        requestAnimationFrame(() => convertDisplayedPrices(chosen.currency));
-      }
-    }
-
-    // Étape 2: Charger la liste des pays (asynchrone)
-    ALL_LOCALES = await fetchAllCountries();
-
-    // Étape 3: Si aucune locale trouvée en cache, essayer la session puis la géoloc
-    if (!chosen) {
+    function loadRatesCache(maxAgeMs = 6 * 60 * 60 * 1000) {
       try {
-        const r = await fetch('/api/locale', { credentials:'same-origin', cache:'no-store' });
+        const raw = localStorage.getItem('da_fx_rates');
+        if (!raw) return null;
+        const obj = JSON.parse(raw);
+        if (!obj || !obj.rates) return null;
+        if (typeof obj.ts === 'number' && (Date.now() - obj.ts) <= maxAgeMs) return obj.rates;
+        return obj.rates;
+      } catch { return null; }
+    }
+    async function loadRates() {
+      try {
+        const r = await fetch('/api/fx-rates', { credentials:'same-origin', cache:'no-store' });
         const j = await r.json();
-        if (r.ok && j.status === 'success') {
-          const code = String(j.country || 'ci').toLowerCase();
-          const found = ALL_LOCALES.find(x => x.code === code);
-          if (found) chosen = { country: found.code, currency: found.currency, lang: found.lang };
+        if (j && j.status === 'success' && j.rates) {
+          RATES_XOF = j.rates;
+          saveRatesCache(RATES_XOF);
         }
       } catch {}
     }
-    if (!chosen) {
-      const geo = await geolocateCountry();
-      const found = ALL_LOCALES.find(x => x.code === geo);
-      if (found) chosen = { country: found.code, currency: found.currency, lang: found.lang };
+
+    // Fonctions de conversion de prix
+    const SYMBOL_TO_CUR = {'$':'USD','€':'EUR','£':'GBP','¥':'CNY','₽':'RUB','د.إ':'AED'};
+    function parseNumberFromText(txt) {
+      if (!txt) return NaN;
+      const cleaned = txt.replace(/\s|\u00A0|\u202F/g,'');
+      const m = cleaned.match(/[-+]?\d+(?:[.,]\d+)?/);
+      if (!m) return NaN;
+      return parseFloat(m[0].replace(',', '.'));
     }
-    if (!chosen) {
-      const ci = ALL_LOCALES.find(x => x.code === 'ci') || { code:'ci', currency:'XOF', lang:'fr' };
-      chosen = { country: ci.code, currency: ci.currency, lang: ci.lang };
+    function parseCurrencyFromText(txt) {
+      if (!txt) return null;
+      const cm = txt.match(/\b(XOF|USD|EUR|GBP|AED|RUB|CNY|JPY)\b/i);
+      if (cm) return cm[1].toUpperCase();
+      const sm = txt.match(/[$€£¥₽]|د\.?إ/);
+      return sm ? (SYMBOL_TO_CUR[sm[0]] || null) : null;
+    }
+    function ensureDatasetForPrice(el) {
+      if (!el.dataset.basePrice) {
+        if (!el.hasAttribute('data-price') && el.children && el.children.length > 0) return false;
+        let basePrice = parseFloat(el.getAttribute('data-price') || 'NaN');
+        let baseCur = (el.getAttribute('data-currency') || '').toUpperCase();
+        if (!isFinite(basePrice)) basePrice = parseNumberFromText(el.textContent);
+        if (!baseCur) baseCur = parseCurrencyFromText(el.textContent) || 'XOF';
+        if (!isFinite(basePrice)) return false;
+        el.dataset.basePrice = String(basePrice);
+        el.dataset.baseCurrency = baseCur;
+        if (!el.hasAttribute('data-price')) el.setAttribute('data-price', String(basePrice));
+        if (!el.hasAttribute('data-currency')) el.setAttribute('data-currency', baseCur);
+      }
+      return true;
+    }
+    function annotateLikelyPriceSpans() {
+      const containers = document.querySelectorAll('.product-bottom, .product-price-detailed, .product-info, .products-list, .featured-list');
+      containers.forEach(c => {
+        c.querySelectorAll('span').forEach(sp => {
+          if (sp.children && sp.children.length > 0) return;
+          const txt = sp.textContent || '';
+          if (/\d/.test(txt)) ensureDatasetForPrice(sp);
+        });
+      });
+    }
+    function convertAmountViaXOF(amount, fromCur, toCur) {
+      if (!RATES_XOF || !isFinite(amount)) return amount;
+      if (fromCur === toCur) return amount;
+      try {
+        const rFrom = fromCur === 'XOF' ? 1 : RATES_XOF[fromCur];
+        const inXof = rFrom ? (fromCur === 'XOF' ? amount : amount / rFrom) : amount;
+        const rTo = toCur === 'XOF' ? 1 : RATES_XOF[toCur];
+        return rTo ? (toCur === 'XOF' ? inXof : inXof * rTo) : inXof;
+      } catch { return amount; }
+    }
+    function formatAmount(amount, currency) {
+      return `${Number(amount).toLocaleString('fr-FR', {maximumFractionDigits:2})} ${SYMBOL[currency] || currency}`;
+    }
+    function convertDisplayedPrices(targetCurrency) {
+      const dataNodes = Array.from(document.querySelectorAll('[data-price][data-currency]'));
+      const classNodes = Array.from(document.querySelectorAll('.product-price, .product-old-price, .current-price, .old-price'))
+        .filter(el => el.hasAttribute('data-price') || !el.children || el.children.length === 0);
+      const seen = new Set(); const nodes = [];
+      [...dataNodes, ...classNodes].forEach(el => { if (!seen.has(el)) { seen.add(el); nodes.push(el); } });
+      nodes.forEach(el => {
+        if (!ensureDatasetForPrice(el)) return;
+        const base = parseFloat(el.dataset.basePrice);
+        const from = (el.dataset.baseCurrency || 'XOF').toUpperCase();
+        const conv = convertAmountViaXOF(base, from, targetCurrency);
+        el.textContent = formatAmount(conv, targetCurrency);
+        el.setAttribute('data-currency', targetCurrency);
+      });
     }
 
-    // Étape 4: Charger/rafraîchir les taux et appliquer proprement (et persister)
-    if (!RATES_XOF) {
-      // si on n’a pas eu de cache exploitable, on charge réseau
-      await loadRates();
+    // Fonctions pour les pays
+    function pickSupportedCurrency(cc, countryCurrency, region) {
+      const cur = String(countryCurrency || '').toUpperCase();
+      if (SUPPORTED.includes(cur)) return cur;
+      const regionLC = String(region || '').toLowerCase();
+      if (XOF_ZONE.has(String(cc || '').toUpperCase())) return 'XOF';
+      if (regionLC === 'europe') return 'EUR';
+      if (regionLC.includes('america')) return 'USD';
+      if (['asia','africa'].includes(regionLC) && cur.startsWith('A')) return 'AED';
+      if (regionLC === 'asia') return 'CNY';
+      return 'USD';
+    }
+    async function fetchAllCountries() {
+      try {
+        const url = 'https://restcountries.com/v3.1/all?fields=cca2,name,currencies,languages,region';
+        const r = await fetch(url, { cache: 'force-cache' });
+        const arr = await r.json();
+        const list = arr.map(it => {
+          const code = String(it.cca2 || '').toLowerCase();
+          const name = (it.name && it.name.common) ? it.name.common : code.toUpperCase();
+          const region = it.region || '';
+          const cur = it.currencies ? Object.keys(it.currencies)[0] : '';
+          const langCode = it.languages ? Object.keys(it.languages)[0] : 'en';
+          const currency = pickSupportedCurrency(code, cur, region);
+          return { code, name, currency, lang: langCode || 'en', region };
+        }).filter(x => x.code);
+        list.sort((a,b) => a.name.localeCompare(b.name, 'fr'));
+        return list;
+      } catch {
+        return [ {code:'ci', name:"Côte d'Ivoire", currency:'XOF', lang:'fr'}, {code:'sn', name:'Sénégal', currency:'XOF', lang:'fr'}, {code:'tg', name:'Togo', currency:'XOF', lang:'fr'}, {code:'fr', name:'France', currency:'EUR', lang:'fr'}, {code:'us', name:'United States', currency:'USD', lang:'en'} ];
+      }
+    }
+    async function geolocateCountry() {
+      try {
+        const r = await fetch('https://ipapi.co/json/', { cache: 'no-store' });
+        const j = await r.json();
+        return (j && j.country) ? String(j.country).toLowerCase() : null;
+      } catch { return null; }
+    }
+
+    // Création de l'interface
+    const timeEl = document.getElementById('gmt-time');
+    const wrap = document.createElement('div');
+    wrap.className = 'locale-switch-wrap';
+    wrap.innerHTML = `
+      <button id="localeSwitchBtn" class="locale-switch" aria-haspopup="listbox" aria-expanded="false" title="Choisir un pays">
+        <img id="localeFlagImg" class="flag" alt="flag" />
+        <span id="localeCur" class="locale-code">XOF</span>
+      </button>
+      <div id="localePanel" class="locale-panel" role="listbox" aria-label="Choisir un pays">
+        <div class="locale-search"><input id="localeSearch" type="search" placeholder="Rechercher un pays..." autocomplete="off" /></div>
+        <div class="country-list" id="countryList"></div>
+      </div>
+    `;
+    if (timeEl && timeEl.parentNode) {
+      timeEl.parentNode.replaceChild(wrap, timeEl);
     } else {
-      // on rafraîchit en arrière-plan pour la prochaine page
-      loadRates();
+      const navRight = document.querySelector('.right-nav, .nav-right');
+      if (navRight) navRight.appendChild(wrap);
     }
-    applySelection(chosen, true);
-  }
 
-  initLocale();
-});
+    const btn = document.getElementById('localeSwitchBtn');
+    const panel = document.getElementById('localePanel');
+    const list = document.getElementById('countryList');
+    const search = document.getElementById('localeSearch');
+    const flagImg = document.getElementById('localeFlagImg');
+    const curEl = document.getElementById('localeCur'); // ** FIX: La bonne variable **
+
+    let ALL_LOCALES = [];
+
+    // Fonctions d'interaction
+    function setFlag(code) {
+      if (!code) { flagImg.removeAttribute('src'); return; }
+      flagImg.src = flagUrl(code);
+      flagImg.alt = `${String(code||'').toUpperCase()} flag`;
+    }
+    function mountList(filterText) {
+      const q = String(filterText || '').trim().toLowerCase();
+      list.innerHTML = '';
+      ALL_LOCALES.filter(it => !q || it.name.toLowerCase().includes(q) || String(it.currency||'').toLowerCase().includes(q) || it.code.includes(q))
+        .forEach(it => {
+          const item = document.createElement('div');
+          item.className = 'country-item';
+          item.dataset.country = it.code;
+          item.innerHTML = `<img class="flag" src="${flagUrl(it.code)}" alt="${it.code.toUpperCase()} flag" loading="lazy" /><div class="label"><span class="name">${it.name}</span><span class="meta">${String(it.currency||'').toUpperCase()} • ${String(it.lang||'').toUpperCase()}</span></div>`;
+          item.addEventListener('click', () => selectCountry({ country: it.code, currency: it.currency, lang: it.lang }));
+          list.appendChild(item);
+        });
+    }
+    function openPanel() { panel.classList.add('open'); btn.setAttribute('aria-expanded','true'); search.value = ''; mountList(''); setTimeout(() => search.focus(), 10); }
+    function closePanel() { panel.classList.remove('open'); btn.setAttribute('aria-expanded','false'); }
+    btn.addEventListener('click', (e) => { e.stopPropagation(); if (panel.classList.contains('open')) closePanel(); else openPanel(); });
+    document.addEventListener('click', (e) => { if (!panel.contains(e.target) && e.target !== btn) closePanel(); });
+    search.addEventListener('input', () => mountList(search.value));
+
+    // Logique de sélection et persistance
+    function saveLocale(sel) { try { localStorage.setItem('da_locale', JSON.stringify(sel)); } catch {} }
+    function loadLocale() { try { const r = localStorage.getItem('da_locale'); return r ? JSON.parse(r) : null; } catch { return null; } }
+    function persistSelection(sel) {
+      saveLocale(sel);
+      fetch('/api/locale', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'same-origin', body: JSON.stringify(sel) }).catch(()=>{});
+      document.documentElement.lang = sel.lang || 'fr';
+    }
+    function applySelection(sel, persist=false) {
+      setFlag(sel.country);
+      if (curEl) curEl.textContent = String(sel.currency || 'XOF').toUpperCase(); // ** FIX: Met à jour la devise sur le bouton **
+      annotateLikelyPriceSpans();
+      if (RATES_XOF) {
+        convertDisplayedPrices(sel.currency);
+        requestAnimationFrame(() => convertDisplayedPrices(sel.currency));
+      }
+      if (persist) persistSelection(sel);
+    }
+    async function selectCountry(sel) {
+      if (!RATES_XOF) {
+        RATES_XOF = loadRatesCache() || null;
+        if (!RATES_XOF) await loadRates();
+      }
+      applySelection(sel, true);
+      closePanel();
+    }
+
+    // Initialisation
+    (async function initLocale() {
+      annotateLikelyPriceSpans();
+      let chosen = loadLocale();
+      if (chosen) {
+        setFlag(chosen.country);
+        RATES_XOF = loadRatesCache() || null;
+        if (RATES_XOF) convertDisplayedPrices(chosen.currency);
+      }
+      ALL_LOCALES = await fetchAllCountries();
+      if (!chosen) {
+        const geo = await geolocateCountry();
+        const found = ALL_LOCALES.find(x => x.code === geo);
+        if (found) chosen = { country: found.code, currency: found.currency, lang: found.lang };
+      }
+      if (!chosen) {
+        chosen = { country:'ci', currency:'XOF', lang:'fr' };
+      }
+      if (!RATES_XOF) await loadRates(); else loadRates();
+      applySelection(chosen, true);
+    })();
+  });
+})();
 
 // --- Initialisation globale ---
 document.addEventListener('DOMContentLoaded', () => {
