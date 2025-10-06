@@ -1,5 +1,8 @@
-// --- L'heure ---
 document.addEventListener('DOMContentLoaded', () => {
+// --- Début du code corrigé ---
+
+// --- L'heure ---
+
     const gmtTimeElement = document.getElementById('gmt-time');
     if (gmtTimeElement) {
         function updateTimeInGMT() {
@@ -12,10 +15,10 @@ document.addEventListener('DOMContentLoaded', () => {
         setInterval(updateTimeInGMT, 1000);
         updateTimeInGMT();
     }
-});
+
 
 // --- Menu ---
-document.addEventListener('DOMContentLoaded', () => {
+
     const burger = document.getElementById('burger');
     const mobileMenu = document.getElementById('mobile-menu');
     const closeMobileMenu = document.getElementById('close-mobile-menu');
@@ -24,22 +27,22 @@ document.addEventListener('DOMContentLoaded', () => {
         burger.addEventListener('click', () => {
             burger.classList.add('active');
             mobileMenu.classList.add('show');
-        });
+        
     }
 
-//Burger
+    //Burger
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && mobileMenu && mobileMenu.classList.contains('show')) {
             burger.classList.remove('active');
             mobileMenu.classList.remove('show');
         }
-    });
+    
 
     if (closeMobileMenu) {
         closeMobileMenu.addEventListener('click', () => {
             burger.classList.remove('active');
             mobileMenu.classList.remove('show');
-        });
+        
     }
 
     if (mobileMenu && burger) {
@@ -48,13 +51,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 burger.classList.remove('active');
                 mobileMenu.classList.remove('show');
             }
-        });
+        
     }
 
-});
 
 
-document.addEventListener('DOMContentLoaded', function() {
+
+
     const cartBubble = document.getElementById('cart-bubble');
 
     cartBubble.addEventListener('click', function(e) {
@@ -101,8 +104,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
         }
-    });
-});
+    
+
 
 // --- Initialisation des produits et tri ---
 window.initProductSearchSort = function () {
@@ -131,13 +134,13 @@ window.initProductSearchSort = function () {
                 const promoA = a.classList.contains('has-promo') || a.querySelector('.badge-promo') ? 1 : 0;
                 const promoB = b.classList.contains('has-promo') || b.querySelector('.badge-promo') ? 1 : 0;
                 return promoB - promoA;
-            });
+            
         } else if (sort === 'price-asc' || sort === 'price-desc') {
             filtered.sort((a, b) => {
                 const priceA = parseFloat(a.querySelector('.product-price')?.textContent.replace(/[^\d.,]/g, '').replace(',', '.') || '0');
                 const priceB = parseFloat(b.querySelector('.product-price')?.textContent.replace(/[^\d.,]/g, '').replace(',', '.') || '0');
                 return sort === 'price-asc' ? priceA - priceB : priceB - priceA;
-            });
+            
         }
 
         productsList.innerHTML = '';
@@ -177,15 +180,15 @@ window.initCategoryFilter = function () {
             option.value = category;
             option.textContent = category;
             categoryFilter.appendChild(option);
-        });
+        
     }
 
     categoryFilter.addEventListener('change', () => {
         const selectedCategory = categoryFilter.value;
         allProducts.forEach(card => {
             card.style.display = selectedCategory === "" || card.dataset.category === selectedCategory ? "" : "none";
-        });
-    });
+        
+    
 };
 
 // --- Initialisation de la page produit et du panier digital ---
@@ -225,15 +228,15 @@ window.initProductPage = function () {
                 stopAutoScroll();
                 updateGallery(index);
                 startAutoScroll();
-            });
-        });
+            
+        
 
         if (prevArrow) {
             prevArrow.addEventListener("click", () => {
                 stopAutoScroll();
                 updateGallery((currentIndex - 1 + mainImages.length) % mainImages.length);
                 startAutoScroll();
-            });
+            
         }
 
         if (nextArrow) {
@@ -241,7 +244,7 @@ window.initProductPage = function () {
                 stopAutoScroll();
                 updateGallery((currentIndex + 1) % mainImages.length);
                 startAutoScroll();
-            });
+            
         }
 
         startAutoScroll();
@@ -256,15 +259,15 @@ window.initProductPage = function () {
                 img.classList.add("zoomed");
                 isZooming = true; // Indique qu'un zoom est en cours
                 stopAutoScroll(); // Arrête l'auto-scroll pendant le zoom
-            });
+            
 
             img.addEventListener("mouseleave", () => {
                 img.classList.remove("zoomed");
                 img.style.transformOrigin = "center center";
                 isZooming = false; // Indique que le zoom est terminé
                 startAutoScroll(); // Redémarre l'auto-scroll après le zoom
-            });
-        });
+            
+        
     }
 
     // --- Gestion des étoiles dynamiques ---
@@ -280,7 +283,7 @@ window.initProductPage = function () {
                 starElement.innerHTML += '<span style="color:#bdbdbd">☆</span>';
             }
         }
-    });
+    
 
 
     //SHARE BUTTON//
@@ -348,7 +351,7 @@ window.initProductPage = function () {
                     if (nativeBtn && navigator.share) {
                         nativeBtn.onclick = async () => {
                             try {
-                                await navigator.share({url, title: document.title, text: document.title});
+                                await navigator.share({url, title: document.title, text: document.title
                                 closeModal();
                             } catch(e) { /* Annulé ou erreur */ }
                         };
@@ -397,328 +400,328 @@ window.initProductPage = function () {
 
         shareBtn.addEventListener('click', openModal);
     }
-        initShareButton();
+    initShareButton();
 
 
 
 
-        // --- PANIER DIGITAL GLOBAL ---
-        function initCartDigital() {
-            const cartBar = document.getElementById('cart-bar');
-            const cartItemsContainer = document.getElementById('cart-items');
-            const cartTotalElement = document.getElementById('cart-total');
-            const addToCartButtons = document.querySelectorAll('.add-to-cart');
-            const closeCartButton = document.getElementById('close-cart');
-            const cartBubble = document.getElementById('cart-bubble');
-            const cartBadge = document.querySelector('.cart-badge');
-            const buyFromCartButton = document.getElementById('buy-from-cart');
-            const buyDirectlyButtons = document.querySelectorAll('.btn-buy');
+    // --- PANIER DIGITAL GLOBAL ---
+    function initCartDigital() {
+        const cartBar = document.getElementById('cart-bar');
+        const cartItemsContainer = document.getElementById('cart-items');
+        const cartTotalElement = document.getElementById('cart-total');
+        const addToCartButtons = document.querySelectorAll('.add-to-cart');
+        const closeCartButton = document.getElementById('close-cart');
+        const cartBubble = document.getElementById('cart-bubble');
+        const cartBadge = document.querySelector('.cart-badge');
+        const buyFromCartButton = document.getElementById('buy-from-cart');
+        const buyDirectlyButtons = document.querySelectorAll('.btn-buy');
 
-            let cart = JSON.parse(localStorage.getItem('cart')) || [];
+        let cart = JSON.parse(localStorage.getItem('cart')) || [];
 
-            function updateCartBadge(animated) {
-                if (!cartBadge) return;
-                const itemCount = cart.length;
-                cartBadge.textContent = itemCount;
-                cartBadge.style.display = itemCount > 0 ? 'inline-block' : 'none';
-                if (animated) {
-                    cartBadge.classList.remove('pop');
-                    // Force reflow to restart animation
-                    void cartBadge.offsetWidth;
-                    cartBadge.classList.add('pop');
-                }
+        function updateCartBadge(animated) {
+            if (!cartBadge) return;
+            const itemCount = cart.length;
+            cartBadge.textContent = itemCount;
+            cartBadge.style.display = itemCount > 0 ? 'inline-block' : 'none';
+            if (animated) {
+                cartBadge.classList.remove('pop');
+                // Force reflow to restart animation
+                void cartBadge.offsetWidth;
+                cartBadge.classList.add('pop');
             }
+        }
 
-            function saveCart() {
-                localStorage.setItem('cart', JSON.stringify(cart));
-                updateCartBadge(false);
+        function saveCart() {
+            localStorage.setItem('cart', JSON.stringify(cart));
+            updateCartBadge(false);
+        }
+
+        function calculateTotal() {
+            return cart.reduce((total, item) => total + item.price, 0);
+        }
+
+        function renderCart() {
+            if (!cartItemsContainer || !cartTotalElement) return;
+            cartItemsContainer.innerHTML = '';
+            if (cart.length === 0) {
+                cartItemsContainer.innerHTML = '<p>Votre panier est vide.</p>';
+            } else {
+                cart.forEach((item, index) => {
+                    const itemElement = document.createElement('div');
+                    itemElement.className = 'cart-item';
+                    itemElement.innerHTML = `
+                    <span>${item.name}</span>&ensp;
+                    <span>${item.price} XOF</span>
+                    <button class="remove-item" data-index="${index}">⛌</button>
+                    `;
+                    cartItemsContainer.appendChild(itemElement);
+                
             }
+            cartTotalElement.textContent = calculateTotal();
 
-            function calculateTotal() {
-                return cart.reduce((total, item) => total + item.price, 0);
-            }
+            cartItemsContainer.querySelectorAll('.remove-item').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const index = parseInt(e.target.dataset.index);
+                    cart.splice(index, 1);
+                    saveCart();
+                    renderCart();
+                    updateAddToCartButtons();
+                    updateCartBadge(true);
+                
+            
+        }
 
-            function renderCart() {
-                if (!cartItemsContainer || !cartTotalElement) return;
-                cartItemsContainer.innerHTML = '';
-                if (cart.length === 0) {
-                    cartItemsContainer.innerHTML = '<p>Votre panier est vide.</p>';
-                } else {
-                    cart.forEach((item, index) => {
-                        const itemElement = document.createElement('div');
-                        itemElement.className = 'cart-item';
-                        itemElement.innerHTML = `
-                        <span>${item.name}</span>&ensp;
-                        <span>${item.price} XOF</span>
-                        <button class="remove-item" data-index="${index}">⛌</button>
-                        `;
-                        cartItemsContainer.appendChild(itemElement);
-                    });
-                }
-                cartTotalElement.textContent = calculateTotal();
-
-                cartItemsContainer.querySelectorAll('.remove-item').forEach(button => {
-                    button.addEventListener('click', (e) => {
-                        const index = parseInt(e.target.dataset.index);
-                        cart.splice(index, 1);
-                        saveCart();
-                        renderCart();
-                        updateAddToCartButtons();
-                        updateCartBadge(true);
-                    });
-                });
-            }
-
-            function updateAddToCartButtons() {
-                addToCartButtons.forEach(button => {
-                    const productId = button.getAttribute('data-id');
-                    const found = cart.find(item => item.id === productId);
-                    button.classList.remove('added', 'already-added');
-                    button.disabled = false;
-                    if (found) {
-                        button.textContent = "Déjà ajouté";
-                        button.classList.add('already-added');
-                        button.disabled = true;
-                    } else {
-                        button.textContent = "Ajouter au panier";
-                    }
-                });
-            }
-
-            function slugify(text) {
-                // Supprime les accents et transforme en ASCII
-                text = text.normalize('NFKD').replace(/[\u0300-\u036f]/g, '');
-
-                // Supprime les caractères spéciaux et met en minuscule
-                text = text.replace(/[^\w\s-]/g, '').trim().toLowerCase();
-
-                // Remplace les espaces et tirets multiples par un seul tiret
-                return text.replace(/[\s]+/g, '-');
-            }
-
+        function updateAddToCartButtons() {
             addToCartButtons.forEach(button => {
-                button.addEventListener('click', () => {
-                    const productId = button.getAttribute('data-id');
-                    const productName = button.getAttribute('data-name');
-                    const productPrice = parseFloat(button.getAttribute('data-price'));
-                    const productSlug = slugify(productName);
+                const productId = button.getAttribute('data-id');
+                const found = cart.find(item => item.id === productId);
+                button.classList.remove('added', 'already-added');
+                button.disabled = false;
+                if (found) {
+                    button.textContent = "Déjà ajouté";
+                    button.classList.add('already-added');
+                    button.disabled = true;
+                } else {
+                    button.textContent = "Ajouter au panier";
+                }
+            
+        }
 
-                    // Verifie si le produit est déjà dans le panier
-                    const found = cart.find(item => item.id === productId);
-                    if (!found) {
-                        cart.push({ id: productId, name: productName, price: productPrice, slug: productSlug });
-                        saveCart();
-                        renderCart();
-                        updateAddToCartButtons();
-                        if (cartBar) cartBar.classList.add('visible');
-                        // Badge animation
-                        updateCartBadge(true);
-                        // Bouton feedback visuel
-                        button.textContent = "OK !";
-                        button.classList.add('added');
-                        showNotification(` Ajouté avec succès.`, 'success');
-                        setTimeout(() => {
-                            button.textContent = "Déjà ajouté";
-                            button.classList.remove('added');
-                            button.classList.add('already-added');
-                            button.disabled = true;
-                        }, 700);
-                    } else {
+        function slugify(text) {
+            // Supprime les accents et transforme en ASCII
+            text = text.normalize('NFKD').replace(/[\u0300-\u036f]/g, '');
+
+            // Supprime les caractères spéciaux et met en minuscule
+            text = text.replace(/[^\w\s-]/g, '').trim().toLowerCase();
+
+            // Remplace les espaces et tirets multiples par un seul tiret
+            return text.replace(/[\s]+/g, '-');
+        }
+
+        addToCartButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const productId = button.getAttribute('data-id');
+                const productName = button.getAttribute('data-name');
+                const productPrice = parseFloat(button.getAttribute('data-price'));
+                const productSlug = slugify(productName);
+
+                // Verifie si le produit est déjà dans le panier
+                const found = cart.find(item => item.id === productId);
+                if (!found) {
+                    cart.push({ id: productId, name: productName, price: productPrice, slug: productSlug 
+                    saveCart();
+                    renderCart();
+                    updateAddToCartButtons();
+                    if (cartBar) cartBar.classList.add('visible');
+                    // Badge animation
+                    updateCartBadge(true);
+                    // Bouton feedback visuel
+                    button.textContent = "OK !";
+                    button.classList.add('added');
+                    showNotification(` Ajouté avec succès.`, 'success');
+                    setTimeout(() => {
                         button.textContent = "Déjà ajouté";
                         button.classList.remove('added');
                         button.classList.add('already-added');
                         button.disabled = true;
-                    }
-                });
-            });
+                    }, 700);
+                } else {
+                    button.textContent = "Déjà ajouté";
+                    button.classList.remove('added');
+                    button.classList.add('already-added');
+                    button.disabled = true;
+                }
             
-            
-            function PaymentInfoModal(onSubmit, onCancel) {
-                const modal = document.createElement('div');
-                modal.className = 'customModal';
-                modal.innerHTML = `
-                <div class="customModal-content" role="dialog" aria-labelledby="modal-title">
-                    <h3 id="modal-title">Finaliser la commande</h3>
-                    <label>
-                        Nom complet :
-                        <input type="text" id="payment-nom-client" placeholder="Votre nom complet" required>
-                    </label>
-                    <label>
-                        Adresse e-mail :
-                        <input type="email" id="payment-email" placeholder="Pour recevoir vos produits" required>
-                    </label>
-                    <label>
-                        Numéro WhatsApp :
-                        <input type="tel" id="payment-whatsapp" placeholder="Pour le suivi de commande" required>
-                    </label>
-                    <div class="customModal-buttons">
-                        <button class="customModal-yes">Valider et Payer</button>
-                        <button class="customModal-no">Annuler</button>
-                    </div>
-                </div>
-                `;
-                document.body.appendChild(modal);
-            
-                setTimeout(() => {
-                    modal.classList.add('visible');
-                    modal.querySelector('#payment-nom-client').focus();
-                }, 10);
-            
-                modal.querySelector('.customModal-yes').onclick = () => {
-                    const nom = modal.querySelector('#payment-nom-client').value.trim();
-                    const email = modal.querySelector('#payment-email').value.trim();
-                    const whatsapp = modal.querySelector('#payment-whatsapp').value.trim();
-            
-                    if (!nom || !email) {
-                        showNotification("Le nom et l'e-mail sont requis.", "error");
-                        return;
-                    }
-                    
-                    if (!/^\S+@\S+\.\S+$/.test(email)) {
-                        showNotification("Veuillez entrer une adresse e-mail valide.", "error");
-                        return;
-                    }
-            
-                    close();
-                    onSubmit({ nom_client: nom, email: email, whatsapp: whatsapp });
-                };
-            
-                modal.querySelector('.customModal-no').onclick = () => {
-                    close();
-                    if (typeof onCancel === 'function') onCancel();
-                };
-            
+        
+
+
+        function PaymentInfoModal(onSubmit, onCancel) {
+            const modal = document.createElement('div');
+            modal.className = 'customModal';
+            modal.innerHTML = `
+            <div class="customModal-content" role="dialog" aria-labelledby="modal-title">
+            <h3 id="modal-title">Finaliser la commande</h3>
+            <label>
+            Nom complet :
+            <input type="text" id="payment-nom-client" placeholder="Votre nom complet" required>
+            </label>
+            <label>
+            Adresse e-mail :
+            <input type="email" id="payment-email" placeholder="Pour recevoir vos produits" required>
+            </label>
+            <label>
+            Numéro WhatsApp :
+            <input type="tel" id="payment-whatsapp" placeholder="Pour le suivi de commande" required>
+            </label>
+            <div class="customModal-buttons">
+            <button class="customModal-yes">Valider et Payer</button>
+            <button class="customModal-no">Annuler</button>
+            </div>
+            </div>
+            `;
+            document.body.appendChild(modal);
+
+            setTimeout(() => {
+                modal.classList.add('visible');
+                modal.querySelector('#payment-nom-client').focus();
+            }, 10);
+
+            modal.querySelector('.customModal-yes').onclick = () => {
+                const nom = modal.querySelector('#payment-nom-client').value.trim();
+                const email = modal.querySelector('#payment-email').value.trim();
+                const whatsapp = modal.querySelector('#payment-whatsapp').value.trim();
+
+                if (!nom || !email) {
+                    showNotification("Le nom et l'e-mail sont requis.", "error");
+                    return;
+                }
+
+                if (!/^\S+@\S+\.\S+$/.test(email)) {
+                    showNotification("Veuillez entrer une adresse e-mail valide.", "error");
+                    return;
+                }
+
+                close();
+                onSubmit({ nom_client: nom, email: email, whatsapp: whatsapp 
+            };
+
+            modal.querySelector('.customModal-no').onclick = () => {
+                close();
+                if (typeof onCancel === 'function') onCancel();
+            };
+
                 function close() {
                     modal.classList.remove('visible');
                     setTimeout(() => modal.remove(), 250);
                 }
-            }
-            // Fonction utilitaire pour l'objet article attendu par MoneyFusion
-            function getArticleObject(cart) {
-                const article = {};
-                cart.forEach(item => {
-                    // On suppose que item.price est le prix unitaire, et item.quantity au moins 1
-                    article[item.name] = parseFloat(item.price) * (item.quantity || 1);
-                });
-                return [article];
-            }
-
-            // Fonction utilitaire pour le prix total
-            function getTotalPrice(cart) {
-                return cart.reduce((acc, item) => acc + (Number(item.price || 0) * Number(item.quantity || 1)), 0);
-            }
-
-                        // FONCTION A UTILISER POUR TOUT PAIEMENT (panier ou achat direct)
-            function redirectToPayment(amount, cart) {
-                PaymentInfoModal(({ nom_client, email, whatsapp }) => {
-                    // Étape 1 : Préparer les données pour notre propre backend (panier abandonné)
-                    const checkoutData = {
-                        totalPrice: getTotalPrice(cart),
-                        cart: cart,
-                        email: email,
-                        nom_client: nom_client,
-                        whatsapp: whatsapp
-                    };
+        }
+        // Fonction utilitaire pour l'objet article attendu par MoneyFusion
+        function getArticleObject(cart) {
+            const article = {};
+            cart.forEach(item => {
+                // On suppose que item.price est le prix unitaire, et item.quantity au moins 1
+                article[item.name] = parseFloat(item.price) * (item.quantity || 1);
             
-                    // On sauvegarde d'abord le panier abandonné
-                    fetch("/api/checkout/prepare", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify(checkoutData)
-                    })
-                    .then(res => {
-                        if (!res.ok) throw new Error('La préparation du paiement a échoué.');
-                        return res.json();
-                    })
-                    .then(prepareData => {
-                        // Étape 2 : Construire le payload EXACT pour MoneyFusion
-            
-                        // Formatage du champ 'article' selon la doc
-                        const articleObject = {};
-                        cart.forEach(item => {
-                            articleObject[item.name] = Number(item.price) * (item.quantity || 1);
-                        });
-            
-                        // CORRECTION : S'assurer que numeroSend est toujours une chaîne, même si vide.
-                        const numeroClient = (whatsapp || "").trim();
-            
-                        const paymentData = {
-                            totalPrice: getTotalPrice(cart),
-                            article: [articleObject], // Format correct : [ { "produit": prix } ]
-                            numeroSend: numeroClient, // Champ obligatoire, maintenant toujours présent
-                            nomclient: nom_client.trim(),
-                            personal_Info: [{
-                                userId: nom_client, // Utiliser le nom du client comme identifiant
-                                orderId: `cart_${prepareData.cart_id}` // Lier le paiement à notre panier
-                            }],
-                            return_url: window.location.origin + "/callback",
-                            webhook_url: window.location.origin + "/webhook"
-                        };
-            
-                        // Étape 3 : Envoyer les données à notre route /payer qui relaiera à MoneyFusion
-                        return fetch("/payer", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify(paymentData)
-                        });
-                    })
-                    .then(res => res.json())
-                    .then(paymentResponse => {
-                        // La doc utilise 'url' pour la redirection
-                        if (paymentResponse.url) { 
-                            localStorage.removeItem("cart");
-                            window.location.href = paymentResponse.url;
-                        } else {
-                            throw new Error(paymentResponse.error || "Erreur inconnue lors de la création du lien de paiement.");
-                        }
-                    })
-                    .catch(err => {
-                        showNotification("Erreur technique : " + err.message, "error");
-                        console.error("Erreur dans le flux de paiement :", err);
-                    });
-                }, () => {
-                    showNotification("Paiement annulé.", "info");
-                });
-            }
-
-            // Achat direct
-            buyDirectlyButtons.forEach(button => {
-                button.addEventListener('click', () => {
-                    const productName = button.getAttribute('data-name');
-                    const productPrice = parseFloat(button.getAttribute('data-price'));
-                    const cart = [{ name: productName, price: productPrice, quantity: 1 }];
-                    redirectToPayment(productPrice, cart);
-                });
-            });
-
-            // Achat panier
-            if (buyFromCartButton) {
-                buyFromCartButton.addEventListener('click', () => {
-                    const cart = JSON.parse(localStorage.getItem('cart')) || [];
-                    const total = getTotalPrice(cart);
-                    if (total > 0) {
-                        redirectToPayment(total, cart);
-                    } else {
-                        showNotification("Votre panier est vide. Ajoutez des articles pour continuer.", 'error');
-                    }
-                });
-            }
-
-            // Ouvre/ferme le panier avec le bouton close
-            if (closeCartButton && cartBar) {
-                closeCartButton.addEventListener('click', () => {
-                    cartBar.classList.toggle('visible');
-                });
-            }
-
-            // Animation badge au chargement si panier non vide
-            updateCartBadge(false);
-            renderCart();
-            updateAddToCartButtons();
+            return [article];
         }
 
-        // Initialiser le panier sur toutes les pages (SPA-friendly)
-        initCartDigital();
+        // Fonction utilitaire pour le prix total
+        function getTotalPrice(cart) {
+            return cart.reduce((acc, item) => acc + (Number(item.price || 0) * Number(item.quantity || 1)), 0);
+        }
+
+        // FONCTION A UTILISER POUR TOUT PAIEMENT (panier ou achat direct)
+        function redirectToPayment(amount, cart) {
+            PaymentInfoModal(({ nom_client, email, whatsapp }) => {
+                // Étape 1 : Préparer les données pour notre propre backend (panier abandonné)
+                const checkoutData = {
+                    totalPrice: getTotalPrice(cart),
+                             cart: cart,
+                             email: email,
+                             nom_client: nom_client,
+                             whatsapp: whatsapp
+                };
+
+                // On sauvegarde d'abord le panier abandonné
+                fetch("/api/checkout/prepare", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(checkoutData)
+                })
+                .then(res => {
+                    if (!res.ok) throw new Error('La préparation du paiement a échoué.');
+                    return res.json();
+                })
+                .then(prepareData => {
+                    // Étape 2 : Construire le payload EXACT pour MoneyFusion
+
+                    // Formatage du champ 'article' selon la doc
+                    const articleObject = {};
+                    cart.forEach(item => {
+                        articleObject[item.name] = Number(item.price) * (item.quantity || 1);
+                    
+
+                    // CORRECTION : S'assurer que numeroSend est toujours une chaîne, même si vide.
+                    const numeroClient = (whatsapp || "").trim();
+
+                    const paymentData = {
+                        totalPrice: getTotalPrice(cart),
+                      article: [articleObject], // Format correct : [ { "produit": prix } ]
+                      numeroSend: numeroClient, // Champ obligatoire, maintenant toujours présent
+                      nomclient: nom_client.trim(),
+                      personal_Info: [{
+                          userId: nom_client, // Utiliser le nom du client comme identifiant
+                          orderId: `cart_${prepareData.cart_id}` // Lier le paiement à notre panier
+                      }],
+                      return_url: window.location.origin + "/callback",
+                      webhook_url: window.location.origin + "/webhook"
+                    };
+
+                    // Étape 3 : Envoyer les données à notre route /payer qui relaiera à MoneyFusion
+                    return fetch("/payer", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify(paymentData)
+                    
+                })
+                .then(res => res.json())
+                .then(paymentResponse => {
+                    // La doc utilise 'url' pour la redirection
+                    if (paymentResponse.url) {
+                        localStorage.removeItem("cart");
+                        window.location.href = paymentResponse.url;
+                    } else {
+                        throw new Error(paymentResponse.error || "Erreur inconnue lors de la création du lien de paiement.");
+                    }
+                })
+                .catch(err => {
+                    showNotification("Erreur technique : " + err.message, "error");
+                    console.error("Erreur dans le flux de paiement :", err);
+                
+            }, () => {
+                showNotification("Paiement annulé.", "info");
+            
+        }
+
+        // Achat direct
+        buyDirectlyButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const productName = button.getAttribute('data-name');
+                const productPrice = parseFloat(button.getAttribute('data-price'));
+                const cart = [{ name: productName, price: productPrice, quantity: 1 }];
+                redirectToPayment(productPrice, cart);
+            
+        
+
+        // Achat panier
+        if (buyFromCartButton) {
+            buyFromCartButton.addEventListener('click', () => {
+                const cart = JSON.parse(localStorage.getItem('cart')) || [];
+                const total = getTotalPrice(cart);
+                if (total > 0) {
+                    redirectToPayment(total, cart);
+                } else {
+                    showNotification("Votre panier est vide. Ajoutez des articles pour continuer.", 'error');
+                }
+            
+        }
+
+        // Ouvre/ferme le panier avec le bouton close
+        if (closeCartButton && cartBar) {
+            closeCartButton.addEventListener('click', () => {
+                cartBar.classList.toggle('visible');
+            
+        }
+
+        // Animation badge au chargement si panier non vide
+        updateCartBadge(false);
+        renderCart();
+        updateAddToCartButtons();
+    }
+
+    // Initialiser le panier sur toutes les pages (SPA-friendly)
+    initCartDigital();
 
     // --- Gestion du bouton "Voir plus" pour les commentaires ---
     const commentSection = document.querySelector('.comments-section');
@@ -733,7 +736,7 @@ window.initProductPage = function () {
         function updateCommentsVisibility() {
             comments.forEach((comment, index) => {
                 comment.style.display = index < visibleCount ? 'block' : 'none';
-            });
+            
 
             showMoreButton.style.display = visibleCount >= comments.length ? 'none' : 'block';
         }
@@ -741,7 +744,7 @@ window.initProductPage = function () {
         showMoreButton.addEventListener('click', () => {
             visibleCount += 3;
             updateCommentsVisibility();
-        });
+        
 
         commentList.insertAdjacentElement('afterend', showMoreButton);
         updateCommentsVisibility();
@@ -752,393 +755,394 @@ window.initProductPage = function () {
         const question = faqItem.querySelector(".faq-question");
         question.addEventListener("click", () => {
             faqItem.classList.toggle("closed");
-        });
-    });
+        
+    
 
 };
 
 (function bannerMarqueeAutoDuration() {
-  let resizeTO = null;
+    let resizeTO = null;
 
-  function recalcDuration() {
+    function recalcDuration() {
+        const banner = document.getElementById('site-announcement-banner');
+        if (!banner) return;
+        const content = banner.querySelector('.announcement-banner-content');
+        if (!content) return;
+
+        // Mesures
+        const contentWidth = content.scrollWidth || 0;
+        const viewport = banner.clientWidth || window.innerWidth || 360;
+
+        // Vitesse cible (px/seconde) — plus lent sur desktop, plus rapide sur mobile
+        const isMobile = window.matchMedia('(max-width: 600px)').matches;
+        const pxPerSec = isMobile ? 70 : 90;
+
+        // Durée = distance à parcourir (contenu + viewport) / vitesse
+        const distance = contentWidth + viewport;
+        const duration = Math.max(8, distance / pxPerSec);
+
+        // Applique la durée calculée
+        content.style.animationDuration = duration + 's';
+    }
+
+    // 1) Au chargement
+    if (document.readyState === 'loading') {
+        
+        recalcDuration();
+    }
+
+    // 2) Sur redimensionnement
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTO);
+        resizeTO = setTimeout(recalcDuration, 120);
+    
+
+    // 3) Quand le contenu du bandeau est injecté/modifié
     const banner = document.getElementById('site-announcement-banner');
-    if (!banner) return;
-    const content = banner.querySelector('.announcement-banner-content');
-    if (!content) return;
-
-    // Mesures
-    const contentWidth = content.scrollWidth || 0;
-    const viewport = banner.clientWidth || window.innerWidth || 360;
-
-    // Vitesse cible (px/seconde) — plus lent sur desktop, plus rapide sur mobile
-    const isMobile = window.matchMedia('(max-width: 600px)').matches;
-    const pxPerSec = isMobile ? 70 : 90;
-
-    // Durée = distance à parcourir (contenu + viewport) / vitesse
-    const distance = contentWidth + viewport;
-    const duration = Math.max(8, distance / pxPerSec);
-
-    // Applique la durée calculée
-    content.style.animationDuration = duration + 's';
-  }
-
-  // 1) Au chargement
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', recalcDuration);
-  } else {
-    recalcDuration();
-  }
-
-  // 2) Sur redimensionnement
-  window.addEventListener('resize', () => {
-    clearTimeout(resizeTO);
-    resizeTO = setTimeout(recalcDuration, 120);
-  });
-
-  // 3) Quand le contenu du bandeau est injecté/modifié
-  const banner = document.getElementById('site-announcement-banner');
-  if (banner) {
-    const mo = new MutationObserver(() => setTimeout(recalcDuration, 0));
-    mo.observe(banner, { childList: true, subtree: true });
-  }
+    if (banner) {
+        const mo = new MutationObserver(() => setTimeout(recalcDuration, 0));
+        mo.observe(banner, { childList: true, subtree: true 
+    }
 })();
 
 // ===== Locale Switcher (flag + currency on button, conversion, responsive panel) =====
 (function () {
-  document.addEventListener('DOMContentLoaded', () => {
-    // Config
-    const SUPPORTED = ['XOF','USD','EUR','GBP','AED','RUB','CNY','JPY'];
-    const XOF_ZONE = new Set(['CI','SN','BJ','BF','TG','ML','NE','GW']);
-    const SYMBOL = { XOF:'XOF', USD:'$', EUR:'€', GBP:'£', AED:'د.إ', RUB:'₽', CNY:'¥', JPY:'¥' };
-    let RATES_XOF = null;
+    
+        // Config
+        const SUPPORTED = ['XOF','USD','EUR','GBP','AED','RUB','CNY','JPY'];
+        const XOF_ZONE = new Set(['CI','SN','BJ','BF','TG','ML','NE','GW']);
+        const SYMBOL = { XOF:'XOF', USD:'$', EUR:'€', GBP:'£', AED:'د.إ', RUB:'₽', CNY:'¥', JPY:'¥' };
+        let RATES_XOF = null;
 
-    // Flag CDN
-    const flagUrl = cc => `https://cdn.jsdelivr.net/gh/lipis/flag-icons@6.6.6/flags/1x1/${String(cc||'').toLowerCase()}.svg`;
+        // Flag CDN
+        const flagUrl = cc => `https://cdn.jsdelivr.net/gh/lipis/flag-icons@6.6.6/flags/1x1/${String(cc||'').toLowerCase()}.svg`;
 
-    // Rates cache
-    function saveRatesCache(rates) {
-      try { localStorage.setItem('da_fx_rates', JSON.stringify({ rates, ts: Date.now() })); } catch {}
-    }
-    function loadRatesCache(maxAgeMs = 6*60*60*1000) {
-      try {
-        const raw = localStorage.getItem('da_fx_rates');
-        if (!raw) return null;
-        const obj = JSON.parse(raw);
-        if (!obj || !obj.rates) return null;
-        if (typeof obj.ts === 'number' && (Date.now() - obj.ts) <= maxAgeMs) return obj.rates;
-        return obj.rates; // use stale cache for immediate render, refresh later
-      } catch { return null; }
-    }
-    async function loadRates() {
-      try {
-        const r = await fetch('/api/fx-rates', { credentials:'same-origin', cache:'no-store' });
-        const j = await r.json();
-        if (j && j.status === 'success' && j.rates) {
-          RATES_XOF = j.rates;
-          saveRatesCache(RATES_XOF);
+        // Rates cache
+        function saveRatesCache(rates) {
+            try { localStorage.setItem('da_fx_rates', JSON.stringify({ rates, ts: Date.now() })); } catch {}
         }
-      } catch {}
-    }
+        function loadRatesCache(maxAgeMs = 6*60*60*1000) {
+            try {
+                const raw = localStorage.getItem('da_fx_rates');
+                if (!raw) return null;
+                const obj = JSON.parse(raw);
+                if (!obj || !obj.rates) return null;
+                if (typeof obj.ts === 'number' && (Date.now() - obj.ts) <= maxAgeMs) return obj.rates;
+                return obj.rates; // use stale cache for immediate render, refresh later
+            } catch { return null; }
+        }
+        async function loadRates() {
+            try {
+                const r = await fetch('/api/fx-rates', { credentials:'same-origin', cache:'no-store' 
+                const j = await r.json();
+                if (j && j.status === 'success' && j.rates) {
+                    RATES_XOF = j.rates;
+                    saveRatesCache(RATES_XOF);
+                }
+            } catch {}
+        }
 
-    // Parsing + base annotation for conversion
-    const SYMBOL_TO_CUR = {'$':'USD','€':'EUR','£':'GBP','¥':'CNY','₽':'RUB','د.إ':'AED'};
-    function parseNumberFromText(txt) {
-      if (!txt) return NaN;
-      const cleaned = txt.replace(/\s|\u00A0|\u202F/g,'');
-      const m = cleaned.match(/[-+]?\d+(?:[.,]\d+)?/);
-      if (!m) return NaN;
-      return parseFloat(m[0].replace(',', '.'));
-    }
-    function parseCurrencyFromText(txt) {
-      if (!txt) return null;
-      const cm = txt.match(/\b(XOF|USD|EUR|GBP|AED|RUB|CNY|JPY)\b/i);
-      if (cm) return cm[1].toUpperCase();
-      const sm = txt.match(/[$€£¥₽]|د\.?إ/);
-      return sm ? (SYMBOL_TO_CUR[sm[0]] || null) : null;
-    }
-    function ensureDatasetForPrice(el) {
-      if (!el.dataset.basePrice) {
-        if (!el.hasAttribute('data-price') && el.children && el.children.length > 0) return false;
-        let basePrice = parseFloat(el.getAttribute('data-price') || 'NaN');
-        let baseCur = (el.getAttribute('data-currency') || '').toUpperCase();
-        if (!isFinite(basePrice)) basePrice = parseNumberFromText(el.textContent);
-        if (!baseCur) baseCur = parseCurrencyFromText(el.textContent) || 'XOF';
-        if (!isFinite(basePrice)) return false;
-        el.dataset.basePrice = String(basePrice);
-        el.dataset.baseCurrency = baseCur;
-        if (!el.hasAttribute('data-price')) el.setAttribute('data-price', String(basePrice));
-        if (!el.hasAttribute('data-currency')) el.setAttribute('data-currency', baseCur);
-      }
-      return true;
-    }
-    function annotateLikelyPriceSpans() {
-      const containers = document.querySelectorAll('.product-bottom, .product-price-detailed, .product-info, .products-list, .featured-list');
-      containers.forEach(c => {
-        c.querySelectorAll('span').forEach(sp => {
-          if (sp.children && sp.children.length > 0) return;
-          const txt = sp.textContent || '';
-          if (/\d/.test(txt)) ensureDatasetForPrice(sp);
-        });
-      });
-    }
+        // Parsing + base annotation for conversion
+        const SYMBOL_TO_CUR = {'$':'USD','€':'EUR','£':'GBP','¥':'CNY','₽':'RUB','د.إ':'AED'};
+        function parseNumberFromText(txt) {
+            if (!txt) return NaN;
+            const cleaned = txt.replace(/\s|\u00A0|\u202F/g,'');
+            const m = cleaned.match(/[-+]?\d+(?:[.,]\d+)?/);
+            if (!m) return NaN;
+            return parseFloat(m[0].replace(',', '.'));
+        }
+        function parseCurrencyFromText(txt) {
+            if (!txt) return null;
+            const cm = txt.match(/\b(XOF|USD|EUR|GBP|AED|RUB|CNY|JPY)\b/i);
+            if (cm) return cm[1].toUpperCase();
+            const sm = txt.match(/[$€£¥₽]|د\.?إ/);
+            return sm ? (SYMBOL_TO_CUR[sm[0]] || null) : null;
+        }
+        function ensureDatasetForPrice(el) {
+            if (!el.dataset.basePrice) {
+                if (!el.hasAttribute('data-price') && el.children && el.children.length > 0) return false;
+                let basePrice = parseFloat(el.getAttribute('data-price') || 'NaN');
+                let baseCur = (el.getAttribute('data-currency') || '').toUpperCase();
+                if (!isFinite(basePrice)) basePrice = parseNumberFromText(el.textContent);
+                if (!baseCur) baseCur = parseCurrencyFromText(el.textContent) || 'XOF';
+                if (!isFinite(basePrice)) return false;
+                el.dataset.basePrice = String(basePrice);
+                el.dataset.baseCurrency = baseCur;
+                if (!el.hasAttribute('data-price')) el.setAttribute('data-price', String(basePrice));
+                if (!el.hasAttribute('data-currency')) el.setAttribute('data-currency', baseCur);
+            }
+            return true;
+        }
+        function annotateLikelyPriceSpans() {
+            const containers = document.querySelectorAll('.product-bottom, .product-price-detailed, .product-info, .products-list, .featured-list');
+            containers.forEach(c => {
+                c.querySelectorAll('span').forEach(sp => {
+                    if (sp.children && sp.children.length > 0) return;
+                    const txt = sp.textContent || '';
+                    if (/\d/.test(txt)) ensureDatasetForPrice(sp);
+                
+            
+        }
 
-    // Conversion via XOF base
-    function convertAmountViaXOF(amount, fromCur, toCur) {
-      if (!RATES_XOF || !isFinite(amount)) return amount;
-      if (fromCur === toCur) return amount;
-      try {
-        const rFrom = fromCur === 'XOF' ? 1 : RATES_XOF[fromCur];
-        const inXof = rFrom ? (fromCur === 'XOF' ? amount : amount / rFrom) : amount;
-        const rTo = toCur === 'XOF' ? 1 : RATES_XOF[toCur];
-        return rTo ? (toCur === 'XOF' ? inXof : inXof * rTo) : inXof;
-      } catch { return amount; }
-    }
-    function formatAmount(amount, currency) {
-      return `${Number(amount).toLocaleString('fr-FR', {maximumFractionDigits:2})} ${SYMBOL[currency] || currency}`;
-    }
-    function convertDisplayedPrices(targetCurrency) {
-      const dataNodes = Array.from(document.querySelectorAll('[data-price][data-currency]'));
-      const classNodes = Array.from(document.querySelectorAll('.product-price, .product-old-price, .current-price, .old-price'))
-        .filter(el => el.hasAttribute('data-price') || !el.children || el.children.length === 0);
-      const seen = new Set(); const nodes = [];
-      [...dataNodes, ...classNodes].forEach(el => { if (!seen.has(el)) { seen.add(el); nodes.push(el); } });
-      nodes.forEach(el => {
-        if (!ensureDatasetForPrice(el)) return;
-        const base = parseFloat(el.dataset.basePrice);
-        const from = (el.dataset.baseCurrency || 'XOF').toUpperCase();
-        const conv = convertAmountViaXOF(base, from, targetCurrency);
-        el.textContent = formatAmount(conv, targetCurrency);
-        el.setAttribute('data-currency', targetCurrency);
-      });
-    }
+        // Conversion via XOF base
+        function convertAmountViaXOF(amount, fromCur, toCur) {
+            if (!RATES_XOF || !isFinite(amount)) return amount;
+            if (fromCur === toCur) return amount;
+            try {
+                const rFrom = fromCur === 'XOF' ? 1 : RATES_XOF[fromCur];
+                const inXof = rFrom ? (fromCur === 'XOF' ? amount : amount / rFrom) : amount;
+                const rTo = toCur === 'XOF' ? 1 : RATES_XOF[toCur];
+                return rTo ? (toCur === 'XOF' ? inXof : inXof * rTo) : inXof;
+            } catch { return amount; }
+        }
+        function formatAmount(amount, currency) {
+            return `${Number(amount).toLocaleString('fr-FR', {maximumFractionDigits:2})} ${SYMBOL[currency] || currency}`;
+        }
+        function convertDisplayedPrices(targetCurrency) {
+            const dataNodes = Array.from(document.querySelectorAll('[data-price][data-currency]'));
+            const classNodes = Array.from(document.querySelectorAll('.product-price, .product-old-price, .current-price, .old-price'))
+            .filter(el => el.hasAttribute('data-price') || !el.children || el.children.length === 0);
+            const seen = new Set(); const nodes = [];
+            [...dataNodes, ...classNodes].forEach(el => { if (!seen.has(el)) { seen.add(el); nodes.push(el); } 
+            nodes.forEach(el => {
+                if (!ensureDatasetForPrice(el)) return;
+                const base = parseFloat(el.dataset.basePrice);
+                const from = (el.dataset.baseCurrency || 'XOF').toUpperCase();
+                const conv = convertAmountViaXOF(base, from, targetCurrency);
+                el.textContent = formatAmount(conv, targetCurrency);
+                el.setAttribute('data-currency', targetCurrency);
+            
+        }
 
-    // Country helpers
-    function pickSupportedCurrency(cc, countryCurrency, region) {
-      const cur = String(countryCurrency || '').toUpperCase();
-      if (SUPPORTED.includes(cur)) return cur;
-      const regionLC = String(region || '').toLowerCase();
-      if (XOF_ZONE.has(String(cc || '').toUpperCase())) return 'XOF';
-      if (regionLC === 'europe') return 'EUR';
-      if (regionLC.includes('america')) return 'USD';
-      if (['asia','africa'].includes(regionLC) && cur.startsWith('A')) return 'AED';
-      if (regionLC === 'asia') return 'CNY';
-      return 'USD';
-    }
-    async function fetchAllCountries() {
-      try {
-        const url = 'https://restcountries.com/v3.1/all?fields=cca2,name,currencies,languages,region';
-        const r = await fetch(url, { cache: 'force-cache' });
-        const arr = await r.json();
-        const list = arr.map(it => {
-          const code = String(it.cca2 || '').toLowerCase();
-          const name = (it.name && it.name.common) ? it.name.common : code.toUpperCase();
-          const region = it.region || '';
-          const cur = it.currencies ? Object.keys(it.currencies)[0] : '';
-          const langCode = it.languages ? Object.keys(it.languages)[0] : 'en';
-          const currency = pickSupportedCurrency(code, cur, region);
-          return { code, name, currency, lang: langCode || 'en', region };
-        }).filter(x => x.code);
-        list.sort((a,b) => a.name.localeCompare(b.name, 'fr'));
-        return list;
-      } catch {
-        return [
-          {code:'ci', name:"Côte d'Ivoire", currency:'XOF', lang:'fr'},
-          {code:'sn', name:'Sénégal', currency:'XOF', lang:'fr'},
-          {code:'tg', name:'Togo', currency:'XOF', lang:'fr'},
-          {code:'fr', name:'France', currency:'EUR', lang:'fr'},
-          {code:'us', name:'United States', currency:'USD', lang:'en'},
-          {code:'gb', name:'United Kingdom', currency:'GBP', lang:'en'},
-          {code:'ae', name:'United Arab Emirates', currency:'AED', lang:'ar'},
-          {code:'ru', name:'Russia', currency:'RUB', lang:'ru'},
-          {code:'cn', name:'China', currency:'CNY', lang:'zh'},
-          {code:'jp', name:'Japan', currency:'JPY', lang:'ja'}
-        ];
-      }
-    }
-    async function geolocateCountry() {
-      try {
-        const r = await fetch('https://ipapi.co/json/', { cache: 'no-store' });
-        const j = await r.json();
-        return (j && j.country) ? String(j.country).toLowerCase() : null;
-      } catch { return null; }
-    }
+        // Country helpers
+        function pickSupportedCurrency(cc, countryCurrency, region) {
+            const cur = String(countryCurrency || '').toUpperCase();
+            if (SUPPORTED.includes(cur)) return cur;
+            const regionLC = String(region || '').toLowerCase();
+            if (XOF_ZONE.has(String(cc || '').toUpperCase())) return 'XOF';
+            if (regionLC === 'europe') return 'EUR';
+            if (regionLC.includes('america')) return 'USD';
+            if (['asia','africa'].includes(regionLC) && cur.startsWith('A')) return 'AED';
+            if (regionLC === 'asia') return 'CNY';
+            return 'USD';
+        }
+        async function fetchAllCountries() {
+            try {
+                const url = 'https://restcountries.com/v3.1/all?fields=cca2,name,currencies,languages,region';
+                const r = await fetch(url, { cache: 'force-cache' 
+                const arr = await r.json();
+                const list = arr.map(it => {
+                    const code = String(it.cca2 || '').toLowerCase();
+                    const name = (it.name && it.name.common) ? it.name.common : code.toUpperCase();
+                    const region = it.region || '';
+                    const cur = it.currencies ? Object.keys(it.currencies)[0] : '';
+                    const langCode = it.languages ? Object.keys(it.languages)[0] : 'en';
+                    const currency = pickSupportedCurrency(code, cur, region);
+                    return { code, name, currency, lang: langCode || 'en', region };
+                }).filter(x => x.code);
+                list.sort((a,b) => a.name.localeCompare(b.name, 'fr'));
+                return list;
+            } catch {
+                return [
+                    {code:'ci', name:"Côte d'Ivoire", currency:'XOF', lang:'fr'},
+                    {code:'sn', name:'Sénégal', currency:'XOF', lang:'fr'},
+                    {code:'tg', name:'Togo', currency:'XOF', lang:'fr'},
+                    {code:'fr', name:'France', currency:'EUR', lang:'fr'},
+                    {code:'us', name:'United States', currency:'USD', lang:'en'},
+                    {code:'gb', name:'United Kingdom', currency:'GBP', lang:'en'},
+                    {code:'ae', name:'United Arab Emirates', currency:'AED', lang:'ar'},
+                    {code:'ru', name:'Russia', currency:'RUB', lang:'ru'},
+                    {code:'cn', name:'China', currency:'CNY', lang:'zh'},
+                    {code:'jp', name:'Japan', currency:'JPY', lang:'ja'}
+                ];
+            }
+        }
+        async function geolocateCountry() {
+            try {
+                const r = await fetch('https://ipapi.co/json/', { cache: 'no-store' 
+                const j = await r.json();
+                return (j && j.country) ? String(j.country).toLowerCase() : null;
+            } catch { return null; }
+        }
 
-    // Mount UI at #gmt-time position
-    const timeEl = document.getElementById('gmt-time');
-    const wrap = document.createElement('div');
-    wrap.className = 'locale-switch-wrap';
-    wrap.innerHTML = `
-      <button id="localeSwitchBtn" class="locale-switch" aria-haspopup="listbox" aria-expanded="false" title="Choisir un pays">
+        // Mount UI at #gmt-time position
+        const timeEl = document.getElementById('gmt-time');
+        const wrap = document.createElement('div');
+        wrap.className = 'locale-switch-wrap';
+        wrap.innerHTML = `
+        <button id="localeSwitchBtn" class="locale-switch" aria-haspopup="listbox" aria-expanded="false" title="Choisir un pays">
         <img id="localeFlagImg" class="flag" alt="flag" />
         <span id="localeCur" class="locale-code">XOF</span>
-      </button>
-      <div id="localePanel" class="locale-panel" role="listbox" aria-label="Choisir un pays">
+        </button>
+        <div id="localePanel" class="locale-panel" role="listbox" aria-label="Choisir un pays">
         <div class="locale-search">
-          <input id="localeSearch" type="search" placeholder="Rechercher un pays..." autocomplete="off" />
+        <input id="localeSearch" type="search" placeholder="Rechercher un pays..." autocomplete="off" />
         </div>
         <div class="country-list" id="countryList"></div>
-      </div>
-    `;
-    if (timeEl && timeEl.parentNode) timeEl.parentNode.replaceChild(wrap, timeEl);
-    else {
-      const navRight = document.querySelector('.right-nav, .nav-right');
-      if (navRight) navRight.appendChild(wrap);
-    }
-
-    const btn = document.getElementById('localeSwitchBtn');
-    const panel = document.getElementById('localePanel');
-    const list = document.getElementById('countryList');
-    const search = document.getElementById('localeSearch');
-    const flagImg = document.getElementById('localeFlagImg');
-    const curEl = document.getElementById('localeCur'); // correct reference
-
-    let ALL_LOCALES = [];
-    let CURRENT = { country:'ci', currency:'XOF', lang:'fr' };
-
-    function prefetchFlag(code) {
-      if (!code) return;
-      const img = new Image(); img.decoding='async'; img.src = flagUrl(code);
-    }
-    function setFlag(code) {
-      if (!code) { flagImg.removeAttribute('src'); return; }
-      const url = flagUrl(code);
-      flagImg.src = url;
-      flagImg.alt = (String(code||'').toUpperCase()) + ' flag';
-      prefetchFlag(code);
-    }
-    function mountList(filterText) {
-      const q = String(filterText || '').trim().toLowerCase();
-      list.innerHTML = '';
-      ALL_LOCALES
-        .filter(it => !q || it.name.toLowerCase().includes(q) || String(it.currency||'').toLowerCase().includes(q) || it.code.includes(q))
-        .forEach(it => {
-          const item = document.createElement('div');
-          item.className = 'country-item';
-          item.setAttribute('role', 'option');
-          item.dataset.country = it.code;
-          const cc = it.code || 'ci';
-          const curr = String(it.currency || 'USD').toUpperCase();
-          const lang = String(it.lang || 'en').toUpperCase();
-          item.innerHTML = `
-            <img class="flag" src="${flagUrl(cc)}" alt="${cc.toUpperCase()} flag" loading="lazy" />
-            <div class="label">
-              <span class="name">${it.name}</span>
-              <span class="meta">${curr} • ${lang}</span>
-            </div>
-          `;
-          item.addEventListener('click', () => selectCountry({ country: it.code, currency: it.currency, lang: it.lang }));
-          list.appendChild(item);
-        });
-    }
-    function openPanel() {
-      panel.classList.add('open');
-      btn.setAttribute('aria-expanded','true');
-      search.value = '';
-      mountList('');
-      setTimeout(() => search.focus(), 10);
-    }
-    function closePanel() {
-      panel.classList.remove('open');
-      btn.setAttribute('aria-expanded','false');
-    }
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      if (panel.classList.contains('open')) closePanel(); else openPanel();
-    });
-    document.addEventListener('click', (e) => { if (!panel.contains(e.target) && e.target !== btn) closePanel(); });
-    search.addEventListener('input', () => mountList(search.value));
-
-    function saveLocale(sel) {
-      try { localStorage.setItem('da_locale', JSON.stringify(sel)); } catch {}
-    }
-    function loadLocale() {
-      try {
-        const raw = localStorage.getItem('da_locale');
-        if (!raw) return null;
-        const obj = JSON.parse(raw);
-        if (obj && obj.country) return obj;
-        return null;
-      } catch { return null; }
-    }
-    function persistSelection(sel) {
-      saveLocale(sel);
-      fetch('/api/locale', {
-        method:'POST', headers:{'Content-Type':'application/json'},
-        credentials:'same-origin',
-        body: JSON.stringify({ country: sel.country, currency: sel.currency, lang: sel.lang })
-      }).catch(()=>{});
-      document.documentElement.lang = sel.lang || 'fr';
-    }
-
-    function applySelection(sel, persist=false) {
-      CURRENT = sel;
-      setFlag(sel.country);
-      if (curEl) curEl.textContent = String(sel.currency || 'XOF').toUpperCase(); // SHOW CURRENCY on button
-      annotateLikelyPriceSpans();
-      if (RATES_XOF) {
-        convertDisplayedPrices(sel.currency);
-        requestAnimationFrame(() => convertDisplayedPrices(sel.currency));
-      }
-      if (persist) persistSelection(sel);
-    }
-
-    async function selectCountry(sel) {
-      if (!RATES_XOF) {
-        RATES_XOF = loadRatesCache() || null;
-        if (!RATES_XOF) await loadRates();
-      }
-      applySelection(sel, true);
-      closePanel();
-    }
-
-    // Init
-    (async function initLocale() {
-      // immediate annotation
-      annotateLikelyPriceSpans();
-
-      // apply from cached locale and cached rates to avoid flash
-      let chosen = loadLocale();
-      if (chosen && chosen.country && chosen.currency) {
-        setFlag(chosen.country);
-        RATES_XOF = loadRatesCache() || null;
-        if (RATES_XOF) {
-          convertDisplayedPrices(chosen.currency);
-          requestAnimationFrame(() => convertDisplayedPrices(chosen.currency));
+        </div>
+        `;
+        if (timeEl && timeEl.parentNode) timeEl.parentNode.replaceChild(wrap, timeEl);
+        else {
+            const navRight = document.querySelector('.right-nav, .nav-right');
+            if (navRight) navRight.appendChild(wrap);
         }
-      }
 
-      ALL_LOCALES = await fetchAllCountries();
+        const btn = document.getElementById('localeSwitchBtn');
+        const panel = document.getElementById('localePanel');
+        const list = document.getElementById('countryList');
+        const search = document.getElementById('localeSearch');
+        const flagImg = document.getElementById('localeFlagImg');
+        const curEl = document.getElementById('localeCur'); // correct reference
 
-      if (!chosen) {
-        try {
-          const r = await fetch('/api/locale', { credentials:'same-origin', cache:'no-store' });
-          const j = await r.json();
-          if (r.ok && j.status === 'success') {
-            const code = String(j.country || 'ci').toLowerCase();
-            const found = ALL_LOCALES.find(x => x.code === code);
-            if (found) chosen = { country: found.code, currency: found.currency, lang: found.lang };
-          }
-        } catch {}
-      }
-      if (!chosen) {
-        const geo = await geolocateCountry();
-        const found = ALL_LOCALES.find(x => x.code === geo);
-        if (found) chosen = { country: found.code, currency: found.currency, lang: found.lang };
-      }
-      if (!chosen) {
-        const ci = ALL_LOCALES.find(x => x.code === 'ci') || { code:'ci', currency:'XOF', lang:'fr' };
-        chosen = { country: ci.code, currency: ci.currency, lang: ci.lang };
-      }
+        let ALL_LOCALES = [];
+        let CURRENT = { country:'ci', currency:'XOF', lang:'fr' };
 
-      if (!RATES_XOF) await loadRates(); else loadRates(); // refresh in background
-      applySelection(chosen, true);
-    })();
-  });
+        function prefetchFlag(code) {
+            if (!code) return;
+            const img = new Image(); img.decoding='async'; img.src = flagUrl(code);
+        }
+        function setFlag(code) {
+            if (!code) { flagImg.removeAttribute('src'); return; }
+            const url = flagUrl(code);
+            flagImg.src = url;
+            flagImg.alt = (String(code||'').toUpperCase()) + ' flag';
+            prefetchFlag(code);
+        }
+        function mountList(filterText) {
+            const q = String(filterText || '').trim().toLowerCase();
+            list.innerHTML = '';
+            ALL_LOCALES
+            .filter(it => !q || it.name.toLowerCase().includes(q) || String(it.currency||'').toLowerCase().includes(q) || it.code.includes(q))
+            .forEach(it => {
+                const item = document.createElement('div');
+                item.className = 'country-item';
+                item.setAttribute('role', 'option');
+                item.dataset.country = it.code;
+                const cc = it.code || 'ci';
+                const curr = String(it.currency || 'USD').toUpperCase();
+                const lang = String(it.lang || 'en').toUpperCase();
+                item.innerHTML = `
+                <img class="flag" src="${flagUrl(cc)}" alt="${cc.toUpperCase()} flag" loading="lazy" />
+                <div class="label">
+                <span class="name">${it.name}</span>
+                <span class="meta">${curr} • ${lang}</span>
+                </div>
+                `;
+                item.addEventListener('click', () => selectCountry({ country: it.code, currency: it.currency, lang: it.lang }));
+                list.appendChild(item);
+            
+        }
+        function openPanel() {
+            panel.classList.add('open');
+            btn.setAttribute('aria-expanded','true');
+            search.value = '';
+            mountList('');
+            setTimeout(() => search.focus(), 10);
+        }
+        function closePanel() {
+            panel.classList.remove('open');
+            btn.setAttribute('aria-expanded','false');
+        }
+        btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (panel.classList.contains('open')) closePanel(); else openPanel();
+        
+            document.addEventListener('click', (e) => { if (!panel.contains(e.target) && e.target !== btn) closePanel(); 
+            search.addEventListener('input', () => mountList(search.value));
+
+            function saveLocale(sel) {
+                try { localStorage.setItem('da_locale', JSON.stringify(sel)); } catch {}
+            }
+            function loadLocale() {
+                try {
+                    const raw = localStorage.getItem('da_locale');
+                    if (!raw) return null;
+                    const obj = JSON.parse(raw);
+                    if (obj && obj.country) return obj;
+                    return null;
+                } catch { return null; }
+            }
+            function persistSelection(sel) {
+                saveLocale(sel);
+                fetch('/api/locale', {
+                    method:'POST', headers:{'Content-Type':'application/json'},
+                    credentials:'same-origin',
+                    body: JSON.stringify({ country: sel.country, currency: sel.currency, lang: sel.lang })
+                }).catch(()=>{
+                document.documentElement.lang = sel.lang || 'fr';
+            }
+
+            function applySelection(sel, persist=false) {
+                CURRENT = sel;
+                setFlag(sel.country);
+                if (curEl) curEl.textContent = String(sel.currency || 'XOF').toUpperCase(); // SHOW CURRENCY on button
+                annotateLikelyPriceSpans();
+                if (RATES_XOF) {
+                    convertDisplayedPrices(sel.currency);
+                    requestAnimationFrame(() => convertDisplayedPrices(sel.currency));
+                }
+                if (persist) persistSelection(sel);
+            }
+
+            async function selectCountry(sel) {
+                if (!RATES_XOF) {
+                    RATES_XOF = loadRatesCache() || null;
+                    if (!RATES_XOF) await loadRates();
+                }
+                applySelection(sel, true);
+                closePanel();
+            }
+
+            // Init
+            (async function initLocale() {
+                // immediate annotation
+                annotateLikelyPriceSpans();
+
+                // apply from cached locale and cached rates to avoid flash
+                let chosen = loadLocale();
+                if (chosen && chosen.country && chosen.currency) {
+                    setFlag(chosen.country);
+                    RATES_XOF = loadRatesCache() || null;
+                    if (RATES_XOF) {
+                        convertDisplayedPrices(chosen.currency);
+                        requestAnimationFrame(() => convertDisplayedPrices(chosen.currency));
+                    }
+                }
+
+                ALL_LOCALES = await fetchAllCountries();
+
+                if (!chosen) {
+                    try {
+                        const r = await fetch('/api/locale', { credentials:'same-origin', cache:'no-store' 
+                        const j = await r.json();
+                        if (r.ok && j.status === 'success') {
+                            const code = String(j.country || 'ci').toLowerCase();
+                            const found = ALL_LOCALES.find(x => x.code === code);
+                            if (found) chosen = { country: found.code, currency: found.currency, lang: found.lang };
+                        }
+                    } catch {}
+                }
+                if (!chosen) {
+                    const geo = await geolocateCountry();
+                    const found = ALL_LOCALES.find(x => x.code === geo);
+                    if (found) chosen = { country: found.code, currency: found.currency, lang: found.lang };
+                }
+                if (!chosen) {
+                    const ci = ALL_LOCALES.find(x => x.code === 'ci') || { code:'ci', currency:'XOF', lang:'fr' };
+                    chosen = { country: ci.code, currency: ci.currency, lang: ci.lang };
+                }
+
+                if (!RATES_XOF) await loadRates(); else loadRates(); // refresh in background
+                applySelection(chosen, true);
+            })();
+    
 })();
 
 // --- Initialisation globale ---
-document.addEventListener('DOMContentLoaded', () => {
+
     window.initProductSearchSort();
     window.initCategoryFilter();
     window.initProductPage();
+
+// --- Fin du code corrigé ---
 });
