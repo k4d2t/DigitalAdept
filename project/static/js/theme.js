@@ -765,20 +765,16 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 
-// === Locale Switcher (TOUS pays + auto-détection + conversion prix) ===
+// === Locale Switcher (TOUS pays + auto-détection + conversion prix, avec drapeaux réels) ===
 document.addEventListener('DOMContentLoaded', () => {
-  // Conversions de devise (taux base XOF - fournis par /api/fx-rates)
+  // Devises supportées et symboles
   const SUPPORTED = ['XOF','USD','EUR','GBP','AED','RUB','CNY','JPY'];
   const SYMBOL = { XOF:'XOF', USD:'$', EUR:'€', GBP:'£', AED:'د.إ', RUB:'₽', CNY:'¥', JPY:'¥' };
   const XOF_ZONE = new Set(['CI','SN','BJ','BF','TG','ML','NE','GW']); // UEMOA
   let RATES_XOF = null;
 
-  function codeToEmoji(cc) {
-    // cc = 'TG' -> '🇹🇬'
-    return cc && cc.length === 2
-      ? String.fromCodePoint(...[...cc.toUpperCase()].map(c => 127397 + c.charCodeAt()))
-      : '🌐';
-  }
+  // URL drapeau (vrai icône, pas emoji)
+  const flagUrl = (cc) => `https://flagcdn.com/${(cc||'').toLowerCase()}.svg`;
 
   async function loadRates() {
     try {
@@ -792,68 +788,112 @@ document.addEventListener('DOMContentLoaded', () => {
     return `${Number(amount).toLocaleString('fr-FR', {maximumFractionDigits:2})} ${SYMBOL[currency] || currency}`;
   }
 
+  // Parseurs robustes si les data-attributes manquent
+  const SYMBOL_TO_CUR = {'$':'USD','€':'EUR','£':'GBP','¥':'CNY','₽':'RUB','د.إ':'AED'};
+  function parseNumberFromText(txt) {
+    if (!txt) return NaN;
+    const cleaned = txt.replace(/\s|\u00A0|\u202F/g,'');
+    const match = cleaned.match(/[-+]?\d+(?:[.,]\d+)?/);
+    if (!match) return NaN;
+    const numStr = match[0].replace(',', '.');
+    return parseFloat(numStr);
+  }
+  function parseCurrencyFromText(txt) {
+    if (!txt) return null;
+    const codeMatch = txt.match(/\b(XOF|USD|EUR|GBP|AED|RUB|CNY|JPY)\b/i);
+    if (codeMatch) return codeMatch[1].toUpperCase();
+    const symMatch = txt.match(/[$€£¥₽]|د\.?إ/);
+    if (symMatch) return SYMBOL_TO_CUR[symMatch[0]] || null;
+    return null;
+  }
+  function ensureDatasetForPrice(el) {
+    // Mémorise une base immuable pour éviter les conversions cumulatives
+    if (!el.dataset.basePrice) {
+      // Priorité aux data-price/data-currency s'ils existent
+      let basePrice = parseFloat(el.getAttribute('data-price') || 'NaN');
+      let baseCur = (el.getAttribute('data-currency') || '').toUpperCase();
+
+      if (!isFinite(basePrice)) {
+        basePrice = parseNumberFromText(el.textContent);
+      }
+      if (!baseCur) {
+        baseCur = parseCurrencyFromText(el.textContent) || 'XOF';
+      }
+      if (!isFinite(basePrice)) return false;
+
+      el.dataset.basePrice = String(basePrice);
+      el.dataset.baseCurrency = baseCur;
+      // Aligne aussi les attributs visibles pour les prochains scans
+      if (!el.hasAttribute('data-price')) el.setAttribute('data-price', String(basePrice));
+      if (!el.hasAttribute('data-currency')) el.setAttribute('data-currency', baseCur);
+    }
+    return true;
+  }
+
+  // Conversions via base XOF (RATES_XOF[CUR] = 1 XOF en CUR)
+  function convertAmountViaXOF(amount, fromCur, toCur) {
+    if (!RATES_XOF || !isFinite(amount)) return amount;
+    if (fromCur === toCur) return amount;
+    try {
+      const rFrom = fromCur === 'XOF' ? 1 : RATES_XOF[fromCur];
+      const inXof = rFrom ? (fromCur === 'XOF' ? amount : amount / rFrom) : amount;
+      const rTo = toCur === 'XOF' ? 1 : RATES_XOF[toCur];
+      return rTo ? (toCur === 'XOF' ? inXof : inXof * rTo) : inXof;
+    } catch {
+      return amount;
+    }
+  }
+
+  // Convertit tous les montants affichés (données + fallback classes)
   function convertDisplayedPrices(targetCurrency) {
-    if (!RATES_XOF) return;
-    const nodes = document.querySelectorAll('[data-price][data-currency]');
+    // Liste d’éléments prix à convertir: data-* OU classes connues
+    const dataNodes = Array.from(document.querySelectorAll('[data-price]'));
+    const classNodes = Array.from(document.querySelectorAll('.product-price, .product-old-price, .current-price, .old-price'));
+    const seen = new Set();
+    const nodes = [];
+    [...dataNodes, ...classNodes].forEach(el => { if (!seen.has(el)) { seen.add(el); nodes.push(el); } });
+
     nodes.forEach(el => {
-      const base = parseFloat(el.getAttribute('data-price') || '0');
-      const from = (el.getAttribute('data-currency') || '').toUpperCase();
-      if (!base || !from) return;
-      let amount = base;
-      try {
-        // from -> XOF
-        const rFrom = from === 'XOF' ? 1 : RATES_XOF[from];
-        const inXof = rFrom ? (from === 'XOF' ? base : base / rFrom) : base;
-        // XOF -> target
-        const rTo = targetCurrency === 'XOF' ? 1 : RATES_XOF[targetCurrency];
-        amount = rTo ? (targetCurrency === 'XOF' ? inXof : inXof * rTo) : base;
-      } catch {}
-      el.textContent = formatAmount(amount, targetCurrency);
+      if (!ensureDatasetForPrice(el)) return;
+      const base = parseFloat(el.dataset.basePrice);
+      const from = (el.dataset.baseCurrency || 'XOF').toUpperCase();
+      const conv = convertAmountViaXOF(base, from, targetCurrency);
+      el.textContent = formatAmount(conv, targetCurrency);
+      // NE PAS écraser data-base, mais garder data-currency “courante” à jour pour sémantique
+      el.setAttribute('data-currency', targetCurrency);
     });
   }
 
-  // Choisit une devise “principale” si celle du pays n’est pas supportée
+  // Choix devise supportée par pays
   function pickSupportedCurrency(cc, countryCurrency, region) {
     const cur = (countryCurrency || '').toUpperCase();
     if (SUPPORTED.includes(cur)) return cur;
-    // Afrique de l’Ouest -> XOF
     if (XOF_ZONE.has((cc || '').toUpperCase())) return 'XOF';
-    // Europe -> EUR
     if ((region || '').toLowerCase() === 'europe') return 'EUR';
-    // Middle East -> AED
-    if (['asia','africa'].includes((region || '').toLowerCase()) && cur.startsWith('A')) return 'AED';
-    // Amériques -> USD
     if ((region || '').toLowerCase().includes('america')) return 'USD';
-    // Asie -> CNY/JPY par défaut CNY
+    if (['asia','africa'].includes((region || '').toLowerCase()) && cur.startsWith('A')) return 'AED';
     if ((region || '').toLowerCase() === 'asia') return 'CNY';
-    // Default
     return 'USD';
   }
 
-  // Construit la liste complète des pays
+  // Récupère tous les pays
   async function fetchAllCountries() {
     try {
       const url = 'https://restcountries.com/v3.1/all?fields=cca2,name,currencies,languages,region';
       const r = await fetch(url, { cache: 'force-cache' });
       const arr = await r.json();
-      // Transforme en {code, name, currency, lang, region}
       const list = arr.map(it => {
         const code = (it.cca2 || '').toLowerCase();
         const name = it.name?.common || code.toUpperCase();
         const region = it.region || '';
-        // Devise: premier code trouvé dans currencies
         const cur = it.currencies ? Object.keys(it.currencies)[0] : '';
-        // Lang: premier code trouvé
         const lang = it.languages ? Object.keys(it.languages)[0] : 'en';
-        // Ajuste vers devise supportée
         const currency = pickSupportedCurrency(code, cur, region);
         return { code, name, currency, lang, region };
       }).filter(x => x.code);
-      // Tri alphabétique
       list.sort((a,b) => a.name.localeCompare(b.name, 'fr'));
       return list;
     } catch {
-      // Fallback minimal si l’API échoue
       return [
         {code:'ci', name:"Côte d'Ivoire", currency:'XOF', lang:'fr'},
         {code:'sn', name:'Sénégal', currency:'XOF', lang:'fr'},
@@ -869,12 +909,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Auto-détection de localisation (IP) pour choisir le pays à la première visite
+  // Geo-IP pour 1ère visite
   async function geolocateCountry() {
     try {
       const r = await fetch('https://ipapi.co/json/', { cache: 'no-store' });
       const j = await r.json();
-      return (j && j.country) ? j.country.toLowerCase() : null; // ex: "tg"
+      return (j && j.country) ? j.country.toLowerCase() : null;
     } catch { return null; }
   }
 
@@ -884,7 +924,7 @@ document.addEventListener('DOMContentLoaded', () => {
   wrap.className = 'locale-switch-wrap';
   wrap.innerHTML = `
     <button id="localeSwitchBtn" class="locale-switch" aria-haspopup="listbox" aria-expanded="false" title="Choisir un pays">
-      <span class="flag" id="localeFlag" aria-hidden="true">🌐</span>
+      <span class="flag" id="localeFlag" aria-hidden="true"></span>
     </button>
     <div id="localePanel" class="locale-panel" role="listbox" aria-label="Choisir un pays">
       <div class="locale-search">
@@ -910,7 +950,10 @@ document.addEventListener('DOMContentLoaded', () => {
   let CURRENT = { country:'ci', currency:'XOF', lang:'fr' };
 
   function setFlag(code) {
-    flagEl.textContent = codeToEmoji(code ? code.toUpperCase() : 'CI');
+    // VRAI drapeau via background-image (plus d’emoji)
+    flagEl.style.backgroundImage = `url('${flagUrl(code)}')`;
+    flagEl.textContent = ''; // pas de fallback texte
+    flagEl.setAttribute('title', code.toUpperCase());
   }
 
   function mountList(filterText) {
@@ -924,7 +967,7 @@ document.addEventListener('DOMContentLoaded', () => {
         item.setAttribute('role', 'option');
         item.dataset.country = it.code;
         item.innerHTML = `
-          <span class="flag" style="background:none;">${codeToEmoji(it.code.toUpperCase())}</span>
+          <span class="flag" style="background-image:url('${flagUrl(it.code)}')"></span>
           <div class="label">
             <span class="name">${it.name}</span>
             <span class="meta">${it.currency.toUpperCase()} • ${it.lang.toUpperCase()}</span>
@@ -957,7 +1000,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function persistSelection(sel) {
     localStorage.setItem('da_country', sel.country);
-    // POST vers backend pour session
     fetch('/api/locale', {
       method:'POST', headers:{'Content-Type':'application/json'},
       credentials:'same-origin',
@@ -979,10 +1021,8 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function initLocale() {
-    // 1) Récup liste pays
     ALL_LOCALES = await fetchAllCountries();
 
-    // 2) Préférences connues ? (session puis localStorage)
     let chosen = null;
     try {
       const r = await fetch('/api/locale', { credentials:'same-origin' });
@@ -1000,21 +1040,16 @@ document.addEventListener('DOMContentLoaded', () => {
         if (found) chosen = { country: found.code, currency: found.currency, lang: found.lang };
       }
     }
-
-    // 3) Geoloc au premier passage si rien
     if (!chosen) {
-      const geo = await geolocateCountry(); // ex: 'tg'
+      const geo = await geolocateCountry();
       const found = ALL_LOCALES.find(x => x.code === geo);
       if (found) chosen = { country: found.code, currency: found.currency, lang: found.lang };
     }
-
-    // 4) Fallback CI
     if (!chosen) {
       const ci = ALL_LOCALES.find(x => x.code === 'ci') || { code:'ci', currency:'XOF', lang:'fr' };
       chosen = { country: ci.code, currency: ci.currency, lang: ci.lang };
     }
 
-    // 5) Appliquer + charger taux + convertir
     setFlag(chosen.country);
     await loadRates();
     applySelection(chosen);
