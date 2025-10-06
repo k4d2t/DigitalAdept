@@ -979,24 +979,37 @@ def prepare_checkout():
     email = data.get('email')
     cart_items = data.get('cart')
     nom_client = data.get('nom_client')
-    total_price = data.get('totalPrice')
-    whatsapp = data.get('whatsapp') # <--- Nouvelle ligne
+    total_price = data.get('totalPrice') or 0
+    whatsapp = data.get('whatsapp')
+    sel_currency = (data.get('currency') or 'XOF').upper()  # <-- AJOUT
 
     if not email or not cart_items:
         return jsonify({"error": "Email et contenu du panier sont requis."}), 400
 
-    # Enregistre le panier abandonné dans la base de données
+    # Normalise le total en XOF pour cohérence du reporting
+    try:
+        total_price = float(total_price)
+    except Exception:
+        total_price = 0.0
+
+    if sel_currency != 'XOF':
+        rates = get_fx_rates_base_xof()  # base = XOF
+        rate = float(rates.get(sel_currency) or 0)
+        try:
+            total_price = total_price / rate if rate > 0 else total_price
+        except Exception:
+            pass
+
     abandoned_cart = AbandonedCart(
         email=email,
         customer_name=nom_client,
-        cart_content=cart_items,
-        total_price=total_price,
-        whatsapp_number=whatsapp  # <--- Nouvelle ligne
+        cart_content=cart_items,  # laissé tel quel (prix d’origine)
+        total_price=total_price,   # TOUJOURS XOF désormais
+        whatsapp_number=whatsapp
     )
     db.session.add(abandoned_cart)
     db.session.commit()
 
-    # On renvoie un statut de succès pour que le frontend continue
     return jsonify({"status": "prepared", "cart_id": abandoned_cart.id}), 200
 
 # --- WEBHOOK MIS À JOUR (LOGIQUE FIABLE) ---
