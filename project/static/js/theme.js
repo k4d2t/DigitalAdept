@@ -757,138 +757,53 @@ window.initProductPage = function () {
 
 };
 
-// --- Initialisation globale ---
-document.addEventListener('DOMContentLoaded', () => {
-    window.initProductSearchSort();
-    window.initCategoryFilter();
-    window.initProductPage();
-});
+(function bannerMarqueeAutoDuration() {
+  let resizeTO = null;
 
+  function recalcDuration() {
+    const banner = document.getElementById('site-announcement-banner');
+    if (!banner) return;
+    const content = banner.querySelector('.announcement-banner-content');
+    if (!content) return;
 
-// === Locale Switcher (TOUS pays + auto-détection + conversion prix, drapeaux via jsDelivr <img>) ===
-// AMÉLIORÉ: application immédiate sans flash via cache localStorage des taux & de la locale
-document.addEventListener('DOMContentLoaded', () => {
-  const SUPPORTED = ['XOF','USD','EUR','GBP','AED','RUB','CNY','JPY'];
-  const SYMBOL = { XOF:'XOF', USD:'$', EUR:'€', GBP:'£', AED:'د.إ', RUB:'₽', CNY:'¥', JPY:'¥' };
-  const XOF_ZONE = new Set(['CI','SN','BJ','BF','TG','ML','NE','GW']);
-  let RATES_XOF = null;
+    // Mesures
+    const contentWidth = content.scrollWidth || 0;
+    const viewport = banner.clientWidth || window.innerWidth || 360;
 
-  // CDN preconnect
-  (function preconnectCDNs() {
-    const head = document.head || document.getElementsByTagName('head')[0];
-    ['https://cdn.jsdelivr.net','https://restcountries.com','https://ipapi.co'].forEach(href => {
-      const a = document.createElement('link'); a.rel='preconnect'; a.href=href; head.appendChild(a);
-      const b = document.createElement('link'); b.rel='dns-prefetch'; b.href=href; head.appendChild(b);
-    });
-  })();
+    // Vitesse cible (px/seconde) — plus lent sur desktop, plus rapide sur mobile
+    const isMobile = window.matchMedia('(max-width: 600px)').matches;
+    const pxPerSec = isMobile ? 70 : 90;
 
-  const flagUrl = cc => `https://cdn.jsdelivr.net/gh/lipis/flag-icons@6.6.6/flags/1x1/${String(cc||'').toLowerCase()}.svg`;
+    // Durée = distance à parcourir (contenu + viewport) / vitesse
+    const distance = contentWidth + viewport;
+    const duration = Math.max(8, distance / pxPerSec);
 
-  // Cache des taux en localStorage pour conversion immédiate
-  function saveRatesCache(rates) {
-    try { localStorage.setItem('da_fx_rates', JSON.stringify({ rates, ts: Date.now() })); } catch {}
-  }
-  function loadRatesCache(maxAgeMs = 6*60*60*1000) {
-    try {
-      const raw = localStorage.getItem('da_fx_rates');
-      if (!raw) return null;
-      const obj = JSON.parse(raw);
-      if (!obj || !obj.rates) return null;
-      if (typeof obj.ts === 'number' && (Date.now() - obj.ts) <= maxAgeMs) return obj.rates;
-      return obj.rates; // même périmé, on peut l’utiliser en premier rendu
-    } catch { return null; }
+    // Applique la durée calculée
+    content.style.animationDuration = duration + 's';
   }
 
-  async function loadRates() {
-    try {
-      const r = await fetch('/api/fx-rates', { credentials:'same-origin', cache:'no-store' });
-      const j = await r.json();
-      if (j && j.status === 'success' && j.rates) {
-        RATES_XOF = j.rates;
-        saveRatesCache(RATES_XOF);
-      }
-    } catch {}
+  // 1) Au chargement
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', recalcDuration);
+  } else {
+    recalcDuration();
   }
 
-  function formatAmount(amount, currency) {
-    return `${Number(amount).toLocaleString('fr-FR', {maximumFractionDigits:2})} ${SYMBOL[currency] || currency}`;
-  }
+  // 2) Sur redimensionnement
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTO);
+    resizeTO = setTimeout(recalcDuration, 120);
+  });
 
-  const SYMBOL_TO_CUR = {'$':'USD','€':'EUR','£':'GBP','¥':'CNY','₽':'RUB','د.إ':'AED'};
-  function parseNumberFromText(txt) {
-    if (!txt) return NaN;
-    const cleaned = txt.replace(/\s|\u00A0|\u202F/g,'');
-    const m = cleaned.match(/[-+]?\d+(?:[.,]\d+)?/);
-    if (!m) return NaN;
-    return parseFloat(m[0].replace(',', '.'));
+  // 3) Quand le contenu du bandeau est injecté/modifié
+  const banner = document.getElementById('site-announcement-banner');
+  if (banner) {
+    const mo = new MutationObserver(() => setTimeout(recalcDuration, 0));
+    mo.observe(banner, { childList: true, subtree: true });
   }
-  function parseCurrencyFromText(txt) {
-    if (!txt) return null;
-    const cm = txt.match(/\b(XOF|USD|EUR|GBP|AED|RUB|CNY|JPY)\b/i);
-    if (cm) return cm[1].toUpperCase();
-    const sm = txt.match(/[$€£¥₽]|د\.?إ/);
-    return sm ? (SYMBOL_TO_CUR[sm[0]] || null) : null;
-  }
-  function ensureDatasetForPrice(el) {
-    if (!el.dataset.basePrice) {
-      if (!el.hasAttribute('data-price') && el.children && el.children.length > 0) return false;
-      let basePrice = parseFloat(el.getAttribute('data-price') || 'NaN');
-      let baseCur = (el.getAttribute('data-currency') || '').toUpperCase();
-      if (!isFinite(basePrice)) basePrice = parseNumberFromText(el.textContent);
-      if (!baseCur) baseCur = parseCurrencyFromText(el.textContent) || 'XOF';
-      if (!isFinite(basePrice)) return false;
-      el.dataset.basePrice = String(basePrice);
-      el.dataset.baseCurrency = baseCur;
-      if (!el.hasAttribute('data-price')) el.setAttribute('data-price', String(basePrice));
-      if (!el.hasAttribute('data-currency')) el.setAttribute('data-currency', baseCur);
-    }
-    return true;
-  }
+})();
 
-  function annotateLikelyPriceSpans() {
-    // Si certains templates n'ont pas data-attributes, on les ajoute aux spans feuilles présentant un prix
-    const containers = document.querySelectorAll('.product-bottom, .product-price-detailed, .product-info, .products-list, .featured-list');
-    containers.forEach(c => {
-      c.querySelectorAll('span').forEach(sp => {
-        if (sp.children && sp.children.length > 0) return;
-        const txt = sp.textContent || '';
-        if (/\d/.test(txt)) { // il y a des chiffres
-          ensureDatasetForPrice(sp);
-        }
-      });
-    });
-  }
-
-  function convertAmountViaXOF(amount, fromCur, toCur) {
-    if (!RATES_XOF || !isFinite(amount)) return amount;
-    if (fromCur === toCur) return amount;
-    try {
-      const rFrom = fromCur === 'XOF' ? 1 : RATES_XOF[fromCur];
-      const inXof = rFrom ? (fromCur === 'XOF' ? amount : amount / rFrom) : amount;
-      const rTo = toCur === 'XOF' ? 1 : RATES_XOF[toCur];
-      return rTo ? (toCur === 'XOF' ? inXof : inXof * rTo) : inXof;
-    } catch { return amount; }
-  }
-
-  function convertDisplayedPrices(targetCurrency) {
-    const dataNodes = Array.from(document.querySelectorAll('[data-price][data-currency]'));
-    const classNodes = Array.from(document.querySelectorAll('.product-price, .product-old-price, .current-price, .old-price'))
-      .filter(el => el.hasAttribute('data-price') || !el.children || el.children.length === 0);
-
-    const seen = new Set(); const nodes = [];
-    [...dataNodes, ...classNodes].forEach(el => { if (!seen.has(el)) { seen.add(el); nodes.push(el); } });
-
-    nodes.forEach(el => {
-      if (!ensureDatasetForPrice(el)) return;
-      const base = parseFloat(el.dataset.basePrice);
-      const from = (el.dataset.baseCurrency || 'XOF').toUpperCase();
-      const conv = convertAmountViaXOF(base, from, targetCurrency);
-      el.textContent = formatAmount(conv, targetCurrency);
-      el.setAttribute('data-currency', targetCurrency);
-    });
-  }
-
-  function pickSupportedCurrency(cc, countryCurrency, region) {
+ function pickSupportedCurrency(cc, countryCurrency, region) {
     const cur = String(countryCurrency || '').toUpperCase();
     if (SUPPORTED.includes(cur)) return cur;
     const regionLC = String(region || '').toLowerCase();
@@ -1127,3 +1042,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
   initLocale();
 });
+
+
+// --- Initialisation globale ---
+document.addEventListener('DOMContentLoaded', () => {
+    window.initProductSearchSort();
+    window.initCategoryFilter();
+    window.initProductPage();
+});
+
+
+ 
