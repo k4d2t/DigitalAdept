@@ -772,12 +772,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const XOF_ZONE = new Set(['CI','SN','BJ','BF','TG','ML','NE','GW']);
   let RATES_XOF = null;
 
-  // Préconnect pour accélérer les CDN/API
   (function preconnectCDNs() {
     const head = document.head || document.getElementsByTagName('head')[0];
-    [
-      'https://cdn.jsdelivr.net', 'https://restcountries.com', 'https://ipapi.co'
-    ].forEach(href => {
+    ['https://cdn.jsdelivr.net','https://restcountries.com','https://ipapi.co'].forEach(href => {
       const a = document.createElement('link'); a.rel='preconnect'; a.href=href; head.appendChild(a);
       const b = document.createElement('link'); b.rel='dns-prefetch'; b.href=href; head.appendChild(b);
     });
@@ -814,16 +811,13 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   function ensureDatasetForPrice(el) {
     if (!el.dataset.basePrice) {
-      // On évite de convertir un conteneur complexe (préférence: éléments sans enfants
-      // ou qui possèdent déjà des data-attributes)
+      // Convert only simple leaf nodes, unless explicitly annotated
       if (!el.hasAttribute('data-price') && el.children && el.children.length > 0) return false;
-
       let basePrice = parseFloat(el.getAttribute('data-price') || 'NaN');
       let baseCur = (el.getAttribute('data-currency') || '').toUpperCase();
       if (!isFinite(basePrice)) basePrice = parseNumberFromText(el.textContent);
       if (!baseCur) baseCur = parseCurrencyFromText(el.textContent) || 'XOF';
       if (!isFinite(basePrice)) return false;
-
       el.dataset.basePrice = String(basePrice);
       el.dataset.baseCurrency = baseCur;
       if (!el.hasAttribute('data-price')) el.setAttribute('data-price', String(basePrice));
@@ -843,7 +837,6 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch { return amount; }
   }
 
-  // Cible large: tous éléments avec data-price OU classes connues (même si pas <span>)
   function convertDisplayedPrices(targetCurrency) {
     const dataNodes = Array.from(document.querySelectorAll('[data-price][data-currency]'));
     const classNodes = Array.from(document.querySelectorAll('.product-price, .product-old-price, .current-price, .old-price'))
@@ -914,7 +907,7 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch { return null; }
   }
 
-  // Remplacer #gmt-time par le switcher
+  // Replace #gmt-time with the switcher
   const timeEl = document.getElementById('gmt-time');
   const wrap = document.createElement('div');
   wrap.className = 'locale-switch-wrap';
@@ -977,7 +970,8 @@ document.addEventListener('DOMContentLoaded', () => {
             <span class="meta">${curr} • ${lang}</span>
           </div>
         `;
-        item.addEventListener('click', () => selectCountry(it));
+        // FIX: normalize selection payload to {country, currency, lang}
+        item.addEventListener('click', () => selectCountry({ country: it.code, currency: it.currency, lang: it.lang }));
         list.appendChild(item);
       });
   }
@@ -1014,7 +1008,6 @@ document.addEventListener('DOMContentLoaded', () => {
     CURRENT = sel;
     setFlag(sel.country);
     if (RATES_XOF) convertDisplayedPrices(sel.currency);
-    // double passe pour assurer la conversion après layout
     requestAnimationFrame(() => { if (RATES_XOF) convertDisplayedPrices(sel.currency); });
     if (persist) persistSelection(sel);
   }
@@ -1029,36 +1022,36 @@ document.addEventListener('DOMContentLoaded', () => {
     ALL_LOCALES = await fetchAllCountries();
     let chosen = null;
 
-    // 1) Session serveur
+    // 1) LocalStorage FIRST (persist across pages reliably)
     try {
-      const r = await fetch('/api/locale', { credentials:'same-origin', cache:'no-store' });
-      const j = await r.json();
-      if (r.ok && j.status === 'success') {
-        const code = String(j.country || 'ci').toLowerCase();
-        const found = ALL_LOCALES.find(x => x.code === code);
+      const stored = String(localStorage.getItem('da_country') || '').toLowerCase();
+      if (stored) {
+        const found = ALL_LOCALES.find(x => x.code === stored);
         if (found) chosen = { country: found.code, currency: found.currency, lang: found.lang };
       }
     } catch {}
 
-    // 2) LocalStorage
+    // 2) Session (API) if nothing from localStorage
     if (!chosen) {
       try {
-        const stored = String(localStorage.getItem('da_country') || '').toLowerCase();
-        if (stored) {
-          const found = ALL_LOCALES.find(x => x.code === stored);
+        const r = await fetch('/api/locale', { credentials:'same-origin', cache:'no-store' });
+        const j = await r.json();
+        if (r.ok && j.status === 'success') {
+          const code = String(j.country || 'ci').toLowerCase();
+          const found = ALL_LOCALES.find(x => x.code === code);
           if (found) chosen = { country: found.code, currency: found.currency, lang: found.lang };
         }
       } catch {}
     }
 
-    // 3) Geo-IP
+    // 3) Geo-IP if still nothing
     if (!chosen) {
       const geo = await geolocateCountry();
       const found = ALL_LOCALES.find(x => x.code === geo);
       if (found) chosen = { country: found.code, currency: found.currency, lang: found.lang };
     }
 
-    // 4) Fallback
+    // 4) Fallback CI
     if (!chosen) {
       const ci = ALL_LOCALES.find(x => x.code === 'ci') || { code:'ci', currency:'XOF', lang:'fr' };
       chosen = { country: ci.code, currency: ci.currency, lang: ci.lang };
@@ -1066,7 +1059,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     setFlag(chosen.country);
     await loadRates();
-    // Appliquer ET persister immédiatement pour stabiliser la session
+    // Apply AND persist immediately so the session is stabilized
     applySelection(chosen, true);
   }
 
