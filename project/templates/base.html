@@ -133,6 +133,71 @@
   #announcement-close-svg { display: block; }
   #countdown-circle { transition: stroke-dashoffset 0.15s linear; }
 
+/* ===== Announcement banner (bandeau) - CSS unifié et responsive ===== */
+
+/* Conteneur du bandeau: on évite tout débordement horizontal et on force 100% */
+#site-announcement-banner {
+  width: 100% !important;          /* neutralise width:100vw inline */
+  overflow-x: hidden !important;    /* pas de scrollbar horizontale */
+  background: linear-gradient(120deg, #2b71d4 40%, #4fd8ff 90%);
+  color: #fff;
+  font-weight: bold;
+  font-style: italic;
+  font-family: 'Google Sans','Roboto',Arial,sans-serif;
+  text-shadow: var(--neon, 0 0 12px #4fd8ff, 0 0 32px #1976d2);
+  box-shadow: 0 4px 24px #1976d277;
+  user-select: none;
+  text-align: center;
+}
+
+/* Contenu qui défile: pas d’overflow, texte sur une seule ligne + animation */
+#site-announcement-banner .announcement-banner-content {
+  display: inline-block;
+  white-space: nowrap;
+  padding: 0 10vw;                 /* respirations latérales */
+  animation: announcement-marquee 18s linear infinite;
+  will-change: transform;
+}
+
+/* Variante historique (garde la compatibilité avec le markup existant) */
+#site-announcement-banner .announcement-banner-content.custom-banner-font {
+  display: inline-block;
+  white-space: nowrap;
+  padding: 0 10vw;
+  animation: announcement-marquee 18s linear infinite;
+  will-change: transform;
+}
+
+/* Animation du défilement (marquee) */
+@keyframes announcement-marquee {
+  0%   { transform: translateX(100%); }
+  100% { transform: translateX(-100%); }
+}
+
+/* Hauteur, padding et tailles de texte raisonnables */
+#site-announcement-banner {
+  padding: 10px 0;
+  font-size: 1.05rem;
+  letter-spacing: 0.04em;
+}
+
+/* Mobile: texte plus compact et padding latéral réduit, aucune fuite */
+@media (max-width: 600px) {
+  #site-announcement-banner {
+    padding: 8px 0;
+    font-size: 0.98rem;
+  }
+  #site-announcement-banner .announcement-banner-content,
+  #site-announcement-banner .announcement-banner-content.custom-banner-font {
+    padding: 0 6vw;
+  }
+}
+
+/* Sécurité globale pour le layout: jamais de scroll horizontal */
+html, body {
+  overflow-x: hidden;
+}
+
   </style>
 </head>
   <script src="https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/js/svgwaves.min.js
