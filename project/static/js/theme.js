@@ -765,34 +765,25 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 
-// === Locale Switcher (TOUS pays + auto-détection + conversion prix, avec drapeaux via jsDelivr) ===
+// === Locale Switcher (TOUS pays + auto-détection + conversion prix, drapeaux via jsDelivr <img>) ===
 document.addEventListener('DOMContentLoaded', () => {
-  // Devises supportées et symboles
   const SUPPORTED = ['XOF','USD','EUR','GBP','AED','RUB','CNY','JPY'];
   const SYMBOL = { XOF:'XOF', USD:'$', EUR:'€', GBP:'£', AED:'د.إ', RUB:'₽', CNY:'¥', JPY:'¥' };
-  const XOF_ZONE = new Set(['CI','SN','BJ','BF','TG','ML','NE','GW']); // UEMOA
+  const XOF_ZONE = new Set(['CI','SN','BJ','BF','TG','ML','NE','GW']);
   let RATES_XOF = null;
 
-  // Pré-connexion aux CDNs pour accélérer
+  // Préconnect pour accélérer les CDN/API
   (function preconnectCDNs() {
     const head = document.head || document.getElementsByTagName('head')[0];
-    const links = [
-      { rel: 'preconnect', href: 'https://cdn.jsdelivr.net' },
-      { rel: 'dns-prefetch', href: 'https://cdn.jsdelivr.net' },
-      { rel: 'preconnect', href: 'https://restcountries.com' },
-      { rel: 'dns-prefetch', href: 'https://restcountries.com' },
-      { rel: 'preconnect', href: 'https://ipapi.co' },
-      { rel: 'dns-prefetch', href: 'https://ipapi.co' },
-    ];
-    links.forEach(({rel, href}) => {
-      const el = document.createElement('link');
-      el.rel = rel; el.href = href;
-      head.appendChild(el);
+    [
+      'https://cdn.jsdelivr.net', 'https://restcountries.com', 'https://ipapi.co'
+    ].forEach(href => {
+      const a = document.createElement('link'); a.rel='preconnect'; a.href=href; head.appendChild(a);
+      const b = document.createElement('link'); b.rel='dns-prefetch'; b.href=href; head.appendChild(b);
     });
   })();
 
-  // Drapeaux via flag-icons (ultra-rapide)
-  const flagUrl = (cc) => `https://cdn.jsdelivr.net/gh/lipis/flag-icons@6.6.6/flags/1x1/${(cc||'').toLowerCase()}.svg`;
+  const flagUrl = cc => `https://cdn.jsdelivr.net/gh/lipis/flag-icons@6.6.6/flags/1x1/${String(cc||'').toLowerCase()}.svg`;
 
   async function loadRates() {
     try {
@@ -806,36 +797,31 @@ document.addEventListener('DOMContentLoaded', () => {
     return `${Number(amount).toLocaleString('fr-FR', {maximumFractionDigits:2})} ${SYMBOL[currency] || currency}`;
   }
 
-  // Parseurs robustes si data-attributes manquent
   const SYMBOL_TO_CUR = {'$':'USD','€':'EUR','£':'GBP','¥':'CNY','₽':'RUB','د.إ':'AED'};
   function parseNumberFromText(txt) {
     if (!txt) return NaN;
     const cleaned = txt.replace(/\s|\u00A0|\u202F/g,'');
-    const match = cleaned.match(/[-+]?\d+(?:[.,]\d+)?/);
-    if (!match) return NaN;
-    const numStr = match[0].replace(',', '.');
-    return parseFloat(numStr);
+    const m = cleaned.match(/[-+]?\d+(?:[.,]\d+)?/);
+    if (!m) return NaN;
+    return parseFloat(m[0].replace(',', '.'));
   }
   function parseCurrencyFromText(txt) {
     if (!txt) return null;
-    const codeMatch = txt.match(/\b(XOF|USD|EUR|GBP|AED|RUB|CNY|JPY)\b/i);
-    if (codeMatch) return codeMatch[1].toUpperCase();
-    const symMatch = txt.match(/[$€£¥₽]|د\.?إ/);
-    if (symMatch) return SYMBOL_TO_CUR[symMatch[0]] || null;
-    return null;
+    const cm = txt.match(/\b(XOF|USD|EUR|GBP|AED|RUB|CNY|JPY)\b/i);
+    if (cm) return cm[1].toUpperCase();
+    const sm = txt.match(/[$€£¥₽]|د\.?إ/);
+    return sm ? (SYMBOL_TO_CUR[sm[0]] || null) : null;
   }
   function ensureDatasetForPrice(el) {
     if (!el.dataset.basePrice) {
-      // Priorité aux data-price/data-currency s'ils existent
+      // On évite de convertir un conteneur complexe (préférence: éléments sans enfants
+      // ou qui possèdent déjà des data-attributes)
+      if (!el.hasAttribute('data-price') && el.children && el.children.length > 0) return false;
+
       let basePrice = parseFloat(el.getAttribute('data-price') || 'NaN');
       let baseCur = (el.getAttribute('data-currency') || '').toUpperCase();
-
-      if (!isFinite(basePrice)) {
-        basePrice = parseNumberFromText(el.textContent);
-      }
-      if (!baseCur) {
-        baseCur = parseCurrencyFromText(el.textContent) || 'XOF';
-      }
+      if (!isFinite(basePrice)) basePrice = parseNumberFromText(el.textContent);
+      if (!baseCur) baseCur = parseCurrencyFromText(el.textContent) || 'XOF';
       if (!isFinite(basePrice)) return false;
 
       el.dataset.basePrice = String(basePrice);
@@ -846,7 +832,6 @@ document.addEventListener('DOMContentLoaded', () => {
     return true;
   }
 
-  // Conversion via base XOF (RATES_XOF[CUR] = 1 XOF en CUR)
   function convertAmountViaXOF(amount, fromCur, toCur) {
     if (!RATES_XOF || !isFinite(amount)) return amount;
     if (fromCur === toCur) return amount;
@@ -855,19 +840,16 @@ document.addEventListener('DOMContentLoaded', () => {
       const inXof = rFrom ? (fromCur === 'XOF' ? amount : amount / rFrom) : amount;
       const rTo = toCur === 'XOF' ? 1 : RATES_XOF[toCur];
       return rTo ? (toCur === 'XOF' ? inXof : inXof * rTo) : inXof;
-    } catch {
-      return amount;
-    }
+    } catch { return amount; }
   }
 
-  // Convertit tous les montants affichés (ancre: spans de prix)
+  // Cible large: tous éléments avec data-price OU classes connues (même si pas <span>)
   function convertDisplayedPrices(targetCurrency) {
-    // 1) éléments explicitement annotés
     const dataNodes = Array.from(document.querySelectorAll('[data-price][data-currency]'));
-    // 2) fallback: classes usuelles (spans sans enfants)
-    const classNodes = Array.from(document.querySelectorAll('span.product-price, span.product-old-price, span.current-price, span.old-price'));
-    const seen = new Set();
-    const nodes = [];
+    const classNodes = Array.from(document.querySelectorAll('.product-price, .product-old-price, .current-price, .old-price'))
+      .filter(el => el.hasAttribute('data-price') || !el.children || el.children.length === 0);
+
+    const seen = new Set(); const nodes = [];
     [...dataNodes, ...classNodes].forEach(el => { if (!seen.has(el)) { seen.add(el); nodes.push(el); } });
 
     nodes.forEach(el => {
@@ -880,7 +862,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Choix devise supportée par pays
   function pickSupportedCurrency(cc, countryCurrency, region) {
     const cur = String(countryCurrency || '').toUpperCase();
     if (SUPPORTED.includes(cur)) return cur;
@@ -893,7 +874,6 @@ document.addEventListener('DOMContentLoaded', () => {
     return 'USD';
   }
 
-  // Récupère tous les pays
   async function fetchAllCountries() {
     try {
       const url = 'https://restcountries.com/v3.1/all?fields=cca2,name,currencies,languages,region';
@@ -926,7 +906,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Geo-IP pour 1ère visite
   async function geolocateCountry() {
     try {
       const r = await fetch('https://ipapi.co/json/', { cache: 'no-store' });
@@ -935,13 +914,13 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch { return null; }
   }
 
-  // Monte le switcher à la place de #gmt-time
+  // Remplacer #gmt-time par le switcher
   const timeEl = document.getElementById('gmt-time');
   const wrap = document.createElement('div');
   wrap.className = 'locale-switch-wrap';
   wrap.innerHTML = `
     <button id="localeSwitchBtn" class="locale-switch" aria-haspopup="listbox" aria-expanded="false" title="Choisir un pays">
-      <span class="flag" id="localeFlag" aria-hidden="true"></span>
+      <img id="localeFlagImg" class="flag" alt="flag" />
     </button>
     <div id="localePanel" class="locale-panel" role="listbox" aria-label="Choisir un pays">
       <div class="locale-search">
@@ -950,9 +929,8 @@ document.addEventListener('DOMContentLoaded', () => {
       <div class="country-list" id="countryList"></div>
     </div>
   `;
-  if (timeEl && timeEl.parentNode) {
-    timeEl.parentNode.replaceChild(wrap, timeEl);
-  } else {
+  if (timeEl && timeEl.parentNode) timeEl.parentNode.replaceChild(wrap, timeEl);
+  else {
     const navRight = document.querySelector('.nav-right');
     if (navRight) navRight.appendChild(wrap);
   }
@@ -961,28 +939,21 @@ document.addEventListener('DOMContentLoaded', () => {
   const panel = document.getElementById('localePanel');
   const list = document.getElementById('countryList');
   const search = document.getElementById('localeSearch');
-  const flagEl = document.getElementById('localeFlag');
+  const flagImg = document.getElementById('localeFlagImg');
 
-  let ALL_LOCALES = []; // {code, name, currency, lang, region}
+  let ALL_LOCALES = [];
   let CURRENT = { country:'ci', currency:'XOF', lang:'fr' };
 
   function prefetchFlag(code) {
     if (!code) return;
-    const img = new Image();
-    img.decoding = 'async';
-    img.src = flagUrl(code);
+    const img = new Image(); img.decoding='async'; img.src = flagUrl(code);
   }
 
   function setFlag(code) {
-    if (!code) {
-      flagEl.style.backgroundImage = '';
-      flagEl.removeAttribute('title');
-      return;
-    }
+    if (!code) { flagImg.removeAttribute('src'); return; }
     const url = flagUrl(code);
-    flagEl.style.backgroundImage = `url('${url}')`;
-    flagEl.textContent = ''; // aucune abréviation visible
-    try { flagEl.setAttribute('title', String(code).toUpperCase()); } catch {}
+    flagImg.src = url;
+    flagImg.alt = (String(code||'').toUpperCase()) + ' flag';
     prefetchFlag(code);
   }
 
@@ -1000,7 +971,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const curr = String(it.currency || 'USD').toUpperCase();
         const lang = String(it.lang || 'en').toUpperCase();
         item.innerHTML = `
-          <span class="flag" style="background-image:url('${flagUrl(cc)}')"></span>
+          <img class="flag" src="${flagUrl(cc)}" alt="${cc.toUpperCase()} flag" loading="lazy" />
           <div class="label">
             <span class="name">${it.name}</span>
             <span class="meta">${curr} • ${lang}</span>
@@ -1026,13 +997,11 @@ document.addEventListener('DOMContentLoaded', () => {
     e.stopPropagation();
     if (panel.classList.contains('open')) closePanel(); else openPanel();
   });
-  document.addEventListener('click', (e) => {
-    if (!panel.contains(e.target) && e.target !== btn) closePanel();
-  });
+  document.addEventListener('click', (e) => { if (!panel.contains(e.target) && e.target !== btn) closePanel(); });
   search.addEventListener('input', () => mountList(search.value));
 
   function persistSelection(sel) {
-    localStorage.setItem('da_country', sel.country);
+    try { localStorage.setItem('da_country', sel.country); } catch {}
     fetch('/api/locale', {
       method:'POST', headers:{'Content-Type':'application/json'},
       credentials:'same-origin',
@@ -1041,26 +1010,28 @@ document.addEventListener('DOMContentLoaded', () => {
     document.documentElement.lang = sel.lang || 'fr';
   }
 
-  function applySelection(sel) {
+  function applySelection(sel, persist=false) {
     CURRENT = sel;
     setFlag(sel.country);
     if (RATES_XOF) convertDisplayedPrices(sel.currency);
+    // double passe pour assurer la conversion après layout
+    requestAnimationFrame(() => { if (RATES_XOF) convertDisplayedPrices(sel.currency); });
+    if (persist) persistSelection(sel);
   }
 
   async function selectCountry(sel) {
-    // Charge les taux au besoin, puis applique et convertit
     if (!RATES_XOF) await loadRates();
-    applySelection(sel);
-    persistSelection(sel);
+    applySelection(sel, true);
     closePanel();
   }
 
   async function initLocale() {
     ALL_LOCALES = await fetchAllCountries();
-
     let chosen = null;
+
+    // 1) Session serveur
     try {
-      const r = await fetch('/api/locale', { credentials:'same-origin' });
+      const r = await fetch('/api/locale', { credentials:'same-origin', cache:'no-store' });
       const j = await r.json();
       if (r.ok && j.status === 'success') {
         const code = String(j.country || 'ci').toLowerCase();
@@ -1068,18 +1039,26 @@ document.addEventListener('DOMContentLoaded', () => {
         if (found) chosen = { country: found.code, currency: found.currency, lang: found.lang };
       }
     } catch {}
+
+    // 2) LocalStorage
     if (!chosen) {
-      const stored = String(localStorage.getItem('da_country') || '').toLowerCase();
-      if (stored) {
-        const found = ALL_LOCALES.find(x => x.code === stored);
-        if (found) chosen = { country: found.code, currency: found.currency, lang: found.lang };
-      }
+      try {
+        const stored = String(localStorage.getItem('da_country') || '').toLowerCase();
+        if (stored) {
+          const found = ALL_LOCALES.find(x => x.code === stored);
+          if (found) chosen = { country: found.code, currency: found.currency, lang: found.lang };
+        }
+      } catch {}
     }
+
+    // 3) Geo-IP
     if (!chosen) {
       const geo = await geolocateCountry();
       const found = ALL_LOCALES.find(x => x.code === geo);
       if (found) chosen = { country: found.code, currency: found.currency, lang: found.lang };
     }
+
+    // 4) Fallback
     if (!chosen) {
       const ci = ALL_LOCALES.find(x => x.code === 'ci') || { code:'ci', currency:'XOF', lang:'fr' };
       chosen = { country: ci.code, currency: ci.currency, lang: ci.lang };
@@ -1087,7 +1066,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     setFlag(chosen.country);
     await loadRates();
-    applySelection(chosen);
+    // Appliquer ET persister immédiatement pour stabiliser la session
+    applySelection(chosen, true);
   }
 
   initLocale();
