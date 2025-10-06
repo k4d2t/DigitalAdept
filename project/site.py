@@ -180,16 +180,33 @@ def api_locale():
     if request.method == 'POST':
         data = request.get_json(silent=True) or {}
         code = (data.get('country') or '').lower()
+        currency = (data.get('currency') or '').upper()
+        lang = (data.get('lang') or '').lower()
+
         entry = LOCALE_MAP.get(code)
-        if not entry:
-            return jsonify({"status":"error","message":"Pays non supporté"}), 400
-        session['country'] = code
-        session['currency'] = entry['currency']
-        session['lang'] = entry['lang']
-        return jsonify({"status":"success","country":code,"currency":entry['currency'],"lang":entry['lang']}), 200
+        if entry:
+            session['country'] = code
+            session['currency'] = entry['currency']
+            session['lang'] = entry['lang']
+            return jsonify({"status":"success","country":code,"currency":entry['currency'],"lang":entry['lang']}), 200
+
+        # Pays non présent dans LOCALE_MAP: on accepte si currency/lang fournis
+        SUPPORTED = set(SUPPORTED_CURRENCIES)  # ["XOF","USD","EUR","GBP","AED","RUB","CNY","JPY"]
+        if currency in SUPPORTED and lang:
+            session['country'] = code or 'ci'
+            session['currency'] = currency
+            session['lang'] = lang
+            return jsonify({"status":"success","country": session['country'],"currency": currency,"lang": lang}), 200
+
+        # Fallback sûr
+        session['country'] = 'ci'
+        session['currency'] = 'XOF'
+        session['lang'] = 'fr'
+        return jsonify({"status":"success","country":"ci","currency":"XOF","lang":"fr"}), 200
+
     # GET
     code = (session.get('country') or '').lower()
-    entry = LOCALE_MAP.get(code) or LOCALE_MAP.get('ci')  # défaut XOF/fr
+    entry = LOCALE_MAP.get(code) or LOCALE_MAP.get('ci')
     return jsonify({
         "status":"success",
         "country": code or 'ci',
