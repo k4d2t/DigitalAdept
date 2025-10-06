@@ -539,6 +539,67 @@ function showAnnouncementBanner(content) {
   banner.style.boxShadow = "0 4px 24px #1976d277";
 }
 
+// ===== Announcement banner sanitizer (ne touche qu’au bandeau) =====
+(function () {
+  function sanitizeBanner() {
+    const banner = document.getElementById('site-announcement-banner');
+    if (!banner) return;
+
+    // 1) Nettoyer les styles inline posant problème (laisse le CSS gérer)
+    const resetProps = [
+      'width','left','right','position','textAlign','userSelect',
+      'fontFamily','fontVariant','fontSize','letterSpacing','textShadow',
+      'boxShadow','padding','zIndex'
+    ];
+    resetProps.forEach(prop => { try { banner.style[prop] = ''; } catch(_) {} });
+    // Garde l’overflow-x masqué au cas où
+    try {
+      banner.style.overflowX = 'hidden';
+    } catch(_) {}
+
+    // 2) S’assurer que le contenu a la bonne classe et pas de styles inline inutiles
+    const content = banner.querySelector('.announcement-banner-content') || banner.firstElementChild;
+    if (content) {
+      // Ajoute la classe attendue si absente
+      if (!content.classList.contains('announcement-banner-content')) {
+        content.classList.add('announcement-banner-content');
+      }
+      // Retire les styles inline qui doublonnent le CSS
+      ['whiteSpace','animation','padding','margin','transform'].forEach(p => {
+        try { content.style[p] = ''; } catch(_) {}
+      });
+      // Garde la compatibilité avec l’ancienne classe si présente
+      if (!content.classList.contains('custom-banner-font')) {
+        try { content.classList.add('custom-banner-font'); } catch(_) {}
+      }
+    }
+  }
+
+  // Lance une première passe quand le DOM est prêt
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => setTimeout(sanitizeBanner, 0));
+  } else {
+    setTimeout(sanitizeBanner, 0);
+  }
+
+  // Observe les mutations pour ré-assainir si le script inline réécrit le bandeau
+  const mo = new MutationObserver((mutations) => {
+    for (const m of mutations) {
+      if (m.type === 'childList' || m.type === 'subtree') {
+        const banner = document.getElementById('site-announcement-banner');
+        if (banner && (banner.contains(m.target) || m.target === banner)) {
+          // micro-délai le temps que l’injection finisse
+          setTimeout(sanitizeBanner, 0);
+          break;
+        }
+      }
+    }
+  });
+  try {
+    mo.observe(document.documentElement, { childList: true, subtree: true });
+  } catch(_) {}
+})();
+
 // --- INIT ---
 window.addEventListener("DOMContentLoaded", ()=>{
   fetch(ANNOUNCEMENT_API)
