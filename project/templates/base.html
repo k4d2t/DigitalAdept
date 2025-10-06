@@ -604,52 +604,6 @@ function showAnnouncementBanner(content) {
   banner.style.boxShadow = "0 4px 24px #1976d277";
 }
 
-(function bannerMarqueeAutoDuration() {
-  let resizeTO = null;
-
-  function recalcDuration() {
-    const banner = document.getElementById('site-announcement-banner');
-    if (!banner) return;
-    const content = banner.querySelector('.announcement-banner-content');
-    if (!content) return;
-
-    // Mesures
-    const contentWidth = content.scrollWidth || 0;
-    const viewport = banner.clientWidth || window.innerWidth || 360;
-
-    // Vitesse cible (px/seconde) — plus lent sur desktop, plus rapide sur mobile
-    const isMobile = window.matchMedia('(max-width: 600px)').matches;
-    const pxPerSec = isMobile ? 70 : 90;
-
-    // Durée = distance à parcourir (contenu + viewport) / vitesse
-    const distance = contentWidth + viewport;
-    const duration = Math.max(8, distance / pxPerSec);
-
-    // Applique la durée calculée
-    content.style.animationDuration = duration + 's';
-  }
-
-  // 1) Au chargement
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', recalcDuration);
-  } else {
-    recalcDuration();
-  }
-
-  // 2) Sur redimensionnement
-  window.addEventListener('resize', () => {
-    clearTimeout(resizeTO);
-    resizeTO = setTimeout(recalcDuration, 120);
-  });
-
-  // 3) Quand le contenu du bandeau est injecté/modifié
-  const banner = document.getElementById('site-announcement-banner');
-  if (banner) {
-    const mo = new MutationObserver(() => setTimeout(recalcDuration, 0));
-    mo.observe(banner, { childList: true, subtree: true });
-  }
-})();
-
 // ===== Announcement banner sanitizer (ne touche qu’au bandeau) =====
 (function () {
   function sanitizeBanner() {
