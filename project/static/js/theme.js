@@ -773,8 +773,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const XOF_ZONE = new Set(['CI','SN','BJ','BF','TG','ML','NE','GW']); // UEMOA
   let RATES_XOF = null;
 
-  // URL drapeau (vrai icône, pas emoji)
-  const flagUrl = (cc) => `https://flagcdn.com/${(cc||'').toLowerCase()}.svg`;
+  // URL drapeau (PNG léger 20px pour vitesse)
+  const flagUrl = (cc) => `https://flagcdn.com/w20/${(cc||'').toLowerCase()}.png`;
 
   async function loadRates() {
     try {
@@ -809,6 +809,9 @@ document.addEventListener('DOMContentLoaded', () => {
   function ensureDatasetForPrice(el) {
     // Mémorise une base immuable pour éviter les conversions cumulatives
     if (!el.dataset.basePrice) {
+      // Ignorer les conteneurs qui ont des enfants (ex: div.product-price contenant d’autres éléments)
+      if (el.children && el.children.length > 0) return false;
+
       // Priorité aux data-price/data-currency s'ils existent
       let basePrice = parseFloat(el.getAttribute('data-price') || 'NaN');
       let baseCur = (el.getAttribute('data-currency') || '').toUpperCase();
@@ -844,11 +847,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Convertit tous les montants affichés (données + fallback classes)
+  // Convertit tous les montants affichés (cible uniquement les nœuds texte/feuilles)
   function convertDisplayedPrices(targetCurrency) {
-    // Liste d’éléments prix à convertir: data-* OU classes connues
-    const dataNodes = Array.from(document.querySelectorAll('[data-price]'));
-    const classNodes = Array.from(document.querySelectorAll('.product-price, .product-old-price, .current-price, .old-price'));
+    // 1) éléments explicitement annotés
+    const dataNodes = Array.from(document.querySelectorAll('[data-price][data-currency]'));
+    // 2) fallback: classes, mais uniquement les éléments sans enfants
+    const classNodes = Array.from(document.querySelectorAll('.product-price, .product-old-price, .current-price, .old-price'))
+      .filter(el => !el.children || el.children.length === 0);
+
     const seen = new Set();
     const nodes = [];
     [...dataNodes, ...classNodes].forEach(el => { if (!seen.has(el)) { seen.add(el); nodes.push(el); } });
@@ -859,7 +865,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const from = (el.dataset.baseCurrency || 'XOF').toUpperCase();
       const conv = convertAmountViaXOF(base, from, targetCurrency);
       el.textContent = formatAmount(conv, targetCurrency);
-      // NE PAS écraser data-base, mais garder data-currency “courante” à jour pour sémantique
+      // Garder data-currency courant à jour
       el.setAttribute('data-currency', targetCurrency);
     });
   }
@@ -869,10 +875,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const cur = (countryCurrency || '').toUpperCase();
     if (SUPPORTED.includes(cur)) return cur;
     if (XOF_ZONE.has((cc || '').toUpperCase())) return 'XOF';
-    if ((region || '').toLowerCase() === 'europe') return 'EUR';
-    if ((region || '').toLowerCase().includes('america')) return 'USD';
-    if (['asia','africa'].includes((region || '').toLowerCase()) && cur.startsWith('A')) return 'AED';
-    if ((region || '').toLowerCase() === 'asia') return 'CNY';
+    const regionLC = (region || '').toLowerCase();
+    if (regionLC === 'europe') return 'EUR';
+    if (regionLC.includes('america')) return 'USD';
+    if (['asia','africa'].includes(regionLC) && cur.startsWith('A')) return 'AED';
+    if (regionLC === 'asia') return 'CNY';
     return 'USD';
   }
 
@@ -950,10 +957,15 @@ document.addEventListener('DOMContentLoaded', () => {
   let CURRENT = { country:'ci', currency:'XOF', lang:'fr' };
 
   function setFlag(code) {
-    // VRAI drapeau via background-image (plus d’emoji)
+    // Garder robuste si code undefined
+    if (!code) {
+      flagEl.style.backgroundImage = '';
+      flagEl.removeAttribute('title');
+      return;
+    }
     flagEl.style.backgroundImage = `url('${flagUrl(code)}')`;
     flagEl.textContent = ''; // pas de fallback texte
-    flagEl.setAttribute('title', code.toUpperCase());
+    try { flagEl.setAttribute('title', String(code).toUpperCase()); } catch {}
   }
 
   function mountList(filterText) {
@@ -1015,6 +1027,8 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function selectCountry(sel) {
+    // Si les taux ne sont pas encore chargés, on les charge puis applique
+    if (!RATES_XOF) await loadRates();
     applySelection(sel);
     persistSelection(sel);
     closePanel();
