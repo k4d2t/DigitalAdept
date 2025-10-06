@@ -120,9 +120,9 @@
         </div>
 
       <div class="product-price-detailed">
-        <span class="current-price">{{ produit.price }} {{ produit.currency }}</span>
+        <span class="current-price" data-price="{{ produit.price }}" data-currency="{{ produit.currency }}">{{ produit.price }} {{ produit.currency }}</span>
         {% if produit.old_price %}
-          <span class="old-price">{{ produit.old_price }} {{ produit.currency }}</span>
+          <span class="old-price" data-price="{{ produit.price }}" data-currency="{{ produit.currency }}">{{ produit.old_price }} {{ produit.currency }}</span>
         {% endif %}
       </div>
       <div class="product-stock">
