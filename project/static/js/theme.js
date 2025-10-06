@@ -862,7 +862,7 @@ window.initProductPage = function () {
   wrap.innerHTML = `
     <button id="localeSwitchBtn" class="locale-switch" aria-haspopup="listbox" aria-expanded="false" title="Choisir un pays">
       <img id="localeFlagImg" class="flag" alt="flag" />
-      <span id="localeLang" class="locale-code">FR</span>
+      <span id="localeCur" class="locale-code">XOF</span>
     </button>
     <div id="localePanel" class="locale-panel" role="listbox" aria-label="Choisir un pays">
       <div class="locale-search">
@@ -882,7 +882,7 @@ window.initProductPage = function () {
   const list = document.getElementById('countryList');
   const search = document.getElementById('localeSearch');
   const flagImg = document.getElementById('localeFlagImg');
-  const langEl = document.getElementById('localeLang'); // AJOUT
+  const langEl = document.getElementById('localeCur'); // AJOUT
 
 
   let ALL_LOCALES = [];
@@ -967,18 +967,19 @@ window.initProductPage = function () {
     document.documentElement.lang = sel.lang || 'fr';
   }
 
-  function applySelection(sel, persist=false) {
-    CURRENT = sel;
-    setFlag(sel.country);
-    if (langEl) langEl.textContent = String(sel.lang || 'fr').toUpperCase(); // AJOUT: langue à côté du drapeau
-    annotateLikelyPriceSpans();
-    if (RATES_XOF) {
-      convertDisplayedPrices(sel.currency);
-      requestAnimationFrame(() => convertDisplayedPrices(sel.currency));
-    }
-    if (persist) persistSelection(sel);
-  }
+ function applySelection(sel, persist=false) {
+  CURRENT = sel;
+  setFlag(sel.country);
+  // Au repli, afficher la devise (ex: EUR, USD, XOF) au lieu de la langue
+  if (curEl) curEl.textContent = String(sel.currency || 'XOF').toUpperCase();
 
+  annotateLikelyPriceSpans?.();
+  if (typeof RATES_XOF !== 'undefined' && RATES_XOF) {
+    convertDisplayedPrices?.(sel.currency);
+    requestAnimationFrame(() => convertDisplayedPrices?.(sel.currency));
+  }
+  if (persist) persistSelection(sel);
+}
   async function selectCountry(sel) {
     if (!RATES_XOF) {
       // si pas de taux en mémoire, tente le cache local avant le réseau
@@ -1050,6 +1051,3 @@ document.addEventListener('DOMContentLoaded', () => {
     window.initCategoryFilter();
     window.initProductPage();
 });
-
-
- 
