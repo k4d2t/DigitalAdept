@@ -2754,10 +2754,12 @@ display: none;
   display: inline-block;
 }
 .locale-switch {
+  font-size: 0.98rem;
+  min-height: 40px;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
+  gap: 10px;
+  padding: 8px 12px;
   border-radius: 10px;
   background: var(--nav-bg-glass);
   border: 1.4px solid #4fc3f744;
@@ -2766,9 +2768,18 @@ display: none;
   cursor: pointer;
   min-width: 44px;
 }
+
+.locale-switch .locale-code {
+  font-weight: 800;
+  font-size: 0.9rem;
+  color: var(--contact-text, var(--text));
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
 .locale-switch .flag {
-  width: 22px;
-  height: 22px;
+  width: 25px;
+  height: 25px;
   border-radius: 50%;
   display: inline-block;
   box-shadow: 0 0 6px #0002;
@@ -2873,6 +2884,10 @@ display: none;
     right: 8px; left: 8px; 
     max-width: none; 
     width: calc(100vw - 16px);
+    left: auto !important;          /* centre horizontalement */
+    right: auto !important;
+    transform: translateX(-50%);
+    width: min(96vw, 420px);
   }
-  .locale-switch { padding: 6px 8px; }
+  .locale-switch { padding: 7px 10px; }
 }
