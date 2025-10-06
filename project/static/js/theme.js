@@ -617,7 +617,9 @@ window.initProductPage = function () {
                              cart: cart,
                              email: email,
                              nom_client: nom_client,
-                             whatsapp: whatsapp
+                             whatsapp: whatsapp,
+                             currency: selectedCurrency  // AJOUT
+
                 };
 
                 // On sauvegarde d'abord le panier abandonné
@@ -652,7 +654,9 @@ window.initProductPage = function () {
                           orderId: `cart_${prepareData.cart_id}` // Lier le paiement à notre panier
                       }],
                       return_url: window.location.origin + "/callback",
-                      webhook_url: window.location.origin + "/webhook"
+                      webhook_url: window.location.origin + "/webhook",
+                      currency: selectedCurrency  // AJOUT
+
                     };
 
                     // Étape 3 : Envoyer les données à notre route /payer qui relaiera à MoneyFusion
@@ -985,7 +989,20 @@ document.addEventListener('DOMContentLoaded', () => {
     const list = document.getElementById('countryList');
     const search = document.getElementById('localeSearch');
     const flagImg = document.getElementById('localeFlagImg');
-    const curEl = document.getElementById('localeCur'); // ** FIX: La bonne variable **
+    let curEl = document.getElementById('localeCur') || document.getElementById('localeLang');
+    if (!curEl) {
+      // Si le minifié n’injecte pas le span, on l’ajoute nous-mêmes
+      curEl = document.createElement('span');
+      curEl.id = 'localeCur';
+      curEl.className = 'locale-code';
+      curEl.textContent = 'XOF';
+      const btnInnerFlag = document.getElementById('localeFlagImg');
+      if (btnInnerFlag && btnInnerFlag.parentNode) {
+        btnInnerFlag.parentNode.insertBefore(curEl, btnInnerFlag.nextSibling);
+      } else if (btn) {
+        btn.appendChild(curEl);
+      }
+    }
 
     let ALL_LOCALES = [];
 
@@ -1060,6 +1077,10 @@ document.addEventListener('DOMContentLoaded', () => {
         chosen = { country:'ci', currency:'XOF', lang:'fr' };
       }
       if (!RATES_XOF) await loadRates(); else loadRates();
+    // Dans (async function initLocale() { ... })
+      if (chosen && curEl) {
+        curEl.textContent = String(chosen.currency || 'XOF').toUpperCase();
+      }
       applySelection(chosen, true);
     })();
 })();
