@@ -1053,7 +1053,6 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!RATES_XOF) await loadRates(); else loadRates();
       applySelection(chosen, true);
     })();
-  });
 })();
 
 // --- Initialisation globale ---
