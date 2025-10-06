@@ -610,6 +610,12 @@ window.initProductPage = function () {
 
         // FONCTION A UTILISER POUR TOUT PAIEMENT (panier ou achat direct)
         function redirectToPayment(amount, cart) {
+            const selectedCurrency = (() => {
+              try {
+                const obj = JSON.parse(localStorage.getItem('da_locale') || '{}');
+                return (obj.currency || 'XOF').toUpperCase();
+              } catch { return 'XOF'; }
+            })();
             PaymentInfoModal(({ nom_client, email, whatsapp }) => {
                 // Étape 1 : Préparer les données pour notre propre backend (panier abandonné)
                 const checkoutData = {
@@ -991,12 +997,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const flagImg = document.getElementById('localeFlagImg');
     let curEl = document.getElementById('localeCur') || document.getElementById('localeLang');
     if (!curEl) {
-      // Si le minifié n’injecte pas le span, on l’ajoute nous-mêmes
       curEl = document.createElement('span');
       curEl.id = 'localeCur';
       curEl.className = 'locale-code';
       curEl.textContent = 'XOF';
       const btnInnerFlag = document.getElementById('localeFlagImg');
+      const btn = document.getElementById('localeSwitchBtn');
       if (btnInnerFlag && btnInnerFlag.parentNode) {
         btnInnerFlag.parentNode.insertBefore(curEl, btnInnerFlag.nextSibling);
       } else if (btn) {
@@ -1041,7 +1047,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     function applySelection(sel, persist=false) {
       setFlag(sel.country);
-      if (curEl) curEl.textContent = String(sel.currency || 'XOF').toUpperCase(); // ** FIX: Met à jour la devise sur le bouton **
+      if (curEl) curEl.textContent = String(sel.currency || 'XOF').toUpperCase();
       annotateLikelyPriceSpans();
       if (RATES_XOF) {
         convertDisplayedPrices(sel.currency);
