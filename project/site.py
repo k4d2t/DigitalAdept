@@ -117,6 +117,92 @@ db.init_app(app)
 LOGS_FILE = "data/logs.json"
 COMMENTS_FILE = "data/comments.json"
 
+# --- Locale: mapping pays -> devise/lang (subset de pays/monnaies principales) ---
+LOCALE_MAP = {
+    # code pays: {name, flag (emoji/simple), currency, lang}
+    "ci": {"name": "Côte d'Ivoire", "flag": "🇨🇮", "currency": "XOF", "lang": "fr"},
+    "sn": {"name": "Sénégal", "flag": "🇸🇳", "currency": "XOF", "lang": "fr"},
+    "fr": {"name": "France", "flag": "🇫🇷", "currency": "EUR", "lang": "fr"},
+    "us": {"name": "United States", "flag": "🇺🇸", "currency": "USD", "lang": "en"},
+    "gb": {"name": "United Kingdom", "flag": "🇬🇧", "currency": "GBP", "lang": "en"},
+    "ae": {"name": "United Arab Emirates", "flag": "🇦🇪", "currency": "AED", "lang": "ar"},
+    "ru": {"name": "Russia", "flag": "🇷🇺", "currency": "RUB", "lang": "ru"},
+    "cn": {"name": "China", "flag": "🇨🇳", "currency": "CNY", "lang": "zh"},
+    "jp": {"name": "Japan", "flag": "🇯🇵", "currency": "JPY", "lang": "ja"},
+    "de": {"name": "Deutschland", "flag": "🇩🇪", "currency": "EUR", "lang": "de"},
+    "ca": {"name": "Canada", "flag": "🇨🇦", "currency": "USD", "lang": "en"},  # simple
+}
+
+SUPPORTED_CURRENCIES = ["XOF", "USD", "EUR", "GBP", "AED", "RUB", "CNY", "JPY"]
+
+# Cache 6h des taux (base = XOF pour simplifier conversions vers XOF)
+@cache.cached(timeout=21600, key_prefix="fx_rates_xof")
+def get_fx_rates_base_xof():
+    try:
+        r = requests.get("https://api.exchangerate.host/latest", params={
+            "base": "XOF",
+            "symbols": ",".join(SUPPORTED_CURRENCIES),
+            "places": 6
+        }, timeout=6)
+        r.raise_for_status()
+        data = r.json()
+        rates = data.get("rates") or {}
+        rates["XOF"] = 1.0
+        return rates
+    except Exception as e:
+        logging.warning(f"FX rates fallback: {e}")
+        # Fallback approximatif (à mettre à jour si besoin)
+        return {"XOF":1.0, "USD":0.0017, "EUR":0.0015, "GBP":0.0013, "AED":0.0063, "RUB":0.16, "CNY":0.012, "JPY":0.26}
+
+def convert_amount(amount, from_cur, to_cur, rates_xof):
+    if from_cur == to_cur:
+        return float(amount)
+    # Convertit via base XOF: from -> XOF -> to
+    try:
+        # from -> XOF
+        if from_cur != "XOF":
+            inv = rates_xof.get(from_cur, 0)
+            if not inv:
+                return float(amount)
+            amount_in_xof = float(amount) / inv
+        else:
+            amount_in_xof = float(amount)
+        # XOF -> to
+        rate_to = rates_xof.get(to_cur, 0)
+        if not rate_to:
+            return float(amount_in_xof)
+        return float(amount_in_xof * rate_to)
+    except Exception:
+        return float(amount)
+
+@app.route('/api/locale', methods=['GET', 'POST'])
+def api_locale():
+    if request.method == 'POST':
+        data = request.get_json(silent=True) or {}
+        code = (data.get('country') or '').lower()
+        entry = LOCALE_MAP.get(code)
+        if not entry:
+            return jsonify({"status":"error","message":"Pays non supporté"}), 400
+        session['country'] = code
+        session['currency'] = entry['currency']
+        session['lang'] = entry['lang']
+        return jsonify({"status":"success","country":code,"currency":entry['currency'],"lang":entry['lang']}), 200
+    # GET
+    code = (session.get('country') or '').lower()
+    entry = LOCALE_MAP.get(code) or LOCALE_MAP.get('ci')  # défaut XOF/fr
+    return jsonify({
+        "status":"success",
+        "country": code or 'ci',
+        "currency": entry['currency'],
+        "lang": entry['lang'],
+        "flag": entry['flag'],
+        "name": entry['name']
+    }), 200
+
+@app.route('/api/fx-rates', methods=['GET'])
+def api_fx_rates():
+    return jsonify({"status":"success","base":"XOF","rates": get_fx_rates_base_xof()}), 200
+
 def log_action(action, details=None):
     """Ajoute une action au journal des activités en incluant l'utilisateur connecté."""
     user = session.get("username", "anonyme")  # Récupère l'utilisateur connecté ou "anonyme"
