@@ -872,13 +872,13 @@ document.addEventListener('DOMContentLoaded', () => {
       return true;
     }
     function annotateLikelyPriceSpans() {
-      const containers = document.querySelectorAll('.product-bottom, .product-price-detailed, .product-info, .products-list, .featured-list');
-      containers.forEach(c => {
-        c.querySelectorAll('span').forEach(sp => {
-          if (sp.children && sp.children.length > 0) return;
-          const txt = sp.textContent || '';
-          if (/\d/.test(txt)) ensureDatasetForPrice(sp);
-        });
+      const nodes = document.querySelectorAll(
+        '.product-price, .product-old-price, .current-price, .old-price, [data-price]'
+      );
+      nodes.forEach(el => {
+        // Ignore tout ce qui est un badge ou dans le conteneur de badges
+        if (el.classList.contains('product-badge') || el.closest('.product-badges-container')) return;
+        ensureDatasetForPrice(el);
       });
     }
     function convertAmountViaXOF(amount, fromCur, toCur) {
@@ -895,11 +895,21 @@ document.addEventListener('DOMContentLoaded', () => {
       return `${Number(amount).toLocaleString('fr-FR', {maximumFractionDigits:2})} ${SYMBOL[currency] || currency}`;
     }
     function convertDisplayedPrices(targetCurrency) {
-      const dataNodes = Array.from(document.querySelectorAll('[data-price][data-currency]'));
-      const classNodes = Array.from(document.querySelectorAll('.product-price, .product-old-price, .current-price, .old-price'))
-        .filter(el => el.hasAttribute('data-price') || !el.children || el.children.length === 0);
+      // Inclure tous les éléments qui portent data-price, même sans data-currency
+      const dataNodes = Array.from(document.querySelectorAll('[data-price]'))
+        .filter(el => !el.classList.contains('product-badge') && !el.closest('.product-badges-container'));
+    
+      const classNodes = Array.from(
+        document.querySelectorAll('.product-price, .product-old-price, .current-price, .old-price')
+      ).filter(el => 
+        !el.classList.contains('product-badge') &&
+        !el.closest('.product-badges-container') &&
+        (el.hasAttribute('data-price') || !el.children || el.children.length === 0)
+      );
+    
       const seen = new Set(); const nodes = [];
       [...dataNodes, ...classNodes].forEach(el => { if (!seen.has(el)) { seen.add(el); nodes.push(el); } });
+    
       nodes.forEach(el => {
         if (!ensureDatasetForPrice(el)) return;
         const base = parseFloat(el.dataset.basePrice);
@@ -909,7 +919,6 @@ document.addEventListener('DOMContentLoaded', () => {
         el.setAttribute('data-currency', targetCurrency);
       });
     }
-
     // Fonctions pour les pays
     function pickSupportedCurrency(cc, countryCurrency, region) {
       const cur = String(countryCurrency || '').toUpperCase();
