@@ -2766,19 +2766,19 @@ display: none;
   box-shadow: var(--neon);
   color: var(--text);
   cursor: pointer;
-  min-width: 44px;
+  min-width: 54px;
 }
 
 .locale-switch .locale-code {
   font-weight: 800;
   font-size: 0.9rem;
-  color: var(--contact-text, var(--text));
+  color: var(--text-invert);
   text-transform: uppercase;
   letter-spacing: 0.02em;
 }
 
 .locale-switch .flag {
-  width: 25px;
+  width: 28px;
   height: 25px;
   border-radius: 50%;
   display: inline-block;
@@ -2879,7 +2879,7 @@ display: none;
 .country-item .label .meta { font-size: .82rem; opacity: .7; }
 
 /* Compact sur mobile: panneau plein-écran horizontalement, sans débordement */
-@media (max-width: 600px) {
+@media (max-width: 700px) {
   .locale-panel { 
     right: 8px; left: 8px; 
     max-width: none; 
