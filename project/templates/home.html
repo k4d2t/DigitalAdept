@@ -63,10 +63,11 @@
         <p class="product-desc">
           {{ produit.short_description or produit.description|striptags|truncate(90) }}
         </p>
-        <div class="product-price{% if produit.old_price %} promo{% endif %}" style="margin: 1em 0 0.5em 0;">
-          {{ produit.price }} {{ produit.currency }}
+          <span data-price="{{ produit.price }}" data-currency="{{ produit.currency }}">
+            {{ produit.price }} {{ produit.currency }}
+          </span>
           {% if produit.old_price %}
-            <span class="product-old-price">{{ produit.old_price }} {{ produit.currency }}</span>
+            <span class="product-old-price" data-price="{{ produit.price }}" data-currency="{{ produit.currency }}">{{ produit.old_price }} {{ produit.currency }}</span>
           {% endif %}
       </div>
       </div>
