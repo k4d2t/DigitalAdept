@@ -91,9 +91,15 @@ def log_time(response):
 # --- Headers communs ---
 @app.after_request
 def add_common_headers(response):
-    # Pour toutes les réponses API, ajoute un cache HTTP
+    # Pour toutes les réponses API, ajoute un cache HTTP (sauf /api/locale)
     if request.path.startswith("/api/"):
-        response.headers["Cache-Control"] = "public, max-age=60"
+        if request.path == "/api/locale":
+            # Toujours frais, pour refléter la session courante immédiatement
+            response.headers["Cache-Control"] = "no-store, must-revalidate"
+            # Les proxies/balancers doivent varier selon le cookie de session
+            response.headers["Vary"] = (response.headers.get("Vary", "") + ", Cookie").strip(", ")
+        else:
+            response.headers["Cache-Control"] = "public, max-age=60"
     # Headers sécurité et SEO-friendly
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "DENY"
