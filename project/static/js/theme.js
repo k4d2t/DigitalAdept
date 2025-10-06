@@ -765,7 +765,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 
-// === Locale Switcher (TOUS pays + auto-détection + conversion prix, avec drapeaux réels) ===
+// === Locale Switcher (TOUS pays + auto-détection + conversion prix, avec drapeaux via jsDelivr) ===
 document.addEventListener('DOMContentLoaded', () => {
   // Devises supportées et symboles
   const SUPPORTED = ['XOF','USD','EUR','GBP','AED','RUB','CNY','JPY'];
@@ -773,8 +773,26 @@ document.addEventListener('DOMContentLoaded', () => {
   const XOF_ZONE = new Set(['CI','SN','BJ','BF','TG','ML','NE','GW']); // UEMOA
   let RATES_XOF = null;
 
-  // URL drapeau (PNG léger 20px pour vitesse)
-  const flagUrl = (cc) => `https://flagcdn.com/w20/${(cc||'').toLowerCase()}.png`;
+  // Pré-connexion aux CDNs pour accélérer
+  (function preconnectCDNs() {
+    const head = document.head || document.getElementsByTagName('head')[0];
+    const links = [
+      { rel: 'preconnect', href: 'https://cdn.jsdelivr.net' },
+      { rel: 'dns-prefetch', href: 'https://cdn.jsdelivr.net' },
+      { rel: 'preconnect', href: 'https://restcountries.com' },
+      { rel: 'dns-prefetch', href: 'https://restcountries.com' },
+      { rel: 'preconnect', href: 'https://ipapi.co' },
+      { rel: 'dns-prefetch', href: 'https://ipapi.co' },
+    ];
+    links.forEach(({rel, href}) => {
+      const el = document.createElement('link');
+      el.rel = rel; el.href = href;
+      head.appendChild(el);
+    });
+  })();
+
+  // Drapeaux via flag-icons (ultra-rapide)
+  const flagUrl = (cc) => `https://cdn.jsdelivr.net/gh/lipis/flag-icons@6.6.6/flags/1x1/${(cc||'').toLowerCase()}.svg`;
 
   async function loadRates() {
     try {
@@ -788,7 +806,7 @@ document.addEventListener('DOMContentLoaded', () => {
     return `${Number(amount).toLocaleString('fr-FR', {maximumFractionDigits:2})} ${SYMBOL[currency] || currency}`;
   }
 
-  // Parseurs robustes si les data-attributes manquent
+  // Parseurs robustes si data-attributes manquent
   const SYMBOL_TO_CUR = {'$':'USD','€':'EUR','£':'GBP','¥':'CNY','₽':'RUB','د.إ':'AED'};
   function parseNumberFromText(txt) {
     if (!txt) return NaN;
@@ -807,11 +825,7 @@ document.addEventListener('DOMContentLoaded', () => {
     return null;
   }
   function ensureDatasetForPrice(el) {
-    // Mémorise une base immuable pour éviter les conversions cumulatives
     if (!el.dataset.basePrice) {
-      // Ignorer les conteneurs qui ont des enfants (ex: div.product-price contenant d’autres éléments)
-      if (el.children && el.children.length > 0) return false;
-
       // Priorité aux data-price/data-currency s'ils existent
       let basePrice = parseFloat(el.getAttribute('data-price') || 'NaN');
       let baseCur = (el.getAttribute('data-currency') || '').toUpperCase();
@@ -826,14 +840,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
       el.dataset.basePrice = String(basePrice);
       el.dataset.baseCurrency = baseCur;
-      // Aligne aussi les attributs visibles pour les prochains scans
       if (!el.hasAttribute('data-price')) el.setAttribute('data-price', String(basePrice));
       if (!el.hasAttribute('data-currency')) el.setAttribute('data-currency', baseCur);
     }
     return true;
   }
 
-  // Conversions via base XOF (RATES_XOF[CUR] = 1 XOF en CUR)
+  // Conversion via base XOF (RATES_XOF[CUR] = 1 XOF en CUR)
   function convertAmountViaXOF(amount, fromCur, toCur) {
     if (!RATES_XOF || !isFinite(amount)) return amount;
     if (fromCur === toCur) return amount;
@@ -847,14 +860,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   }
 
-  // Convertit tous les montants affichés (cible uniquement les nœuds texte/feuilles)
+  // Convertit tous les montants affichés (ancre: spans de prix)
   function convertDisplayedPrices(targetCurrency) {
     // 1) éléments explicitement annotés
     const dataNodes = Array.from(document.querySelectorAll('[data-price][data-currency]'));
-    // 2) fallback: classes, mais uniquement les éléments sans enfants
-    const classNodes = Array.from(document.querySelectorAll('.product-price, .product-old-price, .current-price, .old-price'))
-      .filter(el => !el.children || el.children.length === 0);
-
+    // 2) fallback: classes usuelles (spans sans enfants)
+    const classNodes = Array.from(document.querySelectorAll('span.product-price, span.product-old-price, span.current-price, span.old-price'));
     const seen = new Set();
     const nodes = [];
     [...dataNodes, ...classNodes].forEach(el => { if (!seen.has(el)) { seen.add(el); nodes.push(el); } });
@@ -865,17 +876,16 @@ document.addEventListener('DOMContentLoaded', () => {
       const from = (el.dataset.baseCurrency || 'XOF').toUpperCase();
       const conv = convertAmountViaXOF(base, from, targetCurrency);
       el.textContent = formatAmount(conv, targetCurrency);
-      // Garder data-currency courant à jour
       el.setAttribute('data-currency', targetCurrency);
     });
   }
 
   // Choix devise supportée par pays
   function pickSupportedCurrency(cc, countryCurrency, region) {
-    const cur = (countryCurrency || '').toUpperCase();
+    const cur = String(countryCurrency || '').toUpperCase();
     if (SUPPORTED.includes(cur)) return cur;
-    if (XOF_ZONE.has((cc || '').toUpperCase())) return 'XOF';
-    const regionLC = (region || '').toLowerCase();
+    const regionLC = String(region || '').toLowerCase();
+    if (XOF_ZONE.has(String(cc || '').toUpperCase())) return 'XOF';
     if (regionLC === 'europe') return 'EUR';
     if (regionLC.includes('america')) return 'USD';
     if (['asia','africa'].includes(regionLC) && cur.startsWith('A')) return 'AED';
@@ -890,13 +900,13 @@ document.addEventListener('DOMContentLoaded', () => {
       const r = await fetch(url, { cache: 'force-cache' });
       const arr = await r.json();
       const list = arr.map(it => {
-        const code = (it.cca2 || '').toLowerCase();
-        const name = it.name?.common || code.toUpperCase();
+        const code = String(it.cca2 || '').toLowerCase();
+        const name = (it.name && it.name.common) ? it.name.common : code.toUpperCase();
         const region = it.region || '';
         const cur = it.currencies ? Object.keys(it.currencies)[0] : '';
-        const lang = it.languages ? Object.keys(it.languages)[0] : 'en';
+        const langCode = it.languages ? Object.keys(it.languages)[0] : 'en';
         const currency = pickSupportedCurrency(code, cur, region);
-        return { code, name, currency, lang, region };
+        return { code, name, currency, lang: langCode || 'en', region };
       }).filter(x => x.code);
       list.sort((a,b) => a.name.localeCompare(b.name, 'fr'));
       return list;
@@ -921,7 +931,7 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const r = await fetch('https://ipapi.co/json/', { cache: 'no-store' });
       const j = await r.json();
-      return (j && j.country) ? j.country.toLowerCase() : null;
+      return (j && j.country) ? String(j.country).toLowerCase() : null;
     } catch { return null; }
   }
 
@@ -956,33 +966,44 @@ document.addEventListener('DOMContentLoaded', () => {
   let ALL_LOCALES = []; // {code, name, currency, lang, region}
   let CURRENT = { country:'ci', currency:'XOF', lang:'fr' };
 
+  function prefetchFlag(code) {
+    if (!code) return;
+    const img = new Image();
+    img.decoding = 'async';
+    img.src = flagUrl(code);
+  }
+
   function setFlag(code) {
-    // Garder robuste si code undefined
     if (!code) {
       flagEl.style.backgroundImage = '';
       flagEl.removeAttribute('title');
       return;
     }
-    flagEl.style.backgroundImage = `url('${flagUrl(code)}')`;
-    flagEl.textContent = ''; // pas de fallback texte
+    const url = flagUrl(code);
+    flagEl.style.backgroundImage = `url('${url}')`;
+    flagEl.textContent = ''; // aucune abréviation visible
     try { flagEl.setAttribute('title', String(code).toUpperCase()); } catch {}
+    prefetchFlag(code);
   }
 
   function mountList(filterText) {
-    const q = (filterText || '').trim().toLowerCase();
+    const q = String(filterText || '').trim().toLowerCase();
     list.innerHTML = '';
     ALL_LOCALES
-      .filter(it => !q || it.name.toLowerCase().includes(q) || it.currency.toLowerCase().includes(q) || it.code.includes(q))
+      .filter(it => !q || it.name.toLowerCase().includes(q) || String(it.currency||'').toLowerCase().includes(q) || it.code.includes(q))
       .forEach(it => {
         const item = document.createElement('div');
         item.className = 'country-item';
         item.setAttribute('role', 'option');
         item.dataset.country = it.code;
+        const cc = it.code || 'ci';
+        const curr = String(it.currency || 'USD').toUpperCase();
+        const lang = String(it.lang || 'en').toUpperCase();
         item.innerHTML = `
-          <span class="flag" style="background-image:url('${flagUrl(it.code)}')"></span>
+          <span class="flag" style="background-image:url('${flagUrl(cc)}')"></span>
           <div class="label">
             <span class="name">${it.name}</span>
-            <span class="meta">${it.currency.toUpperCase()} • ${it.lang.toUpperCase()}</span>
+            <span class="meta">${curr} • ${lang}</span>
           </div>
         `;
         item.addEventListener('click', () => selectCountry(it));
@@ -1027,7 +1048,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   async function selectCountry(sel) {
-    // Si les taux ne sont pas encore chargés, on les charge puis applique
+    // Charge les taux au besoin, puis applique et convertit
     if (!RATES_XOF) await loadRates();
     applySelection(sel);
     persistSelection(sel);
@@ -1042,13 +1063,13 @@ document.addEventListener('DOMContentLoaded', () => {
       const r = await fetch('/api/locale', { credentials:'same-origin' });
       const j = await r.json();
       if (r.ok && j.status === 'success') {
-        const code = (j.country || 'ci').toLowerCase();
+        const code = String(j.country || 'ci').toLowerCase();
         const found = ALL_LOCALES.find(x => x.code === code);
         if (found) chosen = { country: found.code, currency: found.currency, lang: found.lang };
       }
     } catch {}
     if (!chosen) {
-      const stored = (localStorage.getItem('da_country') || '').toLowerCase();
+      const stored = String(localStorage.getItem('da_country') || '').toLowerCase();
       if (stored) {
         const found = ALL_LOCALES.find(x => x.code === stored);
         if (found) chosen = { country: found.code, currency: found.currency, lang: found.lang };
