@@ -2770,8 +2770,8 @@ display: none;
   border-radius: 50%;
   display: inline-block;
   box-shadow: 0 0 6px #0002;
-  background-size: cover;
-  background-position: center;
+  object-fit: cover;       /* pour <img> */
+  background: none;        /* on n'utilise plus de background-image ici */
 }
 .locale-panel {
   position: absolute;
@@ -2789,6 +2789,7 @@ display: none;
   z-index: 10001;
   display: none;
   overscroll-behavior: contain; /* évite le scroll de la page derrière */
+  overflow: hidden;
 }
 .locale-panel.open { display: block; animation: slideIn .18s ease-out; }
 .locale-search {
@@ -2851,7 +2852,12 @@ display: none;
 }
 .country-item:hover { background: #4fc3f70d; }
 .country-item .flag {
-  width: 20px; height: 20px; border-radius: 50%; box-shadow: 0 0 4px #0002; background-size: cover; background-position: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  box-shadow: 0 0 4px #0002;
+  object-fit: cover;
+  background: none;
 }
 .country-item .label {
   display: flex; flex-direction: column; line-height: 1.2;
