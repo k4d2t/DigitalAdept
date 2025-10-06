@@ -2779,6 +2779,7 @@ display: none;
   top: 110%;
   min-width: 260px;
   max-width: 320px;
+  max-height: 70vh;           /* évite débordement écran */
   background: var(--contact-card-bg, #fff);
   color: var(--contact-text, #142439);
   border: 1px solid var(--contact-border, #e4e8f0);
@@ -2787,6 +2788,7 @@ display: none;
   padding: 10px;
   z-index: 10001;
   display: none;
+  overscroll-behavior: contain; /* évite le scroll de la page derrière */
 }
 .locale-panel.open { display: block; animation: slideIn .18s ease-out; }
 .locale-search {
@@ -2808,13 +2810,36 @@ display: none;
   font: 500 0.95rem 'Google Sans','Roboto',Arial,sans-serif;
 }
 .country-list {
-  max-height: 300px;
+  max-height: 56vh;           /* tient dans la modale */
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
+
+/* Scrollbar custom (Chrome/Edge/Safari) */
+.country-list::-webkit-scrollbar {
+  width: 10px;
+}
+.country-list::-webkit-scrollbar-track {
+  background: #f2f4fa;
+  border-radius: 10px;
+}
+.country-list::-webkit-scrollbar-thumb {
+  background: #cdd1e6;
+  border-radius: 10px;
+  border: 2px solid #f2f4fa;
+}
+.country-list::-webkit-scrollbar-thumb:hover {
+  background: #b6bdd6;
+}
+/* Scrollbar (Firefox) */
+.country-list {
+  scrollbar-width: thin;
+  scrollbar-color: #cdd1e6 #f2f4fa;
+}
+
 .country-item {
   display: flex;
   align-items: center;
@@ -2834,8 +2859,12 @@ display: none;
 .country-item .label .name { font-weight: 700; font-size: .95rem; }
 .country-item .label .meta { font-size: .82rem; opacity: .7; }
 
-/* Compact sur mobile */
+/* Compact sur mobile: panneau plein-écran horizontalement, sans débordement */
 @media (max-width: 600px) {
-  .locale-panel { right: 6px; left: 6px; max-width: none;}
+  .locale-panel { 
+    right: 8px; left: 8px; 
+    max-width: none; 
+    width: calc(100vw - 16px);
+  }
   .locale-switch { padding: 6px 8px; }
 }
