@@ -1005,7 +1005,7 @@ def prepare_checkout():
         customer_name=nom_client,
         cart_content=cart_items,  # laissé tel quel (prix d’origine)
         total_price=total_price,   # TOUJOURS XOF désormais
-        whatsapp_number=whatsapp
+        whatsapp_number=whatsapp,
         currency=sel_currency
     )
     db.session.add(abandoned_cart)
