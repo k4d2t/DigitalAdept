@@ -1006,6 +1006,7 @@ def prepare_checkout():
         cart_content=cart_items,  # laissé tel quel (prix d’origine)
         total_price=total_price,   # TOUJOURS XOF désormais
         whatsapp_number=whatsapp
+        currency=sel_currency
     )
     db.session.add(abandoned_cart)
     db.session.commit()
@@ -2365,29 +2366,32 @@ def remind_abandoned_cart(cart_id):
     if not cart or cart.status == 'completed':
         return jsonify({"status": "error", "message": "Panier introuvable ou déjà complété"}), 404
 
-    # Logique pour une seule relance manuelle
-    cart_items_html = "".join([f"<li><b>{item['name']}</b> ({item['price']} XOF)</li>" for item in cart.cart_content])
+    client_currency = getattr(cart, 'currency', None) or 'XOF'
+
+    cart_items_html = "".join([
+        f"<li><b>{item.get('name')}</b> ({item.get('price')} {client_currency})</li>"
+        for item in cart.cart_content
+    ])
+
     body_html = f"""
     <html><body>
         <h1>Votre panier vous attend !</h1>
         <p>Bonjour {cart.customer_name or 'cher client'},</p>
-        <p>Nous avons remarqué que vous avez laissé ces articles dans votre panier :</p>
+        <p>Vous avez laissé ces articles dans votre panier :</p>
         <ul>{cart_items_html}</ul>
-        <p><b>Total : {cart.total_price} XOF</b></p>
+        <p><b>Total (base XOF pour traitement): {round(float(cart.total_price or 0), 2)} XOF</b></p>
         <p><a href="{url_for('produits', _external=True)}">Finaliser ma commande</a></p>
     </body></html>
     """
 
     email_sent = send_email(cart.email, "Vous avez oublié quelque chose...", body_html)
-
     if email_sent:
         cart.relaunch_count += 1
         cart.last_relaunch_at = datetime.now(timezone.utc)
         db.session.add(EmailSendLog(recipient_email=cart.email))
         db.session.commit()
         return jsonify({"status": "success", "message": f"Email de relance envoyé (Relance #{cart.relaunch_count})."})
-    else:
-        return jsonify({"status": "error", "message": "Erreur lors de l'envoi de l'e-mail."}), 500
+    return jsonify({"status": "error", "message": "Erreur lors de l'envoi de l'e-mail."}), 500
         
 
 DAILY_EMAIL_LIMIT = 300
