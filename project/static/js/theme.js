@@ -882,12 +882,21 @@ document.addEventListener('DOMContentLoaded', () => {
       return true;
     }
     function annotateLikelyPriceSpans() {
-      const nodes = document.querySelectorAll(
+      const candidates = document.querySelectorAll(
         '.product-price, .product-old-price, .current-price, .old-price, [data-price]'
       );
-      nodes.forEach(el => {
-        // Ignore tout ce qui est un badge ou dans le conteneur de badges
-        if (el.classList.contains('product-badge') || el.closest('.product-badges-container')) return;
+    
+      candidates.forEach(el => {
+        // exclusions: badges, boutons, actions, éléments marqués noconvert
+        if (
+          el.hasAttribute('data-noconvert') ||
+          el.classList.contains('product-badge') ||
+          el.closest('.product-badges-container') ||
+          el.closest('.product-buttons') ||
+          el.matches('button, .btn, .btn-buy, .add-to-cart, .product-action, [role="button"]')
+        ) {
+          return;
+        }
         ensureDatasetForPrice(el);
       });
     }
@@ -905,26 +914,35 @@ document.addEventListener('DOMContentLoaded', () => {
       return `${Number(amount).toLocaleString('fr-FR', {maximumFractionDigits:2})} ${SYMBOL[currency] || currency}`;
     }
     function convertDisplayedPrices(targetCurrency) {
-      // Inclure tous les éléments qui portent data-price, même sans data-currency
-      const dataNodes = Array.from(document.querySelectorAll('[data-price]'))
-        .filter(el => !el.classList.contains('product-badge') && !el.closest('.product-badges-container'));
+      // Si pas de taux, ne modifie rien (évite "5000 EUR" non converti)
+      if (!RATES_XOF) return;
     
-      const classNodes = Array.from(
+      const fromDataAttr = Array.from(document.querySelectorAll('[data-price]')).filter(el => {
+        if (el.hasAttribute('data-noconvert')) return false;
+        if (el.classList.contains('product-badge') || el.closest('.product-badges-container')) return false;
+        if (el.closest('.product-buttons')) return false;
+        if (el.matches('button, .btn, .btn-buy, .add-to-cart, .product-action, [role="button"]')) return false;
+        return true;
+      });
+    
+      const fromClasses = Array.from(
         document.querySelectorAll('.product-price, .product-old-price, .current-price, .old-price')
-      ).filter(el => 
-        !el.classList.contains('product-badge') &&
-        !el.closest('.product-badges-container') &&
-        (el.hasAttribute('data-price') || !el.children || el.children.length === 0)
-      );
+      ).filter(el => {
+        if (el.hasAttribute('data-noconvert')) return false;
+        if (el.classList.contains('product-badge') || el.closest('.product-badges-container')) return false;
+        if (el.closest('.product-buttons')) return false;
+        if (el.matches('button, .btn, .btn-buy, .add-to-cart, .product-action, [role="button"]')) return false;
+        return (el.hasAttribute('data-price') || !el.children || el.children.length === 0);
+      });
     
       const seen = new Set(); const nodes = [];
-      [...dataNodes, ...classNodes].forEach(el => { if (!seen.has(el)) { seen.add(el); nodes.push(el); } });
+      [...fromDataAttr, ...fromClasses].forEach(el => { if (!seen.has(el)) { seen.add(el); nodes.push(el); } });
     
       nodes.forEach(el => {
         if (!ensureDatasetForPrice(el)) return;
         const base = parseFloat(el.dataset.basePrice);
-        const from = (el.dataset.baseCurrency || 'XOF').toUpperCase();
-        const conv = convertAmountViaXOF(base, from, targetCurrency);
+        const fromCur = (el.dataset.baseCurrency || 'XOF').toUpperCase();
+        const conv = convertAmountViaXOF(base, fromCur, targetCurrency);
         el.textContent = formatAmount(conv, targetCurrency);
         el.setAttribute('data-currency', targetCurrency);
       });
@@ -1067,12 +1085,14 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initialisation
     (async function initLocale() {
       annotateLikelyPriceSpans();
+    
       let chosen = loadLocale();
       if (chosen) {
         setFlag(chosen.country);
         RATES_XOF = loadRatesCache() || null;
         if (RATES_XOF) convertDisplayedPrices(chosen.currency);
       }
+    
       ALL_LOCALES = await fetchAllCountries();
       if (!chosen) {
         const geo = await geolocateCountry();
@@ -1082,11 +1102,24 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!chosen) {
         chosen = { country:'ci', currency:'XOF', lang:'fr' };
       }
-      if (!RATES_XOF) await loadRates(); else loadRates();
-    // Dans (async function initLocale() { ... })
+    
+      // Charge les taux si manquants (sinon rafraîchit en arrière-plan)
+      if (!RATES_XOF) {
+        await loadRates();
+      } else {
+        loadRates();
+      }
+    
+      // Met tout de suite le libellé devise sur le bouton
       if (chosen && curEl) {
         curEl.textContent = String(chosen.currency || 'XOF').toUpperCase();
       }
+    
+      // Sécurité: si on a maintenant des taux, passe de conversion avant applySelection
+      if (chosen && RATES_XOF) {
+        convertDisplayedPrices(chosen.currency);
+      }
+    
       applySelection(chosen, true);
     })();
 }); 
