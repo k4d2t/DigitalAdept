@@ -21,7 +21,7 @@ class User(db.Model):
 
     # --- NOUVEAU : Pourcentage de commission pour le CA ---
     revenue_share_percentage = db.Column(db.Float, nullable=False, default=0)
-    # AJOUTER cette ligne juste ici ↓
+    # Historique des retraits
     payouts = db.relationship('Payout', backref='user', lazy=True, cascade="all, delete-orphan")
 
     def __repr__(self):
@@ -129,9 +129,12 @@ class AbandonedCart(db.Model):
     total_price = db.Column(db.Float, nullable=False)
     status = db.Column(db.String(20), default='abandoned') # abandoned, completed
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
-    whatsapp_number = db.Column(db.String(20), nullable=True)
+    whatsapp_number = db.Column(db.String(32), nullable=True)  # élargi à 32
     relaunch_count = db.Column(db.Integer, default=0)
     last_relaunch_at = db.Column(db.DateTime, nullable=True)
+    # NOUVEAU: devise d’origine du client (affichage emails, analytics)
+    currency = db.Column(db.String(10), nullable=False, default='XOF')
+
     download_links = db.relationship('DownloadLink', backref='cart', lazy=True, cascade="all, delete-orphan")
 
 
