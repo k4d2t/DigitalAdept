@@ -1089,6 +1089,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       applySelection(chosen, true);
     })();
+}); 
 
 // --- Initialisation globale ---
 document.addEventListener('DOMContentLoaded', () => {
