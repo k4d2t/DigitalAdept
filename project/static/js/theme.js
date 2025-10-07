@@ -816,14 +816,6 @@ window.initProductPage = function () {
 // ===== Locale Switcher (flag + currency on button, conversion, responsive panel) =====
 // S'exécute une fois que le DOM est prêt pour éviter les erreurs
 document.addEventListener('DOMContentLoaded', () => {
-    // --- DEBUG LOGGER ---
-    const DA_LOG = (() => { try { return localStorage.getItem('da_debug_locale') === '1'; } catch { return true; } })();
-    const log = (...args) => { if (DA_LOG) console.log('[DA Locale]', ...args); };
-    const warn = (...args) => { if (DA_LOG) console.warn('[DA Locale]', ...args); };
-    const error = (...args) => { if (DA_LOG) console.error('[DA Locale]', ...args); };
-
-    log('Locale Switcher init start. DOM ready =', document.readyState);
-
     // Config
     const SUPPORTED = ['XOF','USD','EUR','GBP','AED','RUB','CNY','JPY'];
     const XOF_ZONE = new Set(['CI','SN','BJ','BF','TG','ML','NE','GW']);
@@ -849,19 +841,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     async function loadRates() {
       try {
-        log('Fetching FX rates from /api/fx-rates …');
         const r = await fetch('/api/fx-rates', { credentials:'same-origin', cache:'no-store' });
         const j = await r.json();
         if (j && j.status === 'success' && j.rates) {
           RATES_XOF = j.rates;
           saveRatesCache(RATES_XOF);
-          log('FX rates loaded. Keys=', Object.keys(RATES_XOF));
-        } else {
-          warn('FX rates response invalid:', j);
         }
-      } catch (e) {
-        error('Failed to fetch FX rates:', e);
-      }
+      } catch {}
     }
 
     // Fonctions de conversion de prix
@@ -899,7 +885,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const candidates = document.querySelectorAll(
         '.product-price, .product-old-price, .current-price, .old-price, [data-price]'
       );
-      let annotated = 0;
+    
       candidates.forEach(el => {
         // exclusions: badges, boutons, actions, éléments marqués noconvert
         if (
@@ -911,10 +897,8 @@ document.addEventListener('DOMContentLoaded', () => {
         ) {
           return;
         }
-        if (ensureDatasetForPrice(el)) annotated++;
+        ensureDatasetForPrice(el);
       });
-      log('annotateLikelyPriceSpans -> annotated nodes =', annotated);
-      return annotated;
     }
     function convertAmountViaXOF(amount, fromCur, toCur) {
       if (!RATES_XOF || !isFinite(amount)) return amount;
@@ -924,14 +908,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const inXof = rFrom ? (fromCur === 'XOF' ? amount : amount / rFrom) : amount;
         const rTo = toCur === 'XOF' ? 1 : RATES_XOF[toCur];
         return rTo ? (toCur === 'XOF' ? inXof : inXof * rTo) : inXof;
-      } catch (e) { error('convertAmountViaXOF error', e); return amount; }
+      } catch { return amount; }
     }
     function formatAmount(amount, currency) {
       return `${Number(amount).toLocaleString('fr-FR', {maximumFractionDigits:2})} ${SYMBOL[currency] || currency}`;
     }
     function convertDisplayedPrices(targetCurrency) {
-      if (!RATES_XOF) { warn('convertDisplayedPrices skipped: RATES_XOF is null'); return 0; }
-
+      // Si pas de taux, ne modifie rien (évite "5000 EUR" non converti)
+      if (!RATES_XOF) return;
+    
       const fromDataAttr = Array.from(document.querySelectorAll('[data-price]')).filter(el => {
         if (el.hasAttribute('data-noconvert')) return false;
         if (el.classList.contains('product-badge') || el.closest('.product-badges-container')) return false;
@@ -939,7 +924,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (el.matches('button, .btn, .btn-buy, .add-to-cart, .product-action, [role="button"]')) return false;
         return true;
       });
-
+    
       const fromClasses = Array.from(
         document.querySelectorAll('.product-price, .product-old-price, .current-price, .old-price')
       ).filter(el => {
@@ -949,11 +934,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (el.matches('button, .btn, .btn-buy, .add-to-cart, .product-action, [role="button"]')) return false;
         return (el.hasAttribute('data-price') || !el.children || el.children.length === 0);
       });
-
+    
       const seen = new Set(); const nodes = [];
       [...fromDataAttr, ...fromClasses].forEach(el => { if (!seen.has(el)) { seen.add(el); nodes.push(el); } });
-
-      let converted = 0;
+    
       nodes.forEach(el => {
         if (!ensureDatasetForPrice(el)) return;
         const base = parseFloat(el.dataset.basePrice);
@@ -961,10 +945,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const conv = convertAmountViaXOF(base, fromCur, targetCurrency);
         el.textContent = formatAmount(conv, targetCurrency);
         el.setAttribute('data-currency', targetCurrency);
-        converted++;
       });
-      log(`convertDisplayedPrices -> converted ${converted} node(s) to ${targetCurrency}`);
-      return converted;
     }
     // Fonctions pour les pays
     function pickSupportedCurrency(cc, countryCurrency, region) {
@@ -993,10 +974,8 @@ document.addEventListener('DOMContentLoaded', () => {
           return { code, name, currency, lang: langCode || 'en', region };
         }).filter(x => x.code);
         list.sort((a,b) => a.name.localeCompare(b.name, 'fr'));
-        log('fetchAllCountries ->', list.length, 'items');
         return list;
-      } catch (e) {
-        warn('fetchAllCountries fallback used:', e);
+      } catch {
         return [ {code:'ci', name:"Côte d'Ivoire", currency:'XOF', lang:'fr'}, {code:'sn', name:'Sénégal', currency:'XOF', lang:'fr'}, {code:'tg', name:'Togo', currency:'XOF', lang:'fr'}, {code:'fr', name:'France', currency:'EUR', lang:'fr'}, {code:'us', name:'United States', currency:'USD', lang:'en'} ];
       }
     }
@@ -1004,10 +983,8 @@ document.addEventListener('DOMContentLoaded', () => {
       try {
         const r = await fetch('https://ipapi.co/json/', { cache: 'no-store' });
         const j = await r.json();
-        const cc = (j && j.country) ? String(j.country).toLowerCase() : null;
-        log('geolocateCountry ->', cc);
-        return cc;
-      } catch (e) { warn('geolocateCountry failed', e); return null; }
+        return (j && j.country) ? String(j.country).toLowerCase() : null;
+      } catch { return null; }
     }
 
     // Création de l'interface
@@ -1030,7 +1007,6 @@ document.addEventListener('DOMContentLoaded', () => {
       const navRight = document.querySelector('.right-nav, .nav-right');
       if (navRight) navRight.appendChild(wrap);
     }
-    log('Locale switcher UI mounted');
 
     const btn = document.getElementById('localeSwitchBtn');
     const panel = document.getElementById('localePanel');
@@ -1044,11 +1020,11 @@ document.addEventListener('DOMContentLoaded', () => {
       curEl.className = 'locale-code';
       curEl.textContent = 'XOF';
       const btnInnerFlag = document.getElementById('localeFlagImg');
-      const btn2 = document.getElementById('localeSwitchBtn');
+      const btn = document.getElementById('localeSwitchBtn');
       if (btnInnerFlag && btnInnerFlag.parentNode) {
         btnInnerFlag.parentNode.insertBefore(curEl, btnInnerFlag.nextSibling);
-      } else if (btn2) {
-        btn2.appendChild(curEl);
+      } else if (btn) {
+        btn.appendChild(curEl);
       }
     }
 
@@ -1063,16 +1039,15 @@ document.addEventListener('DOMContentLoaded', () => {
     function mountList(filterText) {
       const q = String(filterText || '').trim().toLowerCase();
       list.innerHTML = '';
-      const items = ALL_LOCALES.filter(it => !q || it.name.toLowerCase().includes(q) || String(it.currency||'').toLowerCase().includes(q) || it.code.includes(q));
-      items.forEach(it => {
+      ALL_LOCALES.filter(it => !q || it.name.toLowerCase().includes(q) || String(it.currency||'').toLowerCase().includes(q) || it.code.includes(q))
+        .forEach(it => {
           const item = document.createElement('div');
           item.className = 'country-item';
           item.dataset.country = it.code;
           item.innerHTML = `<img class="flag" src="${flagUrl(it.code)}" alt="${it.code.toUpperCase()} flag" loading="lazy" /><div class="label"><span class="name">${it.name}</span><span class="meta">${String(it.currency||'').toUpperCase()} • ${String(it.lang||'').toUpperCase()}</span></div>`;
           item.addEventListener('click', () => selectCountry({ country: it.code, currency: it.currency, lang: it.lang }));
           list.appendChild(item);
-      });
-      log('mountList -> rendered', items.length, 'items (filter=', q, ')');
+        });
     }
     function openPanel() { panel.classList.add('open'); btn.setAttribute('aria-expanded','true'); search.value = ''; mountList(''); setTimeout(() => search.focus(), 10); }
     function closePanel() { panel.classList.remove('open'); btn.setAttribute('aria-expanded','false'); }
@@ -1087,27 +1062,18 @@ document.addEventListener('DOMContentLoaded', () => {
       saveLocale(sel);
       fetch('/api/locale', { method:'POST', headers:{'Content-Type':'application/json'}, credentials:'same-origin', body: JSON.stringify(sel) }).catch(()=>{});
       document.documentElement.lang = sel.lang || 'fr';
-      log('persistSelection ->', sel);
     }
     function applySelection(sel, persist=false) {
-      log('applySelection ->', sel);
       setFlag(sel.country);
       if (curEl) curEl.textContent = String(sel.currency || 'XOF').toUpperCase();
-      const annotated = annotateLikelyPriceSpans();
+      annotateLikelyPriceSpans();
       if (RATES_XOF) {
-        const converted = convertDisplayedPrices(sel.currency);
-        requestAnimationFrame(() => {
-          const converted2 = convertDisplayedPrices(sel.currency);
-          log('post-rAF convertDisplayedPrices -> +', converted2, 'node(s)');
-        });
-        log('applySelection: annotated=', annotated, 'converted=', converted);
-      } else {
-        warn('applySelection: RATES_XOF not loaded yet; conversion deferred');
+        convertDisplayedPrices(sel.currency);
+        requestAnimationFrame(() => convertDisplayedPrices(sel.currency));
       }
       if (persist) persistSelection(sel);
     }
     async function selectCountry(sel) {
-      log('selectCountry ->', sel);
       if (!RATES_XOF) {
         RATES_XOF = loadRatesCache() || null;
         if (!RATES_XOF) await loadRates();
@@ -1118,58 +1084,43 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Initialisation
     (async function initLocale() {
-      log('initLocale start');
-      const annotatedEarly = annotateLikelyPriceSpans();
-      log('initLocale: early annotated=', annotatedEarly);
-
+      annotateLikelyPriceSpans();
+    
       let chosen = loadLocale();
       if (chosen) {
-        log('initLocale: loaded from localStorage ->', chosen);
         setFlag(chosen.country);
         RATES_XOF = loadRatesCache() || null;
-        if (RATES_XOF) {
-          const conv = convertDisplayedPrices(chosen.currency);
-          log('initLocale: converted with cached rates ->', conv);
-        }
+        if (RATES_XOF) convertDisplayedPrices(chosen.currency);
       }
-
+    
       ALL_LOCALES = await fetchAllCountries();
       if (!chosen) {
         const geo = await geolocateCountry();
         const found = ALL_LOCALES.find(x => x.code === geo);
         if (found) chosen = { country: found.code, currency: found.currency, lang: found.lang };
-        log('initLocale: chosen from geolocate ->', chosen);
       }
       if (!chosen) {
         chosen = { country:'ci', currency:'XOF', lang:'fr' };
-        log('initLocale: fallback chosen ->', chosen);
       }
-
+    
+      // Charge les taux si manquants (sinon rafraîchit en arrière-plan)
       if (!RATES_XOF) {
         await loadRates();
       } else {
-        loadRates(); // refresh in background
+        loadRates();
       }
-
+    
+      // Met tout de suite le libellé devise sur le bouton
       if (chosen && curEl) {
         curEl.textContent = String(chosen.currency || 'XOF').toUpperCase();
       }
-
+    
+      // Sécurité: si on a maintenant des taux, passe de conversion avant applySelection
       if (chosen && RATES_XOF) {
-        const conv = convertDisplayedPrices(chosen.currency);
-        log('initLocale: converted with live rates ->', conv);
+        convertDisplayedPrices(chosen.currency);
       }
-
+    
       applySelection(chosen, true);
-
-      // Expose helpers for manual debug
-      window.__da_debugLocale = {
-        annotate: annotateLikelyPriceSpans,
-        convert: (cur) => convertDisplayedPrices(String(cur||'XOF').toUpperCase()),
-        getRates: () => RATES_XOF,
-        pick: selectCountry,
-      };
-      log('initLocale done. Debug helpers on window.__da_debugLocale');
     })();
 }); 
 
