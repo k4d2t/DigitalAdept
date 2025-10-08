@@ -281,13 +281,13 @@ document.addEventListener('DOMContentLoaded', function () {
     </div>
   </div>
   </div>
-  <script>
+<script>
 const ANNOUNCEMENT_API = "/api/announcements/active";
 
 // --- UTILS VIDEO ---
 function extractYouTubeID(url) {
   const regExp = /(?:youtube\.com\/.*v=|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
-  const match = url.match(regExp);
+  const match = url && url.match ? url.match(regExp) : null;
   return match ? match[1] : null;
 }
 function getVideoEmbedNeon(url) {
@@ -303,7 +303,22 @@ function getVideoEmbedNeon(url) {
   }
   return "";
 }
-// --- MODALE ---
+
+// --- PERSISTANCE “DONE” PAR VERSION (id + date) ---
+function loadAnnDone() {
+  try { return JSON.parse(localStorage.getItem('da_ann_done_v2') || "{}"); } catch(e) { return {}; }
+}
+function saveAnnDone(map) {
+  try { localStorage.setItem('da_ann_done_v2', JSON.stringify(map)); } catch(e) {}
+}
+function versionOf(ann) {
+  return `${ann.id}:${ann.date || ''}`;
+}
+
+// --- MODALE (marketing) ---
+// S'affiche sur toutes les pages tant que le CTA n'a pas été cliqué.
+// Clic CTA = marquer “done” pour la version (id+date) + ouvrir le lien s'il existe.
+// Fermeture via la croix après le timer = ne pas marquer done (elle reviendra).
 function showAnnouncementModal(content, type, video_url, btn_label, btn_url) {
   const modal = document.getElementById("site-announcement-modal");
   const msg = document.getElementById("site-announcement-message");
@@ -311,45 +326,49 @@ function showAnnouncementModal(content, type, video_url, btn_label, btn_url) {
   const okBtn = document.getElementById("close-announcement-modal");
   const closeX = document.getElementById("announcement-modal-close-x");
   const timerSpan = document.getElementById("announcement-modal-timer");
-  msg.innerHTML = content;
+
+  // Récupérer l’annonce courante (posée par l’init)
+  const ann = (window.__da_currentAnn && typeof window.__da_currentAnn === 'object') ? window.__da_currentAnn : null;
+
+  msg.innerHTML = content || "";
 
   // Vidéo preview (neon, large, arrondi)
-  if(video_url && extractYouTubeID(video_url)) {
+  if (video_url && extractYouTubeID(video_url)) {
     vid.innerHTML = getVideoEmbedNeon(video_url);
     vid.style.display = "block";
   } else {
     vid.style.display = "none";
     vid.innerHTML = "";
   }
+
   modal.style.display = "flex";
   setTimeout(()=>modal.classList.add('visible'),10);
 
-  // Pour fermer la modale
+  // Fermer SANS marquer “done” (la modale reviendra)
   function closeModal() {
     modal.classList.remove('visible');
     setTimeout(()=>{ modal.style.display = "none"; }, 300);
-    showAnnouncementBanner(content);
     // reset croix/timer
     if (closeX) closeX.style.display = "none";
     if (timerSpan) timerSpan.textContent = "";
   }
 
-  // Texte du bouton
-  okBtn.textContent = (btn_label && btn_label.trim()) ? btn_label : "OK";
-  if (btn_url && btn_url.trim()) {
-    okBtn.onclick = function() {
+  // Texte du bouton (CTA)
+  okBtn.textContent = (btn_label && btn_label.trim()) ? btn_label : "Découvrir";
+  okBtn.onclick = function() {
+    if (ann) {
+      const ver = versionOf(ann);
+      const map = loadAnnDone();
+      map[String(ann.id)] = ver;   // marquer cette version comme “faite”
+      saveAnnDone(map);
+    }
+    if (btn_url && btn_url.trim()) {
       window.open(btn_url, "_blank");
-      closeModal();
-    };
-  } else {
-    okBtn.onclick = closeModal;
-  }
+    }
+    closeModal(); // Et on ferme
+  };
 
-  // ----- Gestion croix + timer -----
-  if (closeX) closeX.style.display = "none";
-  if (timerSpan) timerSpan.textContent = "";
-
-    // --- Countdown circulaire FLUIDE ---
+  // ----- Gestion croix + timer (ne marque PAS “done”) -----
   const circle = document.getElementById("countdown-circle");
   const circleTxt = document.getElementById("countdown-txt");
 
@@ -369,15 +388,12 @@ function showAnnouncementModal(content, type, video_url, btn_label, btn_url) {
       if (!startTime) startTime = ts;
       const elapsed = (ts - startTime) / 1000;
       if (elapsed < countdown) {
-        // Progression fluide
         const progress = elapsed / countdown;
         circle.setAttribute("stroke-dashoffset", circleLength * progress);
-        // Affiche le chiffre arrondi (optionnel)
         const secLeft = Math.ceil(countdown - elapsed);
         circleTxt.textContent = secLeft;
         requestAnimationFrame(animateCountdown);
       } else {
-        // Fin du countdown
         circle.setAttribute("stroke-dashoffset", circleLength);
         circleTxt.textContent = '';
         closeX.disabled = false;
@@ -405,7 +421,7 @@ function showPrivacyModal() {
   const timerSpan = document.getElementById("announcement-modal-timer");
 
   // NE PAS METTRE DE VIDEO POUR PRIVACY
-  if(vid) { vid.style.display = "none"; vid.innerHTML = ""; }
+  if (vid) { vid.style.display = "none"; vid.innerHTML = ""; }
 
   // Met le contenu HTML de la privacy policy ici :
   const privacyContent = `
@@ -577,7 +593,7 @@ window.addEventListener('popstate', function() {
   }
 });
 
-// --- BANDEAU ---
+// --- BANDEAU (non utilisé par défaut avec la logique marketing, laissé pour compat) ---
 function showAnnouncementBanner(content) {
   const banner = document.getElementById("site-announcement-banner");
   banner.innerHTML = `
@@ -625,15 +641,12 @@ function showAnnouncementBanner(content) {
     // 2) S’assurer que le contenu a la bonne classe et pas de styles inline inutiles
     const content = banner.querySelector('.announcement-banner-content') || banner.firstElementChild;
     if (content) {
-      // Ajoute la classe attendue si absente
       if (!content.classList.contains('announcement-banner-content')) {
         content.classList.add('announcement-banner-content');
       }
-      // Retire les styles inline qui doublonnent le CSS
       ['whiteSpace','animation','padding','margin','transform'].forEach(p => {
         try { content.style[p] = ''; } catch(_) {}
       });
-      // Garde la compatibilité avec l’ancienne classe si présente
       if (!content.classList.contains('custom-banner-font')) {
         try { content.classList.add('custom-banner-font'); } catch(_) {}
       }
@@ -653,7 +666,6 @@ function showAnnouncementBanner(content) {
       if (m.type === 'childList' || m.type === 'subtree') {
         const banner = document.getElementById('site-announcement-banner');
         if (banner && (banner.contains(m.target) || m.target === banner)) {
-          // micro-délai le temps que l’injection finisse
           setTimeout(sanitizeBanner, 0);
           break;
         }
@@ -665,16 +677,21 @@ function showAnnouncementBanner(content) {
   } catch(_) {}
 })();
 
-// --- INIT ---
+// --- INIT (marketing): modale sur TOUTES les pages jusqu’à clic CTA ---
 window.addEventListener("DOMContentLoaded", ()=>{
-  fetch(ANNOUNCEMENT_API)
+  fetch(ANNOUNCEMENT_API, { cache: "no-store" })
     .then(r=>r.json())
     .then(data=>{
-      if(Array.isArray(data) && data.length && data[0].content) {
-        const ann = data[0];
-        const isHomepage = window.location.pathname === "/" || window.location.pathname === "/index" || window.location.pathname === "/index.html";
-        if (isHomepage) {
-          // Sur l'accueil : modale puis bandeau quand on clique OK
+      if (Array.isArray(data) && data.length && data[0].content) {
+        const ann = data[0];           // La plus récente (tri desc côté API)
+        const ver = versionOf(ann);
+        const doneMap = loadAnnDone();
+        const alreadyDone = doneMap[String(ann.id)] === ver;
+
+        if (!alreadyDone) {
+          // Mémoriser l’annonce courante (pour récupérer id/date dans showAnnouncementModal)
+          window.__da_currentAnn = ann;
+          // Afficher la modale sur TOUTES les pages tant que CTA non cliqué
           showAnnouncementModal(
             ann.content,
             ann.type || "info",
@@ -682,12 +699,10 @@ window.addEventListener("DOMContentLoaded", ()=>{
             ann.btn_label,
             ann.btn_url
           );
-        } else {
-          // Sur les autres pages : bandeau direct, pas de modale
-          showAnnouncementBanner(ann.content);
         }
       }
-    });
+    })
+    .catch(()=>{ /* silencieux */ });
 });
 </script>
   <nav class="navbar">
