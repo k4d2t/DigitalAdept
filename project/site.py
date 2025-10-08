@@ -2349,7 +2349,7 @@ def robots_txt():
 def page_not_found(e):
     context = get_seo_context(
         meta_title="Erreur 404 - Page non trouvée | Digital Adept™",
-        meta_description="Raté 😬! Cette page n’existe pas. Elle a peut-être été supprimée",
+        meta_description="Raté! Cette page n’existe pas. Elle a peut-être été supprimée",
         meta_robots="noindex, follow",
         meta_breadcrumb_jsonld=make_breadcrumb(
             ("Accueil", url_for('home', _external=True))
