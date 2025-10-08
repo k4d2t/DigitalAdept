@@ -324,6 +324,85 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // --- SCRIPT NOTATION PRODUIT (LOCAL) ---
+    const ratingContainer = document.getElementById('product-rating-interactive');
+    if (!ratingContainer) return;
+
+    // Assure un device_id persistant (cookie + localStorage)
+    function getCookie(name) {
+        const m = document.cookie.match(new RegExp('(?:^|; )' + name.replace(/([.$?*|{}()[]\\/+^])/g, '\\$1') + '=([^;]*)'));
+        return m ? decodeURIComponent(m[1]) : null;
+    }
+    function ensureDeviceId() {
+        let id = getCookie('da_device_id');
+        if (!id) {
+            try { id = localStorage.getItem('da_device_id') || ''; } catch(e) { id = ''; }
+        }
+        if (!id) {
+            id = self.crypto && crypto.randomUUID ? crypto.randomUUID() : (Date.now().toString(36) + Math.random().toString(36).slice(2,10));
+            // cookie 2 ans
+            const expires = new Date(Date.now() + 730*24*60*60*1000).toUTCString();
+            document.cookie = `da_device_id=${encodeURIComponent(id)}; expires=${expires}; path=/; samesite=Lax`;
+            try { localStorage.setItem('da_device_id', id); } catch(e) {}
+        }
+        return id;
+    }
+    const DEVICE_ID = ensureDeviceId();
+
+    const stars = ratingContainer.querySelectorAll('.star-btn');
+    const ratingValueEl = ratingContainer.querySelector('.rating-value');
+    const reviewCountEl = ratingContainer.querySelector('.review-count');
+    const productId = ratingContainer.dataset.productId;
+    let currentAvg = parseFloat(ratingContainer.dataset.initialRating) || 0;
+
+    function updateStars(rating) {
+        stars.forEach(star => {
+            const starValue = parseInt(star.dataset.value);
+            star.classList.toggle('filled', starValue <= rating);
+        });
+    }
+
+    // Etat initial (affichage)
+    updateStars(Math.round(currentAvg));
+
+    stars.forEach(star => {
+        star.addEventListener('mouseover', () => {
+            updateStars(parseInt(star.dataset.value));
+        });
+        star.addEventListener('mouseout', () => {
+            updateStars(Math.round(currentAvg));
+        });
+        star.addEventListener('click', () => {
+            const newRating = parseInt(star.dataset.value);
+            fetch(`/api/produit/${productId}/rate`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-DA-Device': DEVICE_ID
+                },
+                body: JSON.stringify({ rating: newRating, device_id: DEVICE_ID })
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.average_rating !== undefined) {
+                    currentAvg = data.average_rating;
+                    ratingValueEl.textContent = `${data.average_rating.toFixed(1)}/5`;
+                    reviewCountEl.textContent = data.reviews_count > 0 ? `– ${data.reviews_count} avis` : '';
+                    updateStars(Math.round(currentAvg));
+                    const msg = data.action === 'updated' ? 'Votre note a été mise à jour.' : 'Merci pour votre vote !';
+                    showNotification(msg, 'success');
+                } else {
+                    showNotification(data.error || 'Erreur lors de la notation.', 'error');
+                }
+            })
+            .catch(() => showNotification('Erreur réseau. Veuillez réessayer.', 'error'));
+        });
+    });
+});
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
     // --- SCRIPT FAQ PRODUIT (LOCAL ET CORRIGÉ) ---
     document.querySelectorAll(".product-faq-question").forEach(questionButton => {
         questionButton.addEventListener("click", () => {
