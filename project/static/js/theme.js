@@ -447,16 +447,26 @@ window.initProductPage = function () {
                 cart.forEach((item, index) => {
                     const itemElement = document.createElement('div');
                     itemElement.className = 'cart-item';
+                    // Base: XOF côté serveur (paiement et reporting)
+                    const baseCur = 'XOF';
                     itemElement.innerHTML = `
-                    <span>${item.name}</span>&ensp;
-                    <span>${item.price} XOF</span>
-                    <button class="remove-item" data-index="${index}">⛌</button>
+                        <span>${item.name}</span>&ensp;
+                        <span class="cart-price" data-price="${Number(item.price) || 0}" data-currency="${baseCur}">
+                            ${Number(item.price || 0)} ${baseCur}
+                        </span>
+                        <button class="remove-item" data-index="${index}">⛌</button>
                     `;
                     cartItemsContainer.appendChild(itemElement);
                 });
             }
-            cartTotalElement.textContent = calculateTotal();
-
+        
+            // Met à jour le total (base XOF), et balise pour conversion
+            const totalBase = calculateTotal();
+            cartTotalElement.setAttribute('data-price', String(totalBase));
+            cartTotalElement.setAttribute('data-currency', 'XOF');
+            cartTotalElement.textContent = `${totalBase} XOF`;
+        
+            // Bind remove
             cartItemsContainer.querySelectorAll('.remove-item').forEach(button => {
                 button.addEventListener('click', (e) => {
                     const index = parseInt(e.target.dataset.index);
@@ -467,7 +477,19 @@ window.initProductPage = function () {
                     updateCartBadge(true);
                 });
             });
+
+    // Conversion immédiate vers la devise session (si les taux sont prêts)
+    try {
+        const sel = JSON.parse(localStorage.getItem('da_locale') || '{}');
+        const cur = (sel.currency || 'XOF').toUpperCase();
+        if (window.__da_debugLocale && typeof window.__da_debugLocale.convert === 'function') {
+            // 1ère passe
+            window.__da_debugLocale.convert(cur);
+            // 2ème passe post-layout
+            requestAnimationFrame(() => window.__da_debugLocale.convert(cur));
         }
+    } catch (_) {}
+}
 
         function updateAddToCartButtons() {
             addToCartButtons.forEach(button => {
