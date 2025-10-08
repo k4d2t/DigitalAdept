@@ -883,39 +883,73 @@ def get_product_comments(product_id):
 # NOUVELLE ROUTE API POUR LA NOTATION
 @app.route('/api/produit/<int:product_id>/rate', methods=['POST'])
 def rate_product(product_id):
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
     rating = data.get('rating')
 
-    if not rating or not (1 <= int(rating) <= 5):
+    try:
+        rating = int(rating)
+    except Exception:
+        rating = None
+    if not rating or not (1 <= rating <= 5):
         return jsonify({"error": "Une note valide (1-5) est requise."}), 400
 
     produit = Product.query.get(product_id)
     if not produit:
         return jsonify({"error": "Produit introuvable."}), 404
 
-    # CORRECTION: On utilise une chaîne vide au lieu de None pour respecter la contrainte NOT NULL
-    new_rating = Comment(
-        product_id=product_id,
-        rating=int(rating),
-        comment="",  # Correction ici
-        date=datetime.now(timezone.utc)
-    )
-    db.session.add(new_rating)
+    # 1) Récupérer le device_id (cookie > header > body), sinon en générer un
+    device_id = request.cookies.get('da_device_id') \
+        or request.headers.get('X-DA-Device') \
+        or (data.get('device_id') if isinstance(data.get('device_id'), str) else None)
+    new_cookie_needed = False
+    if not device_id:
+        device_id = str(uuid.uuid4())
+        new_cookie_needed = True
+
+    # 2) Upsert: si un vote existe pour (product_id, device_id) => UPDATE; sinon INSERT
+    existing = Comment.query.filter_by(product_id=product_id, device_id=device_id).first()
+    action = "created"
+    if existing:
+        existing.rating = rating
+        existing.date = datetime.now(timezone.utc)
+        action = "updated"
+    else:
+        new_rating = Comment(
+            product_id=product_id,
+            rating=rating,
+            comment="",                   # champ NOT NULL
+            date=datetime.now(timezone.utc),
+            device_id=device_id
+        )
+        db.session.add(new_rating)
+
     db.session.commit()
 
-    # Recalculer la moyenne et le nombre d'avis
+    # 3) Recalculer la moyenne et le nombre d'avis
     all_ratings = [c.rating for c in produit.comments if c.rating is not None]
     reviews_count = len(all_ratings)
-    average_rating = sum(all_ratings) / reviews_count if reviews_count > 0 else 0
+    average_rating = sum(all_ratings) / reviews_count if reviews_count > 0 else 0.0
 
-    # Invalider le cache de la page produit pour refléter la nouvelle note
+    # 4) Invalider le cache de la page produit
     cache.delete_memoized(product_detail, slug=produit.slug)
 
-    return jsonify({
-        "message": "Vote enregistré !",
-        "average_rating": average_rating,
-        "reviews_count": reviews_count
+    resp = jsonify({
+        "message": "Vote enregistré !" if action == "created" else "Votre note a été mise à jour.",
+        "average_rating": round(average_rating, 2),
+        "reviews_count": reviews_count,
+        "action": action
     })
+    # 5) Si cookie manquant, le poser maintenant (durée 2 ans)
+    if new_cookie_needed:
+        expires = datetime.utcnow() + timedelta(days=730)
+        resp.set_cookie(
+            'da_device_id',
+            device_id,
+            expires=expires,
+            samesite='Lax',
+            secure=False   # mets True si HTTPS partout
+        )
+    return resp, 200
 
 @cache.cached(timeout=300)
 @app.route('/contact')
@@ -2132,13 +2166,12 @@ def api_announcements_post():
     cache.delete_memoized(api_announcements_active) # Invalider le cache
     return jsonify({"message": "Annonce créée", "id": annonce.id}), 201
 
-
 @app.route('/api/announcements/<int:id>', methods=['PUT'])
 def api_announcements_put(id):
-    """Met à jour une annonce existante."""
+    """Met à jour une annonce existante et bump la date (nouvelle version)."""
     if not session.get('admin_logged_in'):
         return jsonify({"error": "Non autorisé"}), 403
-    data = request.json
+    data = request.json or {}
     annonce = Announcement.query.get_or_404(id)
     annonce.content = data.get("content", annonce.content)
     annonce.active = data.get("active", annonce.active)
@@ -2146,10 +2179,12 @@ def api_announcements_put(id):
     annonce.video_url = data.get("video_url", annonce.video_url)
     annonce.btn_label = data.get("btn_label", annonce.btn_label)
     annonce.btn_url = data.get("btn_url", annonce.btn_url)
+    # BUMP DATE pour signaler une nouvelle version au front
+    annonce.date = datetime.now(timezone.utc)
     db.session.commit()
-    cache.delete_memoized(api_announcements_active) # Invalider le cache
+    cache.delete_memoized(api_announcements_active)
     return jsonify({"message": "Annonce mise à jour"})
-
+    
 @app.route('/api/announcements/<int:id>', methods=['DELETE'])
 def api_announcements_delete(id):
     """Supprime une annonce."""
