@@ -416,6 +416,7 @@ window.initProductPage = function () {
 
         let cart = JSON.parse(localStorage.getItem('cart')) || [];
 
+
         function updateCartBadge(animated) {
             if (!cartBadge) return;
             const itemCount = cart.length;
@@ -435,7 +436,10 @@ window.initProductPage = function () {
         }
 
         function calculateTotal() {
-            return cart.reduce((total, item) => total + item.price, 0);
+            // BLINDAGE: somme numérique prix × quantité
+            return cart.reduce((total, item) => {
+                return total + (Number(item.price || 0) * Number(item.quantity || 1));
+            }, 0);
         }
         
         function renderCart() {
@@ -888,6 +892,10 @@ window.initProductPage = function () {
             });
         }
 
+        window.__da_cart = {
+            render: renderCart
+        };
+
         // Animation badge au chargement si panier non vide
         updateCartBadge(false);
         renderCart();
@@ -1288,6 +1296,14 @@ document.addEventListener('DOMContentLoaded', () => {
     async function selectCountry(sel) {
       await ensureRates();
       applySelection(sel, true);
+
+      // NOUVEAU: rafraîchir le panier pour mettre à jour #cart-total (data-price) avant conversion
+      try {
+        if (window.__da_cart && typeof window.__da_cart.render === 'function') {
+          window.__da_cart.render();
+        }
+      } catch (_) {}
+
       annotateLikelyPriceSpans();
       convertDisplayedPrices(sel.currency);
       requestAnimationFrame(() => convertDisplayedPrices(sel.currency));
