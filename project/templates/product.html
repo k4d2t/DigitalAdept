@@ -18,6 +18,11 @@
           <button id="buy-from-cart">Acheter maintenant</button>
       </div>
   </div>
+    <style>
+    /* Remplissage visuel des étoiles (boutons) */
+    .stars-interactive .star-btn svg { fill: #bdbdbd; transition: fill .15s ease; }
+    .stars-interactive .star-btn.filled svg { fill: #FFD600; }
+  </style>
   <div class="product-container">
     <!-- Carousel Section -->
     <div class="product-gallery">
@@ -329,8 +334,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Assure un device_id persistant (cookie + localStorage)
     function getCookie(name) {
-        const m = document.cookie.match(new RegExp('(?:^|; )' + name.replace(/([.$?*|{}()[]\\/+^])/g, '\\$1') + '=([^;]*)'));
-        return m ? decodeURIComponent(m[1]) : null;
+        // Version simple et robuste: pas de regex piégeuse
+        const entry = document.cookie.split('; ').find(row => row.startsWith(name + '='));
+        return entry ? decodeURIComponent(entry.split('=')[1]) : null;
     }
     function ensureDeviceId() {
         let id = getCookie('da_device_id');
@@ -338,7 +344,7 @@ document.addEventListener('DOMContentLoaded', function() {
             try { id = localStorage.getItem('da_device_id') || ''; } catch(e) { id = ''; }
         }
         if (!id) {
-            id = self.crypto && crypto.randomUUID ? crypto.randomUUID() : (Date.now().toString(36) + Math.random().toString(36).slice(2,10));
+            id = (self.crypto && crypto.randomUUID) ? crypto.randomUUID() : (Date.now().toString(36) + Math.random().toString(36).slice(2,10));
             // cookie 2 ans
             const expires = new Date(Date.now() + 730*24*60*60*1000).toUTCString();
             document.cookie = `da_device_id=${encodeURIComponent(id)}; expires=${expires}; path=/; samesite=Lax`;
@@ -395,18 +401,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             })
             .catch(() => showNotification('Erreur réseau. Veuillez réessayer.', 'error'));
-        });
-    });
-});
-</script>
-
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    // --- SCRIPT FAQ PRODUIT (LOCAL ET CORRIGÉ) ---
-    document.querySelectorAll(".product-faq-question").forEach(questionButton => {
-        questionButton.addEventListener("click", () => {
-            const faqItem = questionButton.closest('.product-faq-item');
-            faqItem.classList.toggle("open");
         });
     });
 });
