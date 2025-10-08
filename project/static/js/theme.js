@@ -441,6 +441,74 @@ window.initProductPage = function () {
                 return total + (Number(item.price || 0) * Number(item.quantity || 1));
             }, 0);
         }
+
+        // Helper: convertir UNIQUEMENT le panier selon la devise session, avec fallback si le pont global n'est pas prêt
+        async function convertCartNow(maxRetries = 8) {
+            try {
+                const sel = JSON.parse(localStorage.getItem('da_locale') || '{}');
+                const targetCur = (sel.currency || 'XOF').toUpperCase();
+
+                // Si le pont global est prêt, on l'utilise (assure ensureRates + double passe)
+                if (window.__da_debugLocale && typeof window.__da_debugLocale.convert === 'function') {
+                    await window.__da_debugLocale.convert(targetCur);
+                    return;
+                }
+
+                // Fallback: conversion ciblée du panier (sans dépendre du reste de la page)
+                // 1) Récupérer les taux
+                let rates = null;
+                try {
+                    const cached = localStorage.getItem('da_fx_rates');
+                    if (cached) {
+                        const obj = JSON.parse(cached);
+                        if (obj && obj.rates) rates = obj.rates;
+                    }
+                } catch {}
+                if (!rates) {
+                    const r = await fetch('/api/fx-rates', { cache: 'no-store', credentials: 'same-origin' });
+                    const j = await r.json();
+                    if (j && j.status === 'success' && j.rates) {
+                        rates = j.rates;
+                        try { localStorage.setItem('da_fx_rates', JSON.stringify({ rates, ts: Date.now() })); } catch {}
+                    }
+                }
+                if (!rates) {
+                    // Le pont global n'est pas prêt et pas de taux => réessaye un peu (delai court)
+                    if (maxRetries > 0) {
+                        return new Promise(res => setTimeout(() => res(convertCartNow(maxRetries - 1)), 60));
+                    }
+                    return; // abandon silencieux
+                }
+
+                // 2) Fonctions locales conversion/formatage
+                const SYMBOL = { XOF:'XOF', USD:'$', EUR:'€', GBP:'£', AED:'د.إ', RUB:'₽', CNY:'¥', JPY:'¥' };
+                const convertAmountViaXOFLocal = (amount, fromCur, toCur) => {
+                    if (!isFinite(amount)) return amount;
+                    if (fromCur === toCur) return amount;
+                    try {
+                        const rFrom = fromCur === 'XOF' ? 1 : rates[fromCur];
+                        const inXof = rFrom ? (fromCur === 'XOF' ? amount : amount / rFrom) : amount;
+                        const rTo = toCur === 'XOF' ? 1 : rates[toCur];
+                        return rTo ? (toCur === 'XOF' ? inXof : inXof * rTo) : inXof;
+                    } catch { return amount; }
+                };
+                const formatAmountLocal = (amount, currency) => `${Number(amount).toLocaleString('fr-FR', { maximumFractionDigits: 2 })} ${SYMBOL[currency] || currency}`;
+
+                // 3) Convertir uniquement les nœuds du panier
+                const nodes = document.querySelectorAll('#cart-bar [data-price]');
+                nodes.forEach(el => {
+                    const base = parseFloat(el.getAttribute('data-price'));
+                    const fromCur = (el.getAttribute('data-currency') || 'XOF').toUpperCase();
+                    if (!isFinite(base)) return;
+                    const conv = convertAmountViaXOFLocal(base, fromCur, targetCur);
+                    el.textContent = formatAmountLocal(conv, targetCur);
+                    el.setAttribute('data-currency', targetCur);
+                });
+
+            } catch (_) {
+                // aucun throw (UX)
+            }
+        }
         
         function renderCart() {
           if (!cartItemsContainer || !cartTotalElement) return;
@@ -494,15 +562,9 @@ window.initProductPage = function () {
               });
           });
         
-          // Conversion immédiate vers la devise de session (double passe)
-          try {
-              const sel = JSON.parse(localStorage.getItem('da_locale') || '{}');
-              const cur = (sel.currency || 'XOF').toUpperCase();
-              if (window.__da_debugLocale && typeof window.__da_debugLocale.convert === 'function') {
-                  window.__da_debugLocale.convert(cur);
-                  requestAnimationFrame(() => window.__da_debugLocale.convert(cur));
-              }
-          } catch (_) {}
+          // Conversion immédiate du panier (double passe locale, robuste aux timings)
+          convertCartNow();
+          requestAnimationFrame(() => convertCartNow());
         }
 
         function updateAddToCartButtons() {
@@ -544,7 +606,7 @@ window.initProductPage = function () {
                 if (!found) {
                     cart.push({ id: productId, name: productName, price: productPrice, slug: productSlug });
                     saveCart();
-                    renderCart();
+                    renderCart(); // rend + convertCartNow()
                     updateAddToCartButtons();
                     if (cartBar) cartBar.classList.add('visible');
                     // Badge animation
@@ -893,7 +955,8 @@ window.initProductPage = function () {
         }
 
         window.__da_cart = {
-            render: renderCart
+            render: renderCart,
+            convertNow: () => convertCartNow()
         };
 
         // Animation badge au chargement si panier non vide
@@ -1336,6 +1399,13 @@ document.addEventListener('DOMContentLoaded', () => {
       annotateLikelyPriceSpans();
       convertDisplayedPrices(chosen.currency);
       requestAnimationFrame(() => convertDisplayedPrices(chosen.currency));
+
+      // Conversion ciblée panier si besoin (au cas où le pont n'était pas prêt)
+      try {
+        if (window.__da_cart && typeof window.__da_cart.convertNow === 'function') {
+          window.__da_cart.convertNow();
+        }
+      } catch (_) {}
     })();
 }); 
 
