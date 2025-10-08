@@ -1137,6 +1137,22 @@ document.addEventListener('DOMContentLoaded', () => {
       return converted;
     }
 
+        // EXPOSE: pont global pour convertir à la volée après tout nouveau rendu (panier, etc.)
+    window.__da_debugLocale = {
+      convert: async function(targetCurrency) {
+        try {
+          await ensureRates();
+          annotateLikelyPriceSpans();
+          if (!targetCurrency) {
+            const sel = (()=>{ try { return JSON.parse(localStorage.getItem('da_locale')||'{}'); } catch { return {}; } })();
+            targetCurrency = (sel.currency || 'XOF').toUpperCase();
+          }
+          convertDisplayedPrices(targetCurrency);
+          requestAnimationFrame(() => convertDisplayedPrices(targetCurrency));
+        } catch (_) {}
+      }
+    };
+
     // Fonctions pour les pays
     function pickSupportedCurrency(cc, countryCurrency, region) {
       const cur = String(countryCurrency || '').toUpperCase();
