@@ -566,65 +566,202 @@ window.initProductPage = function () {
 
 
         function PaymentInfoModal(onSubmit, onCancel) {
+            // Sauvegarde du focus d’origine
+            const previousActive = document.activeElement;
+
+            // Charger le dernier profil (si existant)
+            let lastProfile = {};
+            try { lastProfile = JSON.parse(localStorage.getItem('da_checkout_profile') || '{}'); } catch {}
+
+            // Créer overlay + modal
+            const overlay = document.createElement('div');
+            overlay.className = 'customModal-overlay';
+            overlay.style.cssText = `
+                position: fixed; inset: 0; background: rgba(0,0,0,.5);
+                display: flex; align-items: center; justify-content: center; z-index: 2000;
+            `;
+
             const modal = document.createElement('div');
             modal.className = 'customModal';
-            modal.innerHTML = `
-            <div class="customModal-content" role="dialog" aria-labelledby="modal-title">
-            <h3 id="modal-title">Finaliser la commande</h3>
-            <label>
-            Nom complet :
-            <input type="text" id="payment-nom-client" placeholder="Votre nom complet" required>
-            </label>
-            <label>
-            Adresse e-mail :
-            <input type="email" id="payment-email" placeholder="Pour recevoir vos produits" required>
-            </label>
-            <label>
-            Numéro WhatsApp :
-            <input type="tel" id="payment-whatsapp" placeholder="Pour le suivi de commande" required>
-            </label>
-            <div class="customModal-buttons">
-            <button class="customModal-yes">Valider et Payer</button>
-            <button class="customModal-no">Annuler</button>
-            </div>
-            </div>
+            modal.setAttribute('role', 'dialog');
+            modal.setAttribute('aria-modal', 'true');
+            modal.setAttribute('aria-labelledby', 'modal-title');
+            modal.setAttribute('aria-describedby', 'modal-desc');
+            modal.style.cssText = `
+                background: #111; color: #fff; border-radius: 12px; width: min(96vw, 520px);
+                box-shadow: 0 10px 40px rgba(0,0,0,.4); padding: 18px; outline: none;
             `;
-            document.body.appendChild(modal);
 
-            setTimeout(() => {
-                modal.classList.add('visible');
-                modal.querySelector('#payment-nom-client').focus();
-            }, 10);
+            // Contenu: utiliser un <form> + autocomplete on
+            modal.innerHTML = `
+              <form id="payment-form" autocomplete="on" novalidate>
+                <h3 id="modal-title" style="margin:.2em 0 0.6em 0;">Finaliser la commande</h3>
+                <p id="modal-desc" style="opacity:.8;margin-top:0;margin-bottom:1em;">
+                  Renseignez vos informations pour recevoir vos produits.
+                </p>
 
-            modal.querySelector('.customModal-yes').onclick = () => {
-                const nom = modal.querySelector('#payment-nom-client').value.trim();
-                const email = modal.querySelector('#payment-email').value.trim();
-                const whatsapp = modal.querySelector('#payment-whatsapp').value.trim();
+                <div class="form-field" style="margin-bottom:10px;">
+                  <label for="payment-nom-client">Nom complet</label>
+                  <input
+                    type="text"
+                    id="payment-nom-client"
+                    name="name"
+                    placeholder="Votre nom complet"
+                    required
+                    autocomplete="name"
+                    autocapitalize="words"
+                    spellcheck="false"
+                    />
+                </div>
+
+                <div class="form-field" style="margin-bottom:10px;">
+                  <label for="payment-email">Adresse e-mail</label>
+                  <input
+                    type="email"
+                    id="payment-email"
+                    name="email"
+                    placeholder="Pour recevoir vos produits"
+                    required
+                    autocomplete="email"
+                    inputmode="email"
+                    />
+                </div>
+
+                <div class="form-field" style="margin-bottom:4px;">
+                  <label for="payment-whatsapp">Numéro WhatsApp</label>
+                  <input
+                    type="tel"
+                    id="payment-whatsapp"
+                    name="tel"
+                    placeholder="+2250700000000"
+                    autocomplete="tel"
+                    inputmode="tel"
+                    />
+                  <small id="whats-hint" style="opacity:.7;">Format international recommandé (+225…)</small>
+                </div>
+
+                <div id="payment-error" aria-live="assertive" style="min-height:1.2em;color:#ff8a80;margin:.4em 0;"></div>
+
+                <div class="customModal-buttons" style="display:flex; gap:10px; margin-top:12px;">
+                  <button type="submit" class="customModal-yes" id="payment-submit">Valider et Payer</button>
+                  <button type="button" class="customModal-no" id="payment-cancel">Annuler</button>
+                </div>
+              </form>
+            `;
+
+            overlay.appendChild(modal);
+            document.body.appendChild(overlay);
+
+            // Préremplissage si profil déjà existant
+            const nomEl = modal.querySelector('#payment-nom-client');
+            const emailEl = modal.querySelector('#payment-email');
+            const telEl = modal.querySelector('#payment-whatsapp');
+            const formEl = modal.querySelector('#payment-form');
+            const errEl = modal.querySelector('#payment-error');
+            const btnSubmit = modal.querySelector('#payment-submit');
+            const btnCancel = modal.querySelector('#payment-cancel');
+
+            if (lastProfile && typeof lastProfile === 'object') {
+                if (lastProfile.name) nomEl.value = lastProfile.name;
+                if (lastProfile.email) emailEl.value = lastProfile.email;
+                if (lastProfile.whatsapp) telEl.value = lastProfile.whatsapp;
+            }
+
+            // Focus initial
+            setTimeout(() => { nomEl.focus(); }, 10);
+
+            // Focus trap
+            const focusableSelectors = 'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])';
+            function trapFocus(e) {
+                if (e.key !== 'Tab') return;
+                const focusables = Array.from(modal.querySelectorAll(focusableSelectors)).filter(el => el.offsetParent !== null);
+                if (!focusables.length) return;
+                const first = focusables[0];
+                const last = focusables[focusables.length - 1];
+                if (e.shiftKey && document.activeElement === first) {
+                    e.preventDefault(); last.focus();
+                } else if (!e.shiftKey && document.activeElement === last) {
+                    e.preventDefault(); first.focus();
+                }
+            }
+
+            function close() {
+                // Nettoyage handlers
+                document.removeEventListener('keydown', onKeydown);
+                modal.removeEventListener('keydown', trapFocus);
+                overlay.removeEventListener('click', onOverlayClick);
+
+                // Disparition
+                overlay.remove();
+
+                // Retour focus sur le déclencheur
+                if (previousActive && typeof previousActive.focus === 'function') {
+                    previousActive.focus();
+                }
+            }
+
+            function onKeydown(e) {
+                if (e.key === 'Escape') {
+                    e.preventDefault();
+                    close();
+                    if (typeof onCancel === 'function') onCancel();
+                } else if (e.key === 'Enter') {
+                    // Permettre Enter de soumettre partout
+                    if (e.target && e.target.tagName && ['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) {
+                        e.preventDefault();
+                        btnSubmit.click();
+                    }
+                }
+            }
+
+            function onOverlayClick(e) {
+                // Fermer si clic en dehors du contenu (overlay)
+                if (e.target === overlay) {
+                    close();
+                    if (typeof onCancel === 'function') onCancel();
+                }
+            }
+
+            document.addEventListener('keydown', onKeydown);
+            modal.addEventListener('keydown', trapFocus);
+            overlay.addEventListener('click', onOverlayClick);
+
+            // Soumission
+            formEl.addEventListener('submit', (evt) => {
+                evt.preventDefault();
+                errEl.textContent = '';
+
+                const nom = nomEl.value.trim();
+                const email = emailEl.value.trim();
+                const whatsapp = telEl.value.trim();
 
                 if (!nom || !email) {
-                    showNotification("Le nom et l'e-mail sont requis.", "error");
+                    errEl.textContent = "Le nom et l’e-mail sont requis.";
+                    (nom ? emailEl : nomEl).focus();
+                    return;
+                }
+                if (!/^\S+@\S+\.\S+$/.test(email)) {
+                    errEl.textContent = "Veuillez entrer une adresse e-mail valide.";
+                    emailEl.focus();
                     return;
                 }
 
-                if (!/^\S+@\S+\.\S+$/.test(email)) {
-                    showNotification("Veuillez entrer une adresse e-mail valide.", "error");
-                    return;
-                }
+                // Sauvegarder profil pour autofill futur
+                try {
+                    localStorage.setItem('da_checkout_profile', JSON.stringify({ name: nom, email, whatsapp }));
+                } catch {}
 
                 close();
-                onSubmit({ nom_client: nom, email: email, whatsapp: whatsapp });
-            };
+                onSubmit({ nom_client: nom, email, whatsapp });
+            });
 
-            modal.querySelector('.customModal-no').onclick = () => {
+            // Annuler
+            btnCancel.addEventListener('click', () => {
                 close();
                 if (typeof onCancel === 'function') onCancel();
-            };
-
-                function close() {
-                    modal.classList.remove('visible');
-                    setTimeout(() => modal.remove(), 250);
-                }
+            });
         }
+        
         // Fonction utilitaire pour l'objet article attendu par MoneyFusion
         function getArticleObject(cart) {
             const article = {};
