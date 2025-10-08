@@ -58,47 +58,30 @@ document.addEventListener('DOMContentLoaded', function() {
     const cartBubble = document.getElementById('cart-bubble');
 
     cartBubble.addEventListener('click', function(e) {
-        // Fonction utilitaire pour détecter la page produit
         function isOnProductPage() {
-            // Vérifie si l'URL correspond à une page produit spécifique
             const path = window.location.pathname;
-
-            return (
-                path.startsWith('/product/') || // Exemple : /product/{slug}
-                path.startsWith('/produit/')    // Exemple : /produit/{slug}
-            );
+            return (path.startsWith('/product/') || path.startsWith('/produit/'));
         }
 
-        // Si l'utilisateur n'est pas sur la page produit
         if (!isOnProductPage()) {
             e.preventDefault();
             const cart = JSON.parse(localStorage.getItem('cart')) || [];
             if (cart.length > 0) {
                 const lastProduct = cart[cart.length - 1];
-                console.log("Last product in cart:", lastProduct); // Debugging output
-
                 if (lastProduct && lastProduct.slug) {
-                    // SPA : adapte cette ligne selon ton routeur si besoin
                     window.location.href = `/produit/${lastProduct.slug}`;
                 } else {
-                    console.error("The last product in the cart does not have a valid 'slug' field.");
                     showNotification('Impossible de rediriger vers le dernier produit.', 'error');
                 }
             } else {
                 showNotification('Votre panier est vide.', 'error');
             }
         } else {
-            // Si l'utilisateur est sur la page produit
             const cartBar = document.getElementById('cart-bar');
             if (cartBar) {
-                cartBar.classList.toggle('visible'); // Ouvre/ferme le panier
-
-                // Gestion du focus sur le bouton cartBubble
-                if (cartBar.classList.contains('visible')) {
-                    cartBubble.focus(); // Garde le focus sur le bouton lorsque le panier est ouvert
-                } else {
-                    cartBubble.blur(); // Retire le focus lorsque le panier est fermé
-                }
+                cartBar.classList.toggle('visible');
+                if (cartBar.classList.contains('visible')) cartBubble.focus();
+                else cartBubble.blur();
             }
         }
     });
@@ -254,15 +237,15 @@ window.initProductPage = function () {
                 const y = ((e.clientY - rect.top) / rect.height) * 102;
                 img.style.transformOrigin = `${x}% ${y}%`;
                 img.classList.add("zoomed");
-                isZooming = true; // Indique qu'un zoom est en cours
-                stopAutoScroll(); // Arrête l'auto-scroll pendant le zoom
+                isZooming = true;
+                stopAutoScroll();
             });
 
             img.addEventListener("mouseleave", () => {
                 img.classList.remove("zoomed");
                 img.style.transformOrigin = "center center";
-                isZooming = false; // Indique que le zoom est terminé
-                startAutoScroll(); // Redémarre l'auto-scroll après le zoom
+                isZooming = false;
+                startAutoScroll();
             });
         });
     }
@@ -284,12 +267,10 @@ window.initProductPage = function () {
 
 
     //SHARE BUTTON//
-
     function initShareButton() {
         const shareBtn = document.getElementById('share-btn');
         if (!shareBtn) return;
 
-        // Overlay
         let overlay = document.getElementById('share-modal-overlay');
         if (!overlay) {
             overlay = document.createElement('div');
@@ -297,7 +278,6 @@ window.initProductPage = function () {
             document.body.appendChild(overlay);
         }
 
-        // Modale
         let modal = document.getElementById('share-modal');
         if (!modal) {
             modal = document.createElement('div');
@@ -305,7 +285,6 @@ window.initProductPage = function () {
             document.body.appendChild(modal);
         }
 
-        // SVG Icônes
         const iconApp = `<svg width="22" height="22" fill="none" stroke="#222" stroke-width="1.7"><path d="M14.5 8V3.5a1.5 1.5 0 0 0-1.5-1.5h-7A1.5 1.5 0 0 0 4.5 3.5v13A1.5 1.5 0 0 0 6 18h7a1.5 1.5 0 0 0 1.5-1.5V12"/><polyline points="17 7 12 2 7 7"/><line x1="12" y1="2" x2="12" y2="15"/></svg>`;
         const iconCopy = `<svg width="18" height="18" fill="none" stroke="#333" stroke-width="1.5"><rect x="3" y="3" width="12" height="12" rx="2"/><path d="M6 3V2a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1"/></svg>`;
         const iconWhatsapp = `<svg width="22" height="22" viewBox="0 0 256 256"><g fill="none"><circle cx="128" cy="128" r="128" fill="#25D366"/><path fill="#fff" d="M128 48c44.2 0 80 35.8 80 80 0 18.5-6.8 35.4-18.1 48.7l8.2 38.6-39.4-8.2C161.3 211.1 145.2 216 128 216c-44.2 0-80-35.8-80-80s35.8-80 80-80zm36.6 109.2c-1.6-.8-9.3-4.6-10.8-5.2-1.4-.6-2.4-.8-3.3.8-1 1.6-3.8 5.2-4.7 6.2-.9 1-1.7 1.2-3.3.4-1.6-.8-6.6-2.4-12.5-7.5-4.6-4.1-7.7-9.1-8.6-10.7-.9-1.6-.1-2.4.7-3.2.7-.7 1.6-1.8 2.3-2.7.8-.9 1-1.6 1.6-2.7.6-1.1.3-2-.1-2.8-.5-.8-3.3-8-4.5-11-1.2-2.9-2.4-2.5-3.3-2.5-.8 0-1.9-.1-2.9-.1-1 0-2.7.4-4.1 1.8-1.4 1.4-5.4 5.3-5.4 12.9 0 7.7 5.5 15.1 6.2 16.1.8 1.1 10.9 16.6 26.3 22.6 15.4 6 15.4 4 18.2 3.7 2.8-.3 9.3-3.8 10.6-7.5 1.3-3.7 1.3-6.8.9-7.5z"/></g></svg>`;
@@ -337,27 +316,23 @@ window.initProductPage = function () {
                 overlay.style.display = 'block';
                 modal.style.display = 'block';
 
-                // Close modale
                 modal.querySelector('.close-share-modal').onclick = closeModal;
                 overlay.onclick = function(e) {
                     if (e.target === overlay) closeModal();
                 };
 
-                    // Web Share API
-                    const nativeBtn = document.getElementById('share-native');
-                    if (nativeBtn && navigator.share) {
-                        nativeBtn.onclick = async () => {
-                            try {
-                                await navigator.share({url, title: document.title, text: document.title});
-                                closeModal();
-                            } catch(e) { /* Annulé ou erreur */ }
-                        };
-                    }
+                const nativeBtn = document.getElementById('share-native');
+                if (nativeBtn && navigator.share) {
+                    nativeBtn.onclick = async () => {
+                        try {
+                            await navigator.share({url, title: document.title, text: document.title});
+                            closeModal();
+                        } catch(e) {}
+                    };
+                }
 
-                    // Copier (gros bouton)
-                    document.getElementById('share-copy').onclick = () => doCopy(url, modal);
-                    // Copier (mini bouton)
-                    document.getElementById('share-copy-mini').onclick = () => doCopy(url, modal);
+                document.getElementById('share-copy').onclick = () => doCopy(url, modal);
+                document.getElementById('share-copy-mini').onclick = () => doCopy(url, modal);
         }
 
         function closeModal() {
@@ -399,9 +374,6 @@ window.initProductPage = function () {
     }
     initShareButton();
 
-
-
-
     // --- PANIER DIGITAL GLOBAL ---
     function initCartDigital() {
         const cartBar = document.getElementById('cart-bar');
@@ -409,13 +381,11 @@ window.initProductPage = function () {
         const cartTotalElement = document.getElementById('cart-total');
         const addToCartButtons = document.querySelectorAll('.add-to-cart');
         const closeCartButton = document.getElementById('close-cart');
-        const cartBubble = document.getElementById('cart-bubble');
         const cartBadge = document.querySelector('.cart-badge');
         const buyFromCartButton = document.getElementById('buy-from-cart');
         const buyDirectlyButtons = document.querySelectorAll('.btn-buy');
 
         let cart = JSON.parse(localStorage.getItem('cart')) || [];
-
 
         function updateCartBadge(animated) {
             if (!cartBadge) return;
@@ -424,7 +394,6 @@ window.initProductPage = function () {
             cartBadge.style.display = itemCount > 0 ? 'inline-block' : 'none';
             if (animated) {
                 cartBadge.classList.remove('pop');
-                // Force reflow to restart animation
                 void cartBadge.offsetWidth;
                 cartBadge.classList.add('pop');
             }
@@ -436,26 +405,23 @@ window.initProductPage = function () {
         }
 
         function calculateTotal() {
-            // BLINDAGE: somme numérique prix × quantité
             return cart.reduce((total, item) => {
                 return total + (Number(item.price || 0) * Number(item.quantity || 1));
             }, 0);
         }
 
-        // Helper: convertir UNIQUEMENT le panier selon la devise session, avec fallback si le pont global n'est pas prêt
+        // Helper: conversion panier robuste
         async function convertCartNow(maxRetries = 8) {
             try {
                 const sel = JSON.parse(localStorage.getItem('da_locale') || '{}');
                 const targetCur = (sel.currency || 'XOF').toUpperCase();
 
-                // Si le pont global est prêt, on l'utilise (assure ensureRates + double passe)
                 if (window.__da_debugLocale && typeof window.__da_debugLocale.convert === 'function') {
                     await window.__da_debugLocale.convert(targetCur);
                     return;
                 }
 
-                // Fallback: conversion ciblée du panier (sans dépendre du reste de la page)
-                // 1) Récupérer les taux
+                // Fallback local si le pont global n'est pas encore prêt
                 let rates = null;
                 try {
                     const cached = localStorage.getItem('da_fx_rates');
@@ -473,14 +439,12 @@ window.initProductPage = function () {
                     }
                 }
                 if (!rates) {
-                    // Le pont global n'est pas prêt et pas de taux => réessaye un peu (delai court)
                     if (maxRetries > 0) {
                         return new Promise(res => setTimeout(() => res(convertCartNow(maxRetries - 1)), 60));
                     }
-                    return; // abandon silencieux
+                    return;
                 }
 
-                // 2) Fonctions locales conversion/formatage
                 const SYMBOL = { XOF:'XOF', USD:'$', EUR:'€', GBP:'£', AED:'د.إ', RUB:'₽', CNY:'¥', JPY:'¥' };
                 const convertAmountViaXOFLocal = (amount, fromCur, toCur) => {
                     if (!isFinite(amount)) return amount;
@@ -494,7 +458,6 @@ window.initProductPage = function () {
                 };
                 const formatAmountLocal = (amount, currency) => `${Number(amount).toLocaleString('fr-FR', { maximumFractionDigits: 2 })} ${SYMBOL[currency] || currency}`;
 
-                // 3) Convertir uniquement les nœuds du panier
                 const nodes = document.querySelectorAll('#cart-bar [data-price]');
                 nodes.forEach(el => {
                     const base = parseFloat(el.getAttribute('data-price'));
@@ -504,67 +467,60 @@ window.initProductPage = function () {
                     el.textContent = formatAmountLocal(conv, targetCur);
                     el.setAttribute('data-currency', targetCur);
                 });
-
-            } catch (_) {
-                // aucun throw (UX)
-            }
+            } catch (_) {}
         }
-        
+
         function renderCart() {
-          if (!cartItemsContainer || !cartTotalElement) return;
-        
-          cartItemsContainer.innerHTML = '';
-          if (cart.length === 0) {
-              cartItemsContainer.innerHTML = '<p>Votre panier est vide.</p>';
-          } else {
-              cart.forEach((item, index) => {
-                  const itemElement = document.createElement('div');
-                  itemElement.className = 'cart-item';
-                  const baseCur = 'XOF';
-                  const basePrice = Number(item.price) || 0;
-        
-                  itemElement.innerHTML = `
-                      <span>${item.name}</span>&ensp;
-                      <span class="cart-price" data-price="${basePrice}" data-currency="${baseCur}">
-                          ${basePrice} ${baseCur}
-                      </span>
-                      <button class="remove-item" data-index="${index}">⛌</button>
-                  `;
-                  cartItemsContainer.appendChild(itemElement);
-        
-                  // IMPORTANT: annote/rafraîchit la base (évite dataset collant)
-                  const priceEl = itemElement.querySelector('.cart-price');
-                  if (priceEl) {
-                    priceEl.dataset.basePrice = String(basePrice);
-                    priceEl.dataset.baseCurrency = baseCur;
-                  }
-              });
-          }
-        
-          // Total en base XOF
-          const totalBase = calculateTotal();
-          cartTotalElement.setAttribute('data-price', String(totalBase));
-          cartTotalElement.setAttribute('data-currency', 'XOF');
-          cartTotalElement.textContent = `${totalBase} XOF`;
-          // IMPORTANT: annote/rafraîchit la base pour le total
-          cartTotalElement.dataset.basePrice = String(totalBase);
-          cartTotalElement.dataset.baseCurrency = 'XOF';
-        
-          // Bind remove
-          cartItemsContainer.querySelectorAll('.remove-item').forEach(button => {
-              button.addEventListener('click', (e) => {
-                  const index = parseInt(e.target.dataset.index);
-                  cart.splice(index, 1);
-                  saveCart();
-                  renderCart();
-                  updateAddToCartButtons();
-                  updateCartBadge(true);
-              });
-          });
-        
-          // Conversion immédiate du panier (double passe locale, robuste aux timings)
-          convertCartNow();
-          requestAnimationFrame(() => convertCartNow());
+            if (!cartItemsContainer || !cartTotalElement) return;
+
+            cartItemsContainer.innerHTML = '';
+            if (cart.length === 0) {
+                cartItemsContainer.innerHTML = '<p>Votre panier est vide.</p>';
+            } else {
+                cart.forEach((item, index) => {
+                    const itemElement = document.createElement('div');
+                    itemElement.className = 'cart-item';
+                    const baseCur = 'XOF';
+                    const basePrice = Number(item.price) || 0;
+
+                    itemElement.innerHTML = `
+                        <span>${item.name}</span>&ensp;
+                        <span class="cart-price" data-price="${basePrice}" data-currency="${baseCur}">
+                            ${basePrice} ${baseCur}
+                        </span>
+                        <button class="remove-item" data-index="${index}">⛌</button>
+                    `;
+                    cartItemsContainer.appendChild(itemElement);
+
+                    const priceEl = itemElement.querySelector('.cart-price');
+                    if (priceEl) {
+                        priceEl.dataset.basePrice = String(basePrice);
+                        priceEl.dataset.baseCurrency = baseCur;
+                    }
+                });
+            }
+
+            const totalBase = calculateTotal();
+            cartTotalElement.setAttribute('data-price', String(totalBase));
+            cartTotalElement.setAttribute('data-currency', 'XOF');
+            cartTotalElement.textContent = `${totalBase} XOF`;
+            cartTotalElement.dataset.basePrice = String(totalBase);
+            cartTotalElement.dataset.baseCurrency = 'XOF';
+
+            cartItemsContainer.querySelectorAll('.remove-item').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    const index = parseInt(e.target.dataset.index);
+                    cart.splice(index, 1);
+                    saveCart();
+                    renderCart();
+                    updateAddToCartButtons();
+                    updateCartBadge(true);
+                });
+            });
+
+            // Conversion panier immédiate (double passe)
+            convertCartNow();
+            requestAnimationFrame(() => convertCartNow());
         }
 
         function updateAddToCartButtons() {
@@ -584,34 +540,31 @@ window.initProductPage = function () {
         }
 
         function slugify(text) {
-            // Supprime les accents et transforme en ASCII
             text = text.normalize('NFKD').replace(/[\u0300-\u036f]/g, '');
-
-            // Supprime les caractères spéciaux et met en minuscule
             text = text.replace(/[^\w\s-]/g, '').trim().toLowerCase();
-
-            // Remplace les espaces et tirets multiples par un seul tiret
             return text.replace(/[\s]+/g, '-');
         }
 
         addToCartButtons.forEach(button => {
-            button.addEventListener('click', () => {
+            button.addEventListener('click', async () => {
                 const productId = button.getAttribute('data-id');
                 const productName = button.getAttribute('data-name');
                 const productPrice = parseFloat(button.getAttribute('data-price'));
                 const productSlug = slugify(productName);
 
-                // Verifie si le produit est déjà dans le panier
                 const found = cart.find(item => item.id === productId);
                 if (!found) {
                     cart.push({ id: productId, name: productName, price: productPrice, slug: productSlug });
                     saveCart();
-                    renderCart(); // rend + convertCartNow()
+                    renderCart();              // rend + convertCartNow()
                     updateAddToCartButtons();
                     if (cartBar) cartBar.classList.add('visible');
-                    // Badge animation
                     updateCartBadge(true);
-                    // Bouton feedback visuel
+
+                    // Conversion supplémentaire immédiate pour garantir l'affichage en devise user
+                    await convertCartNow();
+                    requestAnimationFrame(() => convertCartNow());
+
                     button.textContent = "OK !";
                     button.classList.add('added');
                     showNotification(` Ajouté avec succès.`, 'success');
@@ -630,22 +583,14 @@ window.initProductPage = function () {
             });
         });
 
-
         function PaymentInfoModal(onSubmit, onCancel) {
-            // Sauvegarde du focus d’origine
             const previousActive = document.activeElement;
-
-            // Charger le dernier profil (si existant)
             let lastProfile = {};
             try { lastProfile = JSON.parse(localStorage.getItem('da_checkout_profile') || '{}'); } catch {}
 
-            // Créer overlay + modal
             const overlay = document.createElement('div');
             overlay.className = 'customModal-overlay';
-            overlay.style.cssText = `
-                position: fixed; inset: 0; background: rgba(0,0,0,.5);
-                display: flex; align-items: center; justify-content: center; z-index: 2000;
-            `;
+            overlay.style.cssText = `position: fixed; inset: 0; background: rgba(0,0,0,.5); display: flex; align-items: center; justify-content: center; z-index: 2000;`;
 
             const modal = document.createElement('div');
             modal.className = 'customModal';
@@ -653,12 +598,8 @@ window.initProductPage = function () {
             modal.setAttribute('aria-modal', 'true');
             modal.setAttribute('aria-labelledby', 'modal-title');
             modal.setAttribute('aria-describedby', 'modal-desc');
-            modal.style.cssText = `
-                background: #111; color: #fff; border-radius: 12px; width: min(96vw, 520px);
-                box-shadow: 0 10px 40px rgba(0,0,0,.4); padding: 18px; outline: none;
-            `;
+            modal.style.cssText = `background: #111; color: #fff; border-radius: 12px; width: min(96vw, 520px); box-shadow: 0 10px 40px rgba(0,0,0,.4); padding: 18px; outline: none;`;
 
-            // Contenu: utiliser un <form> + autocomplete on
             modal.innerHTML = `
               <form id="payment-form" autocomplete="on" novalidate>
                 <h3 id="modal-title" style="margin:.2em 0 0.6em 0;">Finaliser la commande</h3>
@@ -668,41 +609,17 @@ window.initProductPage = function () {
 
                 <div class="form-field" style="margin-bottom:10px;">
                   <label for="payment-nom-client">Nom complet</label>
-                  <input
-                    type="text"
-                    id="payment-nom-client"
-                    name="name"
-                    placeholder="Votre nom complet"
-                    required
-                    autocomplete="name"
-                    autocapitalize="words"
-                    spellcheck="false"
-                    />
+                  <input type="text" id="payment-nom-client" name="name" placeholder="Votre nom complet" required autocomplete="name" autocapitalize="words" spellcheck="false" />
                 </div>
 
                 <div class="form-field" style="margin-bottom:10px;">
                   <label for="payment-email">Adresse e-mail</label>
-                  <input
-                    type="email"
-                    id="payment-email"
-                    name="email"
-                    placeholder="Pour recevoir vos produits"
-                    required
-                    autocomplete="email"
-                    inputmode="email"
-                    />
+                  <input type="email" id="payment-email" name="email" placeholder="Pour recevoir vos produits" required autocomplete="email" inputmode="email" />
                 </div>
 
                 <div class="form-field" style="margin-bottom:4px;">
                   <label for="payment-whatsapp">Numéro WhatsApp</label>
-                  <input
-                    type="tel"
-                    id="payment-whatsapp"
-                    name="tel"
-                    placeholder="+2250700000000"
-                    autocomplete="tel"
-                    inputmode="tel"
-                    />
+                  <input type="tel" id="payment-whatsapp" name="tel" placeholder="+2250700000000" autocomplete="tel" inputmode="tel" />
                   <small id="whats-hint" style="opacity:.7;">Format international recommandé (+225…)</small>
                 </div>
 
@@ -718,7 +635,6 @@ window.initProductPage = function () {
             overlay.appendChild(modal);
             document.body.appendChild(overlay);
 
-            // Préremplissage si profil déjà existant
             const nomEl = modal.querySelector('#payment-nom-client');
             const emailEl = modal.querySelector('#payment-email');
             const telEl = modal.querySelector('#payment-whatsapp');
@@ -733,10 +649,8 @@ window.initProductPage = function () {
                 if (lastProfile.whatsapp) telEl.value = lastProfile.whatsapp;
             }
 
-            // Focus initial
             setTimeout(() => { nomEl.focus(); }, 10);
 
-            // Focus trap
             const focusableSelectors = 'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])';
             function trapFocus(e) {
                 if (e.key !== 'Tab') return;
@@ -752,18 +666,11 @@ window.initProductPage = function () {
             }
 
             function close() {
-                // Nettoyage handlers
                 document.removeEventListener('keydown', onKeydown);
                 modal.removeEventListener('keydown', trapFocus);
                 overlay.removeEventListener('click', onOverlayClick);
-
-                // Disparition
                 overlay.remove();
-
-                // Retour focus sur le déclencheur
-                if (previousActive && typeof previousActive.focus === 'function') {
-                    previousActive.focus();
-                }
+                if (previousActive && typeof previousActive.focus === 'function') previousActive.focus();
             }
 
             function onKeydown(e) {
@@ -772,7 +679,6 @@ window.initProductPage = function () {
                     close();
                     if (typeof onCancel === 'function') onCancel();
                 } else if (e.key === 'Enter') {
-                    // Permettre Enter de soumettre partout
                     if (e.target && e.target.tagName && ['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) {
                         e.preventDefault();
                         btnSubmit.click();
@@ -781,7 +687,6 @@ window.initProductPage = function () {
             }
 
             function onOverlayClick(e) {
-                // Fermer si clic en dehors du contenu (overlay)
                 if (e.target === overlay) {
                     close();
                     if (typeof onCancel === 'function') onCancel();
@@ -792,7 +697,6 @@ window.initProductPage = function () {
             modal.addEventListener('keydown', trapFocus);
             overlay.addEventListener('click', onOverlayClick);
 
-            // Soumission
             formEl.addEventListener('submit', (evt) => {
                 evt.preventDefault();
                 errEl.textContent = '';
@@ -812,7 +716,6 @@ window.initProductPage = function () {
                     return;
                 }
 
-                // Sauvegarder profil pour autofill futur
                 try {
                     localStorage.setItem('da_checkout_profile', JSON.stringify({ name: nom, email, whatsapp }));
                 } catch {}
@@ -821,50 +724,39 @@ window.initProductPage = function () {
                 onSubmit({ nom_client: nom, email, whatsapp });
             });
 
-            // Annuler
             btnCancel.addEventListener('click', () => {
                 close();
                 if (typeof onCancel === 'function') onCancel();
             });
         }
         
-        // Fonction utilitaire pour l'objet article attendu par MoneyFusion
         function getArticleObject(cart) {
             const article = {};
             cart.forEach(item => {
-                // On suppose que item.price est le prix unitaire, et item.quantity au moins 1
                 article[item.name] = parseFloat(item.price) * (item.quantity || 1);
             });
             return [article];
         }
 
-        // Fonction utilitaire pour le prix total
         function getTotalPrice(cart) {
             return cart.reduce((acc, item) => acc + (Number(item.price || 0) * Number(item.quantity || 1)), 0);
         }
 
-        // FONCTION A UTILISER POUR TOUT PAIEMENT (panier ou achat direct)
         function redirectToPayment(amount, cart) {
-          // Devise choisie (pour l'UX et l'historique uniquement)
           const selectedCurrency = (() => {
-            try {
-              const obj = JSON.parse(localStorage.getItem('da_locale') || '{}');
-              return (obj.currency || 'XOF').toUpperCase();
-            } catch { return 'XOF'; }
+            try { const obj = JSON.parse(localStorage.getItem('da_locale') || '{}'); return (obj.currency || 'XOF').toUpperCase(); }
+            catch { return 'XOF'; }
           })();
-        
-          // Prix de base (XOF) côté frontend
           const totalPriceXOF = cart.reduce((acc, item) => acc + (Number(item.price || 0) * Number(item.quantity || 1)), 0);
         
           PaymentInfoModal(({ nom_client, email, whatsapp }) => {
-            // 1) Sauvegarder le panier abandonné: on envoie la devise affichée pour info, mais le total est en XOF
             const checkoutData = {
-              totalPrice: totalPriceXOF,   // TOUJOURS XOF
-              cart: cart,                  // items avec price en XOF
+              totalPrice: totalPriceXOF,
+              cart: cart,
               email: email,
               nom_client: nom_client,
               whatsapp: whatsapp,
-              currency: selectedCurrency   // pour affichage/analytics email uniquement
+              currency: selectedCurrency
             };
         
             fetch("/api/checkout/prepare", {
@@ -877,27 +769,22 @@ window.initProductPage = function () {
               return res.json();
             })
             .then(prepareData => {
-              // 2) Payload final MoneyFusion en XOF
               const articleObject = {};
               cart.forEach(item => {
-                // item.price est en XOF
                 articleObject[item.name] = Number(item.price) * (item.quantity || 1);
               });
         
               const numeroClient = (whatsapp || "").trim();
         
               const paymentData = {
-                totalPrice: totalPriceXOF,      // TOUJOURS XOF
-                article: [articleObject],       // TOUJOURS XOF
+                totalPrice: totalPriceXOF,
+                article: [articleObject],
                 numeroSend: numeroClient,
                 nomclient: nom_client.trim(),
-                personal_Info: [{
-                  userId: nom_client,
-                  orderId: `cart_${prepareData.cart_id}`
-                }],
+                personal_Info: [{ userId: nom_client, orderId: `cart_${prepareData.cart_id}` }],
                 return_url: window.location.origin + "/callback",
                 webhook_url: window.location.origin + "/webhook",
-                currency: "XOF"                 // TOUJOURS XOF pour le processeur
+                currency: "XOF"
               };
         
               return fetch("/payer", {
@@ -924,7 +811,6 @@ window.initProductPage = function () {
           });
         }
 
-        // Achat direct
         buyDirectlyButtons.forEach(button => {
             button.addEventListener('click', () => {
                 const productName = button.getAttribute('data-name');
@@ -934,7 +820,6 @@ window.initProductPage = function () {
             });
         });
 
-        // Achat panier
         if (buyFromCartButton) {
             buyFromCartButton.addEventListener('click', () => {
                 const cart = JSON.parse(localStorage.getItem('cart')) || [];
@@ -947,7 +832,6 @@ window.initProductPage = function () {
             });
         }
 
-        // Ouvre/ferme le panier avec le bouton close
         if (closeCartButton && cartBar) {
             closeCartButton.addEventListener('click', () => {
                 cartBar.classList.toggle('visible');
@@ -959,16 +843,14 @@ window.initProductPage = function () {
             convertNow: () => convertCartNow()
         };
 
-        // Animation badge au chargement si panier non vide
         updateCartBadge(false);
         renderCart();
         updateAddToCartButtons();
     }
 
-    // Initialiser le panier sur toutes les pages (SPA-friendly)
     initCartDigital();
 
-    // --- Gestion du bouton "Voir plus" pour les commentaires ---
+    // --- Commentaires "voir plus" ---
     const commentSection = document.querySelector('.comments-section');
     if (commentSection) {
         const commentList = commentSection.querySelector('.comment-list');
@@ -995,7 +877,7 @@ window.initProductPage = function () {
         updateCommentsVisibility();
     }
 
-    // --- Gestion des interactions avec la FAQ ---
+    // --- FAQ ---
     document.querySelectorAll(".faq-item").forEach((faqItem) => {
         const question = faqItem.querySelector(".faq-question");
         question.addEventListener("click", () => {
@@ -1014,36 +896,29 @@ window.initProductPage = function () {
         const content = banner.querySelector('.announcement-banner-content');
         if (!content) return;
 
-        // Mesures
         const contentWidth = content.scrollWidth || 0;
         const viewport = banner.clientWidth || window.innerWidth || 360;
 
-        // Vitesse cible (px/seconde) — plus lent sur desktop, plus rapide sur mobile
         const isMobile = window.matchMedia('(max-width: 600px)').matches;
         const pxPerSec = isMobile ? 70 : 90;
 
-        // Durée = distance à parcourir (contenu + viewport) / vitesse
         const distance = contentWidth + viewport;
         const duration = Math.max(8, distance / pxPerSec);
 
-        // Applique la durée calculée
         content.style.animationDuration = duration + 's';
     }
 
-    // 1) Au chargement
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', recalcDuration);
     } else {
         recalcDuration();
     }
 
-    // 2) Sur redimensionnement
     window.addEventListener('resize', () => {
         clearTimeout(resizeTO);
         resizeTO = setTimeout(recalcDuration, 120);
     });
 
-    // 3) Quand le contenu du bandeau est injecté/modifié
     const banner = document.getElementById('site-announcement-banner');
     if (banner) {
         const mo = new MutationObserver(() => setTimeout(recalcDuration, 0));
@@ -1051,22 +926,16 @@ window.initProductPage = function () {
     }
 })();
 
-// ===== Locale Switcher (flag + currency on button, conversion, responsive panel) =====
-// S'exécute une fois que le DOM est prêt pour éviter les erreurs
+// ===== Locale Switcher =====
 document.addEventListener('DOMContentLoaded', () => {
-    // Config
     const SUPPORTED = ['XOF','USD','EUR','GBP','AED','RUB','CNY','JPY'];
     const XOF_ZONE = new Set(['CI','SN','BJ','BF','TG','ML','NE','GW']);
     const SYMBOL = { XOF:'XOF', USD:'$', EUR:'€', GBP:'£', AED:'د.إ', RUB:'₽', CNY:'¥', JPY:'¥' };
     let RATES_XOF = null;
 
-    // Flag CDN
     const flagUrl = cc => `https://cdn.jsdelivr.net/gh/lipis/flag-icons@6.6.6/flags/1x1/${String(cc||'').toLowerCase()}.svg`;
 
-    // Cache des taux FX
-    function saveRatesCache(rates) {
-      try { localStorage.setItem('da_fx_rates', JSON.stringify({ rates, ts: Date.now() })); } catch {}
-    }
+    function saveRatesCache(rates) { try { localStorage.setItem('da_fx_rates', JSON.stringify({ rates, ts: Date.now() })); } catch {} }
     function loadRatesCache(maxAgeMs = 6 * 60 * 60 * 1000) {
       try {
         const raw = localStorage.getItem('da_fx_rates');
@@ -1093,7 +962,6 @@ document.addEventListener('DOMContentLoaded', () => {
       return !!RATES_XOF;
     }
 
-    // Fonctions de conversion de prix
     const SYMBOL_TO_CUR = {'$':'USD','€':'EUR','£':'GBP','¥':'CNY','₽':'RUB','د.إ':'AED'};
     function parseNumberFromText(txt) {
       if (!txt) return NaN;
@@ -1111,35 +979,26 @@ document.addEventListener('DOMContentLoaded', () => {
     }
     
     function ensureDatasetForPrice(el) {
-      // Si déjà annoté mais l'attribut a changé, on rafraîchit le dataset
       const attrPrice = parseFloat(el.getAttribute('data-price') || 'NaN');
       const hasDataPriceAttr = !isNaN(attrPrice);
       if (el.dataset.basePrice) {
         const currentBase = parseFloat(el.dataset.basePrice);
-        // Si data-price (attribut) existe et diffère du dataset, on met à jour
         if (hasDataPriceAttr && isFinite(attrPrice) && attrPrice !== currentBase) {
           el.dataset.basePrice = String(attrPrice);
           const attrCur = (el.getAttribute('data-currency') || el.dataset.baseCurrency || 'XOF').toUpperCase();
           el.dataset.baseCurrency = attrCur;
           return true;
         }
-        // Sinon, on garde le dataset existant
         return true;
       }
-    
-      // Pas encore annoté → on l'annote
       if (!el.hasAttribute('data-price') && el.children && el.children.length > 0) return false;
-    
       let basePrice = parseFloat(el.getAttribute('data-price') || 'NaN');
       let baseCur = (el.getAttribute('data-currency') || '').toUpperCase();
-    
       if (!isFinite(basePrice)) basePrice = parseNumberFromText(el.textContent);
       if (!baseCur) baseCur = parseCurrencyFromText(el.textContent) || 'XOF';
       if (!isFinite(basePrice)) return false;
-    
       el.dataset.basePrice = String(basePrice);
       el.dataset.baseCurrency = baseCur;
-    
       if (!el.hasAttribute('data-price')) el.setAttribute('data-price', String(basePrice));
       if (!el.hasAttribute('data-currency')) el.setAttribute('data-currency', baseCur);
       return true;
@@ -1208,7 +1067,6 @@ document.addEventListener('DOMContentLoaded', () => {
       return converted;
     }
 
-        // EXPOSE: pont global pour convertir à la volée après tout nouveau rendu (panier, etc.)
     window.__da_debugLocale = {
       convert: async function(targetCurrency) {
         try {
@@ -1224,7 +1082,6 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     };
 
-    // Fonctions pour les pays
     function pickSupportedCurrency(cc, countryCurrency, region) {
       const cur = String(countryCurrency || '').toUpperCase();
       if (SUPPORTED.includes(cur)) return cur;
@@ -1257,13 +1114,11 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
     async function geolocateCountry() {
-      // Tentative 1: ipapi.co (riche mais parfois bloqué/limité)
       try {
         const r = await fetch('https://ipapi.co/json/', { cache: 'no-store' });
         const j = await r.json();
         if (j && j.country) return String(j.country).toLowerCase();
       } catch {}
-      // Tentative 2: api.country.is (simple, très fiable, CORS ok)
       try {
         const r2 = await fetch('https://api.country.is', { cache: 'no-store' });
         const j2 = await r2.json();
@@ -1271,7 +1126,7 @@ document.addEventListener('DOMContentLoaded', () => {
       } catch {}
       return null;
     }
-    // Création de l'interface
+
     const timeEl = document.getElementById('gmt-time');
     const wrap = document.createElement('div');
     wrap.className = 'locale-switch-wrap';
@@ -1314,7 +1169,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let ALL_LOCALES = [];
 
-    // Fonctions d'interaction
     function setFlag(code) {
       if (!code) { flagImg.removeAttribute('src'); return; }
       flagImg.src = flagUrl(code);
@@ -1339,7 +1193,6 @@ document.addEventListener('DOMContentLoaded', () => {
     document.addEventListener('click', (e) => { if (!panel.contains(e.target) && e.target !== btn) closePanel(); });
     search.addEventListener('input', () => mountList(search.value));
 
-    // Persistance
     function saveLocale(sel) { try { localStorage.setItem('da_locale', JSON.stringify(sel)); } catch {} }
     function loadLocale() { try { const r = localStorage.getItem('da_locale'); return r ? JSON.parse(r) : null; } catch { return null; } }
     function persistSelection(sel) {
@@ -1348,19 +1201,16 @@ document.addEventListener('DOMContentLoaded', () => {
       document.documentElement.lang = sel.lang || 'fr';
     }
 
-    // UI only: ne fait plus la conversion
     function applySelection(sel, persist=false) {
       setFlag(sel.country);
       if (curEl) curEl.textContent = String(sel.currency || 'XOF').toUpperCase();
       if (persist) persistSelection(sel);
     }
 
-    // Sélection utilisateur: garantit l'ordre (taux -> annotate -> convert -> persist)
     async function selectCountry(sel) {
       await ensureRates();
       applySelection(sel, true);
 
-      // NOUVEAU: rafraîchir le panier pour mettre à jour #cart-total (data-price) avant conversion
       try {
         if (window.__da_cart && typeof window.__da_cart.render === 'function') {
           window.__da_cart.render();
@@ -1373,15 +1223,12 @@ document.addEventListener('DOMContentLoaded', () => {
       closePanel();
     }
 
-    // Initialisation
     (async function initLocale() {
       annotateLikelyPriceSpans();
 
       let chosen = loadLocale();
-      // Charger la liste des pays (pour le panel)
       ALL_LOCALES = await fetchAllCountries();
 
-      // Si aucune sélection sauvegardée, tentative géoloc puis fallback
       if (!chosen) {
         const geo = await geolocateCountry();
         const found = ALL_LOCALES.find(x => x.code === geo);
@@ -1391,16 +1238,13 @@ document.addEventListener('DOMContentLoaded', () => {
         chosen = { country:'ci', currency:'XOF', lang:'fr' };
       }
 
-      // S’assurer que les taux sont prêts avant toute conversion
       await ensureRates();
 
-      // Mettre à jour l’UI puis convertir (double passe)
       applySelection(chosen, true);
       annotateLikelyPriceSpans();
       convertDisplayedPrices(chosen.currency);
       requestAnimationFrame(() => convertDisplayedPrices(chosen.currency));
 
-      // Conversion ciblée panier si besoin (au cas où le pont n'était pas prêt)
       try {
         if (window.__da_cart && typeof window.__da_cart.convertNow === 'function') {
           window.__da_cart.convertNow();
