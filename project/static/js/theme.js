@@ -1033,13 +1033,20 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
     async function geolocateCountry() {
+      // Tentative 1: ipapi.co (riche mais parfois bloqué/limité)
       try {
         const r = await fetch('https://ipapi.co/json/', { cache: 'no-store' });
         const j = await r.json();
-        return (j && j.country) ? String(j.country).toLowerCase() : null;
-      } catch { return null; }
+        if (j && j.country) return String(j.country).toLowerCase();
+      } catch {}
+      // Tentative 2: api.country.is (simple, très fiable, CORS ok)
+      try {
+        const r2 = await fetch('https://api.country.is', { cache: 'no-store' });
+        const j2 = await r2.json();
+        if (j2 && j2.country) return String(j2.country).toLowerCase();
+      } catch {}
+      return null;
     }
-
     // Création de l'interface
     const timeEl = document.getElementById('gmt-time');
     const wrap = document.createElement('div');
