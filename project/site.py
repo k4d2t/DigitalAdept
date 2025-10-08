@@ -1024,44 +1024,35 @@ def payer():
 
 @app.route('/api/checkout/prepare', methods=['POST'])
 def prepare_checkout():
-    data = request.json
+    data = request.json or {}
     email = data.get('email')
     cart_items = data.get('cart')
     nom_client = data.get('nom_client')
-    total_price = data.get('totalPrice') or 0
+    # totalPrice vient du front EN XOF (notre référence)
+    try:
+        total_price = float(data.get('totalPrice') or 0.0)
+    except Exception:
+        total_price = 0.0
     whatsapp = data.get('whatsapp')
-    sel_currency = (data.get('currency') or 'XOF').upper()  # <-- AJOUT
+    sel_currency = (data.get('currency') or 'XOF').upper()  # devise choisie par l'utilisateur (affichage/analytics)
 
     if not email or not cart_items:
         return jsonify({"error": "Email et contenu du panier sont requis."}), 400
 
-    # Normalise le total en XOF pour cohérence du reporting
-    try:
-        total_price = float(total_price)
-    except Exception:
-        total_price = 0.0
-
-    if sel_currency != 'XOF':
-        rates = get_fx_rates_base_xof()  # base = XOF
-        rate = float(rates.get(sel_currency) or 0)
-        try:
-            total_price = total_price / rate if rate > 0 else total_price
-        except Exception:
-            pass
-
+    # NE PLUS CONVERTIR ICI: on stocke la base XOF telle quelle
     abandoned_cart = AbandonedCart(
         email=email,
         customer_name=nom_client,
-        cart_content=cart_items,  # laissé tel quel (prix d’origine)
-        total_price=total_price,   # TOUJOURS XOF désormais
+        cart_content=cart_items,   # laissé tel quel
+        total_price=total_price,   # TOUJOURS XOF
         whatsapp_number=whatsapp,
-        currency=sel_currency
+        currency=sel_currency      # conserve le choix utilisateur pour les relances
     )
     db.session.add(abandoned_cart)
     db.session.commit()
 
     return jsonify({"status": "prepared", "cart_id": abandoned_cart.id}), 200
-
+    
 # --- WEBHOOK MIS À JOUR (LOGIQUE FIABLE) ---
 @app.route("/webhook", methods=["POST"])
 def webhook():
