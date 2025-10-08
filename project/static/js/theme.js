@@ -642,85 +642,83 @@ window.initProductPage = function () {
 
         // FONCTION A UTILISER POUR TOUT PAIEMENT (panier ou achat direct)
         function redirectToPayment(amount, cart) {
-            const selectedCurrency = (() => {
-              try {
-                const obj = JSON.parse(localStorage.getItem('da_locale') || '{}');
-                return (obj.currency || 'XOF').toUpperCase();
-              } catch { return 'XOF'; }
-            })();
-            PaymentInfoModal(({ nom_client, email, whatsapp }) => {
-                // Étape 1 : Préparer les données pour notre propre backend (panier abandonné)
-                const checkoutData = {
-                    totalPrice: getTotalPrice(cart),
-                             cart: cart,
-                             email: email,
-                             nom_client: nom_client,
-                             whatsapp: whatsapp,
-                             currency: selectedCurrency  // AJOUT
-
-                };
-
-                // On sauvegarde d'abord le panier abandonné
-                fetch("/api/checkout/prepare", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(checkoutData)
-                })
-                .then(res => {
-                    if (!res.ok) throw new Error('La préparation du paiement a échoué.');
-                    return res.json();
-                })
-                .then(prepareData => {
-                    // Étape 2 : Construire le payload EXACT pour MoneyFusion
-
-                    // Formatage du champ 'article' selon la doc
-                    const articleObject = {};
-                    cart.forEach(item => {
-                        articleObject[item.name] = Number(item.price) * (item.quantity || 1);
-                    });
-
-                    // CORRECTION : S'assurer que numeroSend est toujours une chaîne, même si vide.
-                    const numeroClient = (whatsapp || "").trim();
-
-                    const paymentData = {
-                        totalPrice: getTotalPrice(cart),
-                      article: [articleObject], // Format correct : [ { "produit": prix } ]
-                      numeroSend: numeroClient, // Champ obligatoire, maintenant toujours présent
-                      nomclient: nom_client.trim(),
-                      personal_Info: [{
-                          userId: nom_client, // Utiliser le nom du client comme identifiant
-                          orderId: `cart_${prepareData.cart_id}` // Lier le paiement à notre panier
-                      }],
-                      return_url: window.location.origin + "/callback",
-                      webhook_url: window.location.origin + "/webhook",
-                      currency: selectedCurrency  // AJOUT
-
-                    };
-
-                    // Étape 3 : Envoyer les données à notre route /payer qui relaiera à MoneyFusion
-                    return fetch("/payer", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify(paymentData)
-                    });
-                })
-                .then(res => res.json())
-                .then(paymentResponse => {
-                    // La doc utilise 'url' pour la redirection
-                    if (paymentResponse.url) {
-                        localStorage.removeItem("cart");
-                        window.location.href = paymentResponse.url;
-                    } else {
-                        throw new Error(paymentResponse.error || "Erreur inconnue lors de la création du lien de paiement.");
-                    }
-                })
-                .catch(err => {
-                    showNotification("Erreur technique : " + err.message, "error");
-                    console.error("Erreur dans le flux de paiement :", err);
-                });
-            }, () => {
-                showNotification("Paiement annulé.", "info");
+          // Devise choisie (pour l'UX et l'historique uniquement)
+          const selectedCurrency = (() => {
+            try {
+              const obj = JSON.parse(localStorage.getItem('da_locale') || '{}');
+              return (obj.currency || 'XOF').toUpperCase();
+            } catch { return 'XOF'; }
+          })();
+        
+          // Prix de base (XOF) côté frontend
+          const totalPriceXOF = cart.reduce((acc, item) => acc + (Number(item.price || 0) * Number(item.quantity || 1)), 0);
+        
+          PaymentInfoModal(({ nom_client, email, whatsapp }) => {
+            // 1) Sauvegarder le panier abandonné: on envoie la devise affichée pour info, mais le total est en XOF
+            const checkoutData = {
+              totalPrice: totalPriceXOF,   // TOUJOURS XOF
+              cart: cart,                  // items avec price en XOF
+              email: email,
+              nom_client: nom_client,
+              whatsapp: whatsapp,
+              currency: selectedCurrency   // pour affichage/analytics email uniquement
+            };
+        
+            fetch("/api/checkout/prepare", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(checkoutData)
+            })
+            .then(res => {
+              if (!res.ok) throw new Error('La préparation du paiement a échoué.');
+              return res.json();
+            })
+            .then(prepareData => {
+              // 2) Payload final MoneyFusion en XOF
+              const articleObject = {};
+              cart.forEach(item => {
+                // item.price est en XOF
+                articleObject[item.name] = Number(item.price) * (item.quantity || 1);
+              });
+        
+              const numeroClient = (whatsapp || "").trim();
+        
+              const paymentData = {
+                totalPrice: totalPriceXOF,      // TOUJOURS XOF
+                article: [articleObject],       // TOUJOURS XOF
+                numeroSend: numeroClient,
+                nomclient: nom_client.trim(),
+                personal_Info: [{
+                  userId: nom_client,
+                  orderId: `cart_${prepareData.cart_id}`
+                }],
+                return_url: window.location.origin + "/callback",
+                webhook_url: window.location.origin + "/webhook",
+                currency: "XOF"                 // TOUJOURS XOF pour le processeur
+              };
+        
+              return fetch("/payer", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(paymentData)
+              });
+            })
+            .then(res => res.json())
+            .then(paymentResponse => {
+              if (paymentResponse.url) {
+                localStorage.removeItem("cart");
+                window.location.href = paymentResponse.url;
+              } else {
+                throw new Error(paymentResponse.error || "Erreur inconnue lors de la création du lien de paiement.");
+              }
+            })
+            .catch(err => {
+              showNotification("Erreur technique : " + err.message, "error");
+              console.error("Erreur dans le flux de paiement :", err);
             });
+          }, () => {
+            showNotification("Paiement annulé.", "info");
+          });
         }
 
         // Achat direct
