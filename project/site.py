@@ -957,8 +957,8 @@ def messages():
 @app.route("/payer", methods=["POST"])
 def payer():
     """
-    Reçoit les données du frontend, les convertit en XOF si nécessaire,
-    et les transmet à MoneyFusion.
+    Reçoit les données du frontend, NORMALISE en XOF (sans jamais reconvertir),
+    et transmet à MoneyFusion.
     """
     data = request.json
     MONEYFUSION_API_URL = "https://www.pay.moneyfusion.net/Digital_Adept/a5f4d44ad70069fa/pay/"
@@ -966,38 +966,29 @@ def payer():
     logging.info(f"Payload reçu du frontend: {data}")
 
     try:
-        # Devise sélectionnée côté client
-        sel_currency = (data.get("currency") or "XOF").upper()
-
-        # Conversion vers XOF si nécessaire en s'appuyant sur les taux base XOF
-        if sel_currency != "XOF":
-            rates = get_fx_rates_base_xof()  # base=XOF
-            rate = float(rates.get(sel_currency) or 0)
-            # Si base = XOF, pour convertir une somme dans sel_currency en XOF: amount_xof = amount / rate
-            def to_xof(amount):
-                try:
-                    return float(amount) / rate if rate > 0 else float(amount)
-                except Exception:
-                    return float(amount)
-
-            # Convertit total et les lignes article -> XOF
-            data["totalPrice"] = to_xof(data.get("totalPrice") or 0)
+        # 1) Reconstruire l'objet article en XOF et le total en XOF (blindé)
+        #    On ne fait AUCUNE conversion ici: on suppose que le front envoie déjà des montants base XOF.
+        article_in = (data.get("article") or [])
+        first_map = article_in[0] if (article_in and isinstance(article_in, list) and isinstance(article_in[0], dict)) else {}
+        article_xof = {}
+        total_xof = 0.0
+        for k, v in (first_map.items() if isinstance(first_map, dict) else []):
             try:
-                article_list = data.get("article") or []
-                if article_list and isinstance(article_list, list) and isinstance(article_list[0], dict):
-                    conv = {}
-                    for k, v in article_list[0].items():
-                        conv[k] = to_xof(v)
-                    data["article"] = [conv]
+                amount = float(v) or 0.0
             except Exception:
-                pass
+                amount = 0.0
+            # XOF = monnaie entière
+            article_xof[k] = round(amount)
+            total_xof += amount
 
-            # On force currency à XOF pour l'appel provider
-            data["currency"] = "XOF"
-        else:
-            data["currency"] = "XOF"  # explicite
+        total_xof = round(total_xof)
 
-        logging.info(f"Payload converti (XOF) vers MoneyFusion: {data}")
+        # 2) Forcer le payload provider en XOF strict
+        data["article"] = [article_xof]
+        data["totalPrice"] = total_xof
+        data["currency"] = "XOF"
+
+        logging.info(f"Payload normalisé (XOF) vers MoneyFusion: {data}")
 
         response = requests.post(MONEYFUSION_API_URL, json=data, timeout=15)
         logging.info(f"Réponse brute de MoneyFusion: {response.status_code} '{response.text}'")
@@ -1026,27 +1017,33 @@ def payer():
 def prepare_checkout():
     data = request.json or {}
     email = data.get('email')
-    cart_items = data.get('cart')
+    cart_items = data.get('cart') or []
     nom_client = data.get('nom_client')
-    # totalPrice vient du front EN XOF (notre référence)
-    try:
-        total_price = float(data.get('totalPrice') or 0.0)
-    except Exception:
-        total_price = 0.0
+
+    # Recalcule TOUJOURS le total en XOF à partir des lignes (ne fait confiance à rien d'autre)
+    total_price = 0.0
+    for it in cart_items:
+        try:
+            price = float(it.get('price') or 0.0)
+            qty = float(it.get('quantity') or 1.0)
+            total_price += price * qty
+        except Exception:
+            pass
+    total_price = round(total_price)
+
     whatsapp = data.get('whatsapp')
-    sel_currency = (data.get('currency') or 'XOF').upper()  # devise choisie par l'utilisateur (affichage/analytics)
+    sel_currency = (data.get('currency') or 'XOF').upper()  # choix visuel utilisateur (analytics/relance)
 
     if not email or not cart_items:
         return jsonify({"error": "Email et contenu du panier sont requis."}), 400
 
-    # NE PLUS CONVERTIR ICI: on stocke la base XOF telle quelle
     abandoned_cart = AbandonedCart(
         email=email,
         customer_name=nom_client,
-        cart_content=cart_items,   # laissé tel quel
-        total_price=total_price,   # TOUJOURS XOF
+        cart_content=cart_items,           # tel quel
+        total_price=total_price,           # XOF RECONSTRUIT
         whatsapp_number=whatsapp,
-        currency=sel_currency      # conserve le choix utilisateur pour les relances
+        currency=sel_currency              # conserve le choix utilisateur (affichage e-mails)
     )
     db.session.add(abandoned_cart)
     db.session.commit()
