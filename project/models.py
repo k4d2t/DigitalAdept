@@ -98,6 +98,7 @@ class Comment(db.Model):
     rating = db.Column(db.Integer, nullable=True)
     date = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
     is_read = db.Column(db.Boolean, default=False)
+    device_id = db.Column(db.String(64), nullable=True)
 
 class ProductResourceFile(db.Model):
     id = db.Column(db.Integer, primary_key=True)
