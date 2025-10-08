@@ -154,24 +154,73 @@ def flag_emoji_from_code(code2):
     except Exception:
         return '🌐'
         
-# Cache 6h des taux (base = XOF pour simplifier conversions vers XOF)
-@cache.cached(timeout=21600, key_prefix="fx_rates_xof")
+# Cache 6h des taux (base = XOF pour conversions via XOF)
+@cache.cached(timeout=21600, key_prefix="fx_rates_xof_v2")
 def get_fx_rates_base_xof():
+    """
+    Retourne un dict tel que: { 'XOF':1.0, 'USD': <valeur de 1 XOF en USD>, ... }
+    1) Essaie base=XOF sans 'symbols', filtre aux devises supportées.
+    2) Si incomplet, reconstitue base=XOF depuis base=USD: rate_XOF->cur = (USD->cur) / (USD->XOF).
+    3) Fallback statique si tout échoue.
+    """
     try:
-        r = requests.get("https://api.exchangerate.host/latest", params={
-            "base": "XOF",
-            "symbols": ",".join(SUPPORTED_CURRENCIES),
-            "places": 6
-        }, timeout=6)
+        r = requests.get(
+            "https://api.exchangerate.host/latest",
+            params={"base": "XOF", "places": 6},
+            timeout=8
+        )
         r.raise_for_status()
         data = r.json()
-        rates = data.get("rates") or {}
-        rates["XOF"] = 1.0
-        return rates
+        all_rates = data.get("rates") or {}
+        out = {}
+        for c in SUPPORTED_CURRENCIES:
+            if c == "XOF":
+                out["XOF"] = 1.0
+            elif isinstance(all_rates.get(c), (int, float)):
+                out[c] = float(all_rates[c])
+        if len(out) > 1:
+            return out
+        logging.warning("FX base=XOF incomplet, tentative de reconstruction via base=USD…")
     except Exception as e:
-        logging.warning(f"FX rates fallback: {e}")
-        # Fallback approximatif (à mettre à jour si besoin)
-        return {"XOF":1.0, "USD":0.0017, "EUR":0.0015, "GBP":0.0013, "AED":0.0063, "RUB":0.16, "CNY":0.012, "JPY":0.26}
+        logging.warning(f"FX rates base=XOF erreur: {e}")
+
+    # Reconstruction via base=USD
+    try:
+        r = requests.get(
+            "https://api.exchangerate.host/latest",
+            params={"base": "USD", "places": 6},
+            timeout=8
+        )
+        r.raise_for_status()
+        data = r.json()
+        usd_rates = data.get("rates") or {}
+        usd_to_xof = float(usd_rates.get("XOF") or 0)
+        if usd_to_xof:
+            out = {"XOF": 1.0}
+            for c in SUPPORTED_CURRENCIES:
+                if c == "XOF":
+                    continue
+                v = float(usd_rates.get(c) or 0)
+                if v:
+                    # 1 XOF = (USD->c) / (USD->XOF)
+                    out[c] = v / usd_to_xof
+            if len(out) > 1:
+                return out
+        logging.warning("FX reconstruction via USD échouée ou incomplète.")
+    except Exception as e:
+        logging.warning(f"FX rates base=USD erreur: {e}")
+
+    # Fallback approximatif
+    return {
+        "XOF": 1.0,
+        "USD": 0.0017,
+        "EUR": 0.0015,
+        "GBP": 0.0013,
+        "AED": 0.0063,
+        "RUB": 0.16,
+        "CNY": 0.012,
+        "JPY": 0.26,
+    }
 
 def convert_amount(amount, from_cur, to_cur, rates_xof):
     if from_cur == to_cur:
