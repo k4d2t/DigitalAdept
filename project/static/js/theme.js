@@ -437,59 +437,69 @@ window.initProductPage = function () {
         function calculateTotal() {
             return cart.reduce((total, item) => total + item.price, 0);
         }
-
+        
         function renderCart() {
-            if (!cartItemsContainer || !cartTotalElement) return;
-            cartItemsContainer.innerHTML = '';
-            if (cart.length === 0) {
-                cartItemsContainer.innerHTML = '<p>Votre panier est vide.</p>';
-            } else {
-                cart.forEach((item, index) => {
-                    const itemElement = document.createElement('div');
-                    itemElement.className = 'cart-item';
-                    // Base: XOF côté serveur (paiement et reporting)
-                    const baseCur = 'XOF';
-                    itemElement.innerHTML = `
-                        <span>${item.name}</span>&ensp;
-                        <span class="cart-price" data-price="${Number(item.price) || 0}" data-currency="${baseCur}">
-                            ${Number(item.price || 0)} ${baseCur}
-                        </span>
-                        <button class="remove-item" data-index="${index}">⛌</button>
-                    `;
-                    cartItemsContainer.appendChild(itemElement);
-                });
-            }
+          if (!cartItemsContainer || !cartTotalElement) return;
         
-            // Met à jour le total (base XOF), et balise pour conversion
-            const totalBase = calculateTotal();
-            cartTotalElement.setAttribute('data-price', String(totalBase));
-            cartTotalElement.setAttribute('data-currency', 'XOF');
-            cartTotalElement.textContent = `${totalBase} XOF`;
+          cartItemsContainer.innerHTML = '';
+          if (cart.length === 0) {
+              cartItemsContainer.innerHTML = '<p>Votre panier est vide.</p>';
+          } else {
+              cart.forEach((item, index) => {
+                  const itemElement = document.createElement('div');
+                  itemElement.className = 'cart-item';
+                  const baseCur = 'XOF';
+                  const basePrice = Number(item.price) || 0;
         
-            // Bind remove
-            cartItemsContainer.querySelectorAll('.remove-item').forEach(button => {
-                button.addEventListener('click', (e) => {
-                    const index = parseInt(e.target.dataset.index);
-                    cart.splice(index, 1);
-                    saveCart();
-                    renderCart();
-                    updateAddToCartButtons();
-                    updateCartBadge(true);
-                });
-            });
-
-    // Conversion immédiate vers la devise session (si les taux sont prêts)
-    try {
-        const sel = JSON.parse(localStorage.getItem('da_locale') || '{}');
-        const cur = (sel.currency || 'XOF').toUpperCase();
-        if (window.__da_debugLocale && typeof window.__da_debugLocale.convert === 'function') {
-            // 1ère passe
-            window.__da_debugLocale.convert(cur);
-            // 2ème passe post-layout
-            requestAnimationFrame(() => window.__da_debugLocale.convert(cur));
+                  itemElement.innerHTML = `
+                      <span>${item.name}</span>&ensp;
+                      <span class="cart-price" data-price="${basePrice}" data-currency="${baseCur}">
+                          ${basePrice} ${baseCur}
+                      </span>
+                      <button class="remove-item" data-index="${index}">⛌</button>
+                  `;
+                  cartItemsContainer.appendChild(itemElement);
+        
+                  // IMPORTANT: annote/rafraîchit la base (évite dataset collant)
+                  const priceEl = itemElement.querySelector('.cart-price');
+                  if (priceEl) {
+                    priceEl.dataset.basePrice = String(basePrice);
+                    priceEl.dataset.baseCurrency = baseCur;
+                  }
+              });
+          }
+        
+          // Total en base XOF
+          const totalBase = calculateTotal();
+          cartTotalElement.setAttribute('data-price', String(totalBase));
+          cartTotalElement.setAttribute('data-currency', 'XOF');
+          cartTotalElement.textContent = `${totalBase} XOF`;
+          // IMPORTANT: annote/rafraîchit la base pour le total
+          cartTotalElement.dataset.basePrice = String(totalBase);
+          cartTotalElement.dataset.baseCurrency = 'XOF';
+        
+          // Bind remove
+          cartItemsContainer.querySelectorAll('.remove-item').forEach(button => {
+              button.addEventListener('click', (e) => {
+                  const index = parseInt(e.target.dataset.index);
+                  cart.splice(index, 1);
+                  saveCart();
+                  renderCart();
+                  updateAddToCartButtons();
+                  updateCartBadge(true);
+              });
+          });
+        
+          // Conversion immédiate vers la devise de session (double passe)
+          try {
+              const sel = JSON.parse(localStorage.getItem('da_locale') || '{}');
+              const cur = (sel.currency || 'XOF').toUpperCase();
+              if (window.__da_debugLocale && typeof window.__da_debugLocale.convert === 'function') {
+                  window.__da_debugLocale.convert(cur);
+                  requestAnimationFrame(() => window.__da_debugLocale.convert(cur));
+              }
+          } catch (_) {}
         }
-    } catch (_) {}
-}
 
         function updateAddToCartButtons() {
             addToCartButtons.forEach(button => {
@@ -893,19 +903,39 @@ document.addEventListener('DOMContentLoaded', () => {
       const sm = txt.match(/[$€£¥₽]|د\.?إ/);
       return sm ? (SYMBOL_TO_CUR[sm[0]] || null) : null;
     }
+    
     function ensureDatasetForPrice(el) {
-      if (!el.dataset.basePrice) {
-        if (!el.hasAttribute('data-price') && el.children && el.children.length > 0) return false;
-        let basePrice = parseFloat(el.getAttribute('data-price') || 'NaN');
-        let baseCur = (el.getAttribute('data-currency') || '').toUpperCase();
-        if (!isFinite(basePrice)) basePrice = parseNumberFromText(el.textContent);
-        if (!baseCur) baseCur = parseCurrencyFromText(el.textContent) || 'XOF';
-        if (!isFinite(basePrice)) return false;
-        el.dataset.basePrice = String(basePrice);
-        el.dataset.baseCurrency = baseCur;
-        if (!el.hasAttribute('data-price')) el.setAttribute('data-price', String(basePrice));
-        if (!el.hasAttribute('data-currency')) el.setAttribute('data-currency', baseCur);
+      // Si déjà annoté mais l'attribut a changé, on rafraîchit le dataset
+      const attrPrice = parseFloat(el.getAttribute('data-price') || 'NaN');
+      const hasDataPriceAttr = !isNaN(attrPrice);
+      if (el.dataset.basePrice) {
+        const currentBase = parseFloat(el.dataset.basePrice);
+        // Si data-price (attribut) existe et diffère du dataset, on met à jour
+        if (hasDataPriceAttr && isFinite(attrPrice) && attrPrice !== currentBase) {
+          el.dataset.basePrice = String(attrPrice);
+          const attrCur = (el.getAttribute('data-currency') || el.dataset.baseCurrency || 'XOF').toUpperCase();
+          el.dataset.baseCurrency = attrCur;
+          return true;
+        }
+        // Sinon, on garde le dataset existant
+        return true;
       }
+    
+      // Pas encore annoté → on l'annote
+      if (!el.hasAttribute('data-price') && el.children && el.children.length > 0) return false;
+    
+      let basePrice = parseFloat(el.getAttribute('data-price') || 'NaN');
+      let baseCur = (el.getAttribute('data-currency') || '').toUpperCase();
+    
+      if (!isFinite(basePrice)) basePrice = parseNumberFromText(el.textContent);
+      if (!baseCur) baseCur = parseCurrencyFromText(el.textContent) || 'XOF';
+      if (!isFinite(basePrice)) return false;
+    
+      el.dataset.basePrice = String(basePrice);
+      el.dataset.baseCurrency = baseCur;
+    
+      if (!el.hasAttribute('data-price')) el.setAttribute('data-price', String(basePrice));
+      if (!el.hasAttribute('data-currency')) el.setAttribute('data-currency', baseCur);
       return true;
     }
     function annotateLikelyPriceSpans() {
