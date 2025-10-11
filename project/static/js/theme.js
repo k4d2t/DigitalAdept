@@ -598,16 +598,22 @@ window.initProductPage = function () {
 
             const modal = document.createElement('div');
             modal.className = 'customModal';
+            overlay.id = 'payment-modal-overlay';
             modal.setAttribute('role', 'dialog');
             modal.setAttribute('aria-modal', 'true');
             modal.setAttribute('aria-labelledby', 'modal-title');
             modal.setAttribute('aria-describedby', 'modal-desc');
+            modal.id = 'payment-modal';                           // <-- AJOUT (debug)
+            modal.style.display = 'block';                        // <-- AJOUT (force l'affichage)
+            modal.style.position = 'relative';
             modal.style.cssText = `
               background: #111; color: #fff; border-radius: 12px;
               width: min(96vw, 520px); max-height: 90vh; overflow: auto;
               box-shadow: 0 10px 40px rgba(0,0,0,.4); padding: 18px; outline: none;
             `;
 
+            // 3) Toujours dans PaymentInfoModal, avant d’appeler document.body.appendChild(overlay):
+            document.documentElement.style.overflow = 'hidden';   // <-- AJOUT (verrouille le scroll le temps de la modale) 
             modal.innerHTML = `
               <form id="payment-form" autocomplete="on" novalidate>
                 <h3 id="modal-title" style="margin:.2em 0 0.6em 0;">Finaliser la commande</h3>
@@ -674,6 +680,8 @@ window.initProductPage = function () {
             }
 
             function close() {
+                // 4) Dans la fonction close() de PaymentInfoModal, après overlay.remove():
+                document.documentElement.style.overflow = '';  
                 document.removeEventListener('keydown', onKeydown);
                 modal.removeEventListener('keydown', trapFocus);
                 overlay.removeEventListener('click', onOverlayClick);
