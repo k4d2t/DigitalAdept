@@ -885,13 +885,20 @@ window.initProductPage = function () {
         const q = item.querySelector('.product-faq-question');
         const a = item.querySelector('.product-faq-answer');
         if (!q || !a) return;
-        // Masquer par défaut si visible
-        if (getComputedStyle(a).display === 'block') a.style.display = 'none';
+
+        // Masquer par défaut, en forçant l'override de toute règle !important éventuelle
+        a.style.setProperty('display', 'none', 'important');
+
         q.addEventListener('click', () => {
-          const open = item.classList.toggle('open');
-          a.style.display = open ? 'block' : 'none';
+          const isHidden = getComputedStyle(a).display === 'none';
+          if (isHidden) {
+            a.style.setProperty('display', 'block', 'important');
+            item.classList.add('open');
+          } else {
+            a.style.setProperty('display', 'none', 'important');
+            item.classList.remove('open');
+          }
         });
-      });
     })();
 
     // --- FAQ ---
