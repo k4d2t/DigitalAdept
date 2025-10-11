@@ -590,7 +590,11 @@ window.initProductPage = function () {
 
             const overlay = document.createElement('div');
             overlay.className = 'customModal-overlay';
-            overlay.style.cssText = `position: fixed; inset: 0; background: rgba(0,0,0,.5); display: flex; align-items: center; justify-content: center; z-index: 2000;`;
+            overlay.style.cssText = `
+              position: fixed; inset: 0; background: rgba(0,0,0,.5);
+              display: flex; align-items: center; justify-content: center;
+              z-index: 4000; pointer-events: auto; transform: translateZ(0);
+            `;
 
             const modal = document.createElement('div');
             modal.className = 'customModal';
@@ -598,7 +602,11 @@ window.initProductPage = function () {
             modal.setAttribute('aria-modal', 'true');
             modal.setAttribute('aria-labelledby', 'modal-title');
             modal.setAttribute('aria-describedby', 'modal-desc');
-            modal.style.cssText = `background: #111; color: #fff; border-radius: 12px; width: min(96vw, 520px); box-shadow: 0 10px 40px rgba(0,0,0,.4); padding: 18px; outline: none;`;
+            modal.style.cssText = `
+              background: #111; color: #fff; border-radius: 12px;
+              width: min(96vw, 520px); max-height: 90vh; overflow: auto;
+              box-shadow: 0 10px 40px rgba(0,0,0,.4); padding: 18px; outline: none;
+            `;
 
             modal.innerHTML = `
               <form id="payment-form" autocomplete="on" novalidate>
@@ -876,6 +884,21 @@ window.initProductPage = function () {
         commentList.insertAdjacentElement('afterend', showMoreButton);
         updateCommentsVisibility();
     }
+
+    (function initProductFaqToggles() {
+      const items = document.querySelectorAll('.product-faq-item');
+      items.forEach(item => {
+        const q = item.querySelector('.product-faq-question');
+        const a = item.querySelector('.product-faq-answer');
+        if (!q || !a) return;
+        // Masquer par défaut si visible
+        if (getComputedStyle(a).display === 'block') a.style.display = 'none';
+        q.addEventListener('click', () => {
+          const open = item.classList.toggle('open');
+          a.style.display = open ? 'block' : 'none';
+        });
+      });
+    })();
 
     // --- FAQ ---
     document.querySelectorAll(".faq-item").forEach((faqItem) => {
