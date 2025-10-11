@@ -653,6 +653,13 @@ window.initProductPage = function () {
             overlay.appendChild(modal);
             document.body.appendChild(overlay);
 
+            // AJOUT: Forcer avec stylesheet global en cas de règle !important externe
+            const styleElement = document.createElement('style');
+            styleElement.textContent = `
+                #payment-modal-overlay { display: flex !important; }
+                #payment-modal { display: block !important; position: relative !important; }
+            `;
+            document.head.appendChild(styleElement);
             const nomEl = modal.querySelector('#payment-nom-client');
             const emailEl = modal.querySelector('#payment-email');
             const telEl = modal.querySelector('#payment-whatsapp');
@@ -681,6 +688,7 @@ window.initProductPage = function () {
             }
 
             function close() {
+                styleElement.remove(); //nettoyer style injecté
                 document.documentElement.style.overflow = ''; // restaurer le scroll
                 document.removeEventListener('keydown', onKeydown);
                 modal.removeEventListener('keydown', trapFocus);
