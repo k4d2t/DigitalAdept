@@ -899,6 +899,7 @@ window.initProductPage = function () {
             item.classList.remove('open');
           }
         });
+      });
     })();
 
     // --- FAQ ---
