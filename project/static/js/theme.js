@@ -582,7 +582,7 @@ window.initProductPage = function () {
                 }
             });
         });
-
+        
         function PaymentInfoModal(onSubmit, onCancel) {
             const previousActive = document.activeElement;
             let lastProfile = {};
@@ -590,6 +590,7 @@ window.initProductPage = function () {
 
             const overlay = document.createElement('div');
             overlay.className = 'customModal-overlay';
+            overlay.id = 'payment-modal-overlay';
             overlay.style.cssText = `
               position: fixed; inset: 0; background: rgba(0,0,0,.5);
               display: flex; align-items: center; justify-content: center;
@@ -598,22 +599,25 @@ window.initProductPage = function () {
 
             const modal = document.createElement('div');
             modal.className = 'customModal';
-            overlay.id = 'payment-modal-overlay';
+            modal.id = 'payment-modal';
             modal.setAttribute('role', 'dialog');
             modal.setAttribute('aria-modal', 'true');
             modal.setAttribute('aria-labelledby', 'modal-title');
             modal.setAttribute('aria-describedby', 'modal-desc');
-            modal.id = 'payment-modal';                           // <-- AJOUT (debug)
-            modal.style.display = 'block';                        // <-- AJOUT (force l'affichage)
-            modal.style.position = 'relative';
+
+            // IMPORTANT: d'abord cssText, ensuite display/position pour ne pas être écrasés
             modal.style.cssText = `
               background: #111; color: #fff; border-radius: 12px;
               width: min(96vw, 520px); max-height: 90vh; overflow: auto;
               box-shadow: 0 10px 40px rgba(0,0,0,.4); padding: 18px; outline: none;
             `;
+            // Forcer l'affichage même si une règle globale met .customModal { display:none !important }
+            modal.style.setProperty('display', 'block', 'important');
+            modal.style.setProperty('position', 'relative', 'important');
 
-            // 3) Toujours dans PaymentInfoModal, avant d’appeler document.body.appendChild(overlay):
-            document.documentElement.style.overflow = 'hidden';   // <-- AJOUT (verrouille le scroll le temps de la modale) 
+            // Verrouiller le scroll arrière-plan
+            document.documentElement.style.overflow = 'hidden';
+
             modal.innerHTML = `
               <form id="payment-form" autocomplete="on" novalidate>
                 <h3 id="modal-title" style="margin:.2em 0 0.6em 0;">Finaliser la commande</h3>
@@ -663,7 +667,7 @@ window.initProductPage = function () {
                 if (lastProfile.whatsapp) telEl.value = lastProfile.whatsapp;
             }
 
-            setTimeout(() => { nomEl.focus(); }, 10);
+            setTimeout(() => { nomEl && nomEl.focus(); }, 10);
 
             const focusableSelectors = 'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])';
             function trapFocus(e) {
@@ -672,16 +676,12 @@ window.initProductPage = function () {
                 if (!focusables.length) return;
                 const first = focusables[0];
                 const last = focusables[focusables.length - 1];
-                if (e.shiftKey && document.activeElement === first) {
-                    e.preventDefault(); last.focus();
-                } else if (!e.shiftKey && document.activeElement === last) {
-                    e.preventDefault(); first.focus();
-                }
+                if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+                else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
             }
 
             function close() {
-                // 4) Dans la fonction close() de PaymentInfoModal, après overlay.remove():
-                document.documentElement.style.overflow = '';  
+                document.documentElement.style.overflow = ''; // restaurer le scroll
                 document.removeEventListener('keydown', onKeydown);
                 modal.removeEventListener('keydown', trapFocus);
                 overlay.removeEventListener('click', onOverlayClick);
@@ -690,24 +690,14 @@ window.initProductPage = function () {
             }
 
             function onKeydown(e) {
-                if (e.key === 'Escape') {
-                    e.preventDefault();
-                    close();
-                    if (typeof onCancel === 'function') onCancel();
-                } else if (e.key === 'Enter') {
+                if (e.key === 'Escape') { e.preventDefault(); close(); if (typeof onCancel === 'function') onCancel(); }
+                else if (e.key === 'Enter') {
                     if (e.target && e.target.tagName && ['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) {
-                        e.preventDefault();
-                        btnSubmit.click();
+                        e.preventDefault(); btnSubmit.click();
                     }
                 }
             }
-
-            function onOverlayClick(e) {
-                if (e.target === overlay) {
-                    close();
-                    if (typeof onCancel === 'function') onCancel();
-                }
-            }
+            function onOverlayClick(e) { if (e.target === overlay) { close(); if (typeof onCancel === 'function') onCancel(); } }
 
             document.addEventListener('keydown', onKeydown);
             modal.addEventListener('keydown', trapFocus);
@@ -732,19 +722,15 @@ window.initProductPage = function () {
                     return;
                 }
 
-                try {
-                    localStorage.setItem('da_checkout_profile', JSON.stringify({ name: nom, email, whatsapp }));
-                } catch {}
+                try { localStorage.setItem('da_checkout_profile', JSON.stringify({ name: nom, email, whatsapp })); } catch {}
 
                 close();
                 onSubmit({ nom_client: nom, email, whatsapp });
             });
 
-            btnCancel.addEventListener('click', () => {
-                close();
-                if (typeof onCancel === 'function') onCancel();
-            });
+            btnCancel.addEventListener('click', () => { close(); if (typeof onCancel === 'function') onCancel(); });
         }
+
         
         function getArticleObject(cart) {
             const article = {};
