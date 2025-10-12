@@ -2279,7 +2279,7 @@ display: none;
     display: flex; align-items: center; justify-content: center;
     opacity: 0; visibility: hidden;
     transition: opacity 0.3s, visibility 0.3s;
-    z-index: 1000;
+    z-index: 12000;
     font-family: 'Google Sans', 'Roboto', Arial, sans-serif;
 }
 
