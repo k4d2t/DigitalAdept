@@ -585,200 +585,147 @@ window.initProductPage = function () {
         
         // Remplacer complètement la fonction PaymentInfoModal actuelle par celle-ci:
         
+        // Remplacer la fonction PaymentInfoModal par cette version "hybride thème + fiable"
         function PaymentInfoModal(onSubmit, onCancel) {
-            const previousActive = document.activeElement;
-            let lastProfile = {};
-            try { lastProfile = JSON.parse(localStorage.getItem('da_checkout_profile') || '{}'); } catch {}
+          const previousActive = document.activeElement;
+          let lastProfile = {};
+          try { lastProfile = JSON.parse(localStorage.getItem('da_checkout_profile') || '{}'); } catch {}
         
-            // IDs uniques pour éviter les conflits
-            const overlayId = 'payment-modal-overlay-' + Date.now();
-            const modalId = 'payment-modal-' + Date.now();
-            
-            // Créer l'overlay 
-            const overlay = document.createElement('div');
-            overlay.id = overlayId;
-            overlay.className = 'customModal-overlay';
-            
-            // TECHNIQUE FONCTIONNELLE: forcer les styles critiques avec !important
-            overlay.style.setProperty('position', 'fixed', 'important');
-            overlay.style.setProperty('inset', '0', 'important');
-            overlay.style.setProperty('display', 'flex', 'important');
-            overlay.style.setProperty('align-items', 'center', 'important');
-            overlay.style.setProperty('justify-content', 'center', 'important');
-            overlay.style.setProperty('z-index', '9999', 'important');
-            
-            // RESTAURATION STYLE VISUEL
-            overlay.style.background = 'rgba(0,0,0,.5)';
-            
-            // Créer la modale
-            const modal = document.createElement('div');
-            modal.id = modalId;
-            modal.className = 'customModal';
-            modal.setAttribute('role', 'dialog');
-            modal.setAttribute('aria-modal', 'true');
-            
-            // TECHNIQUE FONCTIONNELLE: forcer display/position critiques
-            modal.style.setProperty('display', 'block', 'important');
-            modal.style.setProperty('position', 'relative', 'important');
-            modal.style.setProperty('z-index', '10000', 'important');
-            
-            // RESTAURATION STYLE VISUEL
-            modal.style.background = '#111';
-            modal.style.color = '#fff';
-            modal.style.borderRadius = '12px';
-            modal.style.width = 'min(96vw, 520px)';
-            modal.style.maxHeight = '90vh';
-            modal.style.overflow = 'auto';
-            modal.style.boxShadow = '0 10px 40px rgba(0,0,0,.4)';
-            modal.style.padding = '18px';
-            modal.style.outline = 'none';
-            
-            // TECHNIQUE FONCTIONNELLE: règle CSS globale uniquement pour l'affichage critique
-            const styleElement = document.createElement('style');
-            styleElement.textContent = `
-                #${overlayId} { display: flex !important; }
-                #${modalId} { display: block !important; }
-            `;
-            document.head.appendChild(styleElement);
-            
-            // Verrouiller le scroll
-            document.documentElement.style.overflow = 'hidden';
-            
-            // CONTENU: style visuel d'origine et formulaire
-            modal.innerHTML = `
-              <form id="payment-form-${modalId}" autocomplete="on" novalidate>
-                <h3 id="modal-title" style="margin:.2em 0 0.6em 0;">Finaliser la commande</h3>
-                <p id="modal-desc" style="opacity:.8;margin-top:0;margin-bottom:1em;">
-                  Renseignez vos informations pour recevoir vos produits.
-                </p>
+          // Nettoyer une éventuelle modale déjà présente
+          const existing = document.querySelector('.customModal');
+          if (existing) existing.remove();
         
-                <div class="form-field" style="margin-bottom:10px;">
-                  <label for="payment-nom-client-${modalId}">Nom complet</label>
-                  <input
-                    type="text"
-                    id="payment-nom-client-${modalId}"
-                    name="name"
-                    placeholder="Votre nom complet"
-                    required
-                    autocomplete="name"
-                    autocapitalize="words"
-                    spellcheck="false"
-                    />
-                </div>
+          // Overlay conforme au thème
+          const modal = document.createElement('div');
+          modal.className = 'customModal';
+          // Surcharge minimale: au-dessus de mobile-menu (9999) et bulle panier (10000)
+          modal.style.zIndex = '12000';
         
-                <div class="form-field" style="margin-bottom:10px;">
-                  <label for="payment-email-${modalId}">Adresse e-mail</label>
-                  <input
-                    type="email"
-                    id="payment-email-${modalId}"
-                    name="email"
-                    placeholder="Pour recevoir vos produits"
-                    required
-                    autocomplete="email"
-                    inputmode="email"
-                    />
-                </div>
+          // Contenu conforme au thème
+          modal.innerHTML = `
+            <div class="customModal-content" role="dialog" aria-labelledby="modal-title">
+              <h3 id="modal-title">Finaliser la commande</h3>
         
-                <div class="form-field" style="margin-bottom:4px;">
-                  <label for="payment-whatsapp-${modalId}">Numéro WhatsApp</label>
-                  <input
-                    type="tel"
-                    id="payment-whatsapp-${modalId}"
-                    name="tel"
-                    placeholder="+2250700000000"
-                    autocomplete="tel"
-                    inputmode="tel"
-                    />
-                  <small id="whats-hint" style="opacity:.7;">Format international recommandé (+225…)</small>
-                </div>
+              <label>
+                Nom complet :
+                <input type="text" id="payment-nom-client" placeholder="Votre nom complet" required>
+              </label>
         
-                <div id="payment-error-${modalId}" aria-live="assertive" style="min-height:1.2em;color:#ff8a80;margin:.4em 0;"></div>
+              <label>
+                Adresse e-mail :
+                <input type="email" id="payment-email" placeholder="Pour recevoir vos produits" required>
+              </label>
         
-                <div class="customModal-buttons" style="display:flex; gap:10px; margin-top:12px;">
-                  <button type="submit" class="customModal-yes" id="payment-submit-${modalId}">Valider et Payer</button>
-                  <button type="button" class="customModal-no" id="payment-cancel-${modalId}">Annuler</button>
-                </div>
-              </form>
-            `;
-            
-            overlay.appendChild(modal);
-            document.body.appendChild(overlay);
-            
-            const formEl = document.getElementById(`payment-form-${modalId}`);
-            const nomEl = document.getElementById(`payment-nom-client-${modalId}`);
-            const emailEl = document.getElementById(`payment-email-${modalId}`);
-            const telEl = document.getElementById(`payment-whatsapp-${modalId}`);
-            const errEl = document.getElementById(`payment-error-${modalId}`);
-            const btnSubmit = document.getElementById(`payment-submit-${modalId}`);
-            const btnCancel = document.getElementById(`payment-cancel-${modalId}`);
-            
-            if (lastProfile && typeof lastProfile === 'object') {
-                if (lastProfile.name) nomEl.value = lastProfile.name;
-                if (lastProfile.email) emailEl.value = lastProfile.email;
-                if (lastProfile.whatsapp) telEl.value = lastProfile.whatsapp;
+              <label>
+                Numéro WhatsApp :
+                <input type="tel" id="payment-whatsapp" placeholder="Pour le suivi de commande">
+              </label>
+        
+              <div id="payment-error" aria-live="assertive" style="min-height:1.2em;color:#ff8a80;margin:.4em 0;"></div>
+        
+              <div class="customModal-buttons">
+                <button class="customModal-yes" id="payment-submit">Valider et Payer</button>
+                <button class="customModal-no" id="payment-cancel">Annuler</button>
+              </div>
+            </div>
+          `;
+        
+          document.body.appendChild(modal);
+        
+          // Ouvrir (active les transitions CSS du thème)
+          setTimeout(() => modal.classList.add('visible'), 10);
+        
+          // Verrouiller le scroll arrière-plan
+          const prevOverflow = document.documentElement.style.overflow;
+          document.documentElement.style.overflow = 'hidden';
+        
+          // Refs
+          const content = modal.querySelector('.customModal-content');
+          const nomEl = modal.querySelector('#payment-nom-client');
+          const emailEl = modal.querySelector('#payment-email');
+          const telEl = modal.querySelector('#payment-whatsapp');
+          const errEl = modal.querySelector('#payment-error');
+          const btnSubmit = modal.querySelector('#payment-submit');
+          const btnCancel = modal.querySelector('#payment-cancel');
+        
+          // Prefill
+          if (lastProfile && typeof lastProfile === 'object') {
+            if (lastProfile.name) nomEl.value = lastProfile.name;
+            if (lastProfile.email) emailEl.value = lastProfile.email;
+            if (lastProfile.whatsapp) telEl.value = lastProfile.whatsapp;
+          }
+        
+          // Focus initial
+          setTimeout(() => { nomEl && nomEl.focus(); }, 30);
+        
+          // Focus trap
+          const focusableSelectors = 'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])';
+          function trapFocus(e) {
+            if (e.key !== 'Tab') return;
+            const focusables = Array.from(content.querySelectorAll(focusableSelectors)).filter(el => el.offsetParent !== null);
+            if (!focusables.length) return;
+            const first = focusables[0];
+            const last = focusables[focusables.length - 1];
+            if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+            else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+          }
+        
+          function close() {
+            document.removeEventListener('keydown', onKeydown);
+            content.removeEventListener('keydown', trapFocus);
+            modal.classList.remove('visible');
+            setTimeout(() => modal.remove(), 220);
+            document.documentElement.style.overflow = prevOverflow || '';
+            if (previousActive && typeof previousActive.focus === 'function') previousActive.focus();
+          }
+        
+          function onKeydown(e) {
+            if (e.key === 'Escape') { e.preventDefault(); close(); if (typeof onCancel === 'function') onCancel(); }
+            else if (e.key === 'Enter') {
+              if (e.target && e.target.tagName && ['INPUT','SELECT','TEXTAREA'].includes(e.target.tagName)) {
+                e.preventDefault(); btnSubmit.click();
+              }
             }
-            
-            setTimeout(() => { nomEl.focus(); }, 50);
-            
-            function close() {
-                styleElement.remove();
-                document.documentElement.style.overflow = ''; 
-                document.removeEventListener('keydown', onKeydown);
-                overlay.remove();
-                
-                if (previousActive && typeof previousActive.focus === 'function') {
-                    previousActive.focus();
-                }
+          }
+          document.addEventListener('keydown', onKeydown);
+          content.addEventListener('keydown', trapFocus);
+        
+          // Fermer au clic en dehors
+          modal.addEventListener('click', (e) => {
+            if (e.target === modal) { close(); if (typeof onCancel === 'function') onCancel(); }
+          });
+        
+          // Soumission
+          btnSubmit.addEventListener('click', (evt) => {
+            evt.preventDefault();
+            errEl.textContent = '';
+        
+            const nom = nomEl.value.trim();
+            const email = emailEl.value.trim();
+            const whatsapp = (telEl.value || '').trim();
+        
+            if (!nom || !email) {
+              errEl.textContent = "Le nom et l’e-mail sont requis.";
+              (nom ? emailEl : nomEl).focus();
+              return;
             }
-            
-            function onKeydown(e) {
-                if (e.key === 'Escape') {
-                    e.preventDefault();
-                    close();
-                    if (typeof onCancel === 'function') onCancel();
-                }
+            if (!/^\S+@\S+\.\S+$/.test(email)) {
+              errEl.textContent = "Veuillez entrer une adresse e-mail valide.";
+              emailEl.focus();
+              return;
             }
-            document.addEventListener('keydown', onKeydown);
-            
-            overlay.addEventListener('click', (e) => {
-                if (e.target === overlay) {
-                    close();
-                    if (typeof onCancel === 'function') onCancel();
-                }
-            });
-            
-            formEl.addEventListener('submit', (evt) => {
-                evt.preventDefault();
-                errEl.textContent = '';
-                
-                const nom = nomEl.value.trim();
-                const email = emailEl.value.trim();
-                const whatsapp = telEl.value.trim();
-                
-                if (!nom || !email) {
-                    errEl.textContent = "Le nom et l'e-mail sont requis.";
-                    (nom ? emailEl : nomEl).focus();
-                    return;
-                }
-                
-                if (!/^\S+@\S+\.\S+$/.test(email)) {
-                    errEl.textContent = "Veuillez entrer une adresse e-mail valide.";
-                    emailEl.focus();
-                    return;
-                }
-                
-                try {
-                    localStorage.setItem('da_checkout_profile', JSON.stringify({ name: nom, email, whatsapp }));
-                } catch {}
-                
-                close();
-                onSubmit({ nom_client: nom, email, whatsapp });
-            });
-            
-            btnCancel.addEventListener('click', () => {
-                close();
-                if (typeof onCancel === 'function') onCancel();
-            });
+        
+            try { localStorage.setItem('da_checkout_profile', JSON.stringify({ name: nom, email, whatsapp })); } catch {}
+        
+            close();
+            onSubmit({ nom_client: nom, email, whatsapp });
+          });
+        
+          // Annuler
+          btnCancel.addEventListener('click', () => {
+            close();
+            if (typeof onCancel === 'function') onCancel();
+          });
         }
 
         
