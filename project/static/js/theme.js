@@ -583,160 +583,221 @@ window.initProductPage = function () {
             });
         });
         
+        // Remplacer complètement la fonction PaymentInfoModal actuelle par celle-ci:
+        
         function PaymentInfoModal(onSubmit, onCancel) {
+            console.log("PaymentInfoModal: création démarrée");
             const previousActive = document.activeElement;
             let lastProfile = {};
             try { lastProfile = JSON.parse(localStorage.getItem('da_checkout_profile') || '{}'); } catch {}
-
+        
+            // IDs uniques pour éviter les conflits avec d'autres modales
+            const overlayId = 'payment-modal-overlay-' + Date.now();
+            const modalId = 'payment-modal-' + Date.now();
+            
+            // Créer l'overlay avec des styles forcés en inline
             const overlay = document.createElement('div');
-            overlay.className = 'customModal-overlay';
-            overlay.id = 'payment-modal-overlay';
-            overlay.style.cssText = `
-              position: fixed; inset: 0; background: rgba(0,0,0,.5);
-              display: flex; align-items: center; justify-content: center;
-              z-index: 4000; pointer-events: auto; transform: translateZ(0);
-            `;
-
+            overlay.id = overlayId;
+            overlay.className = 'customModal-overlay payment-overlay';
+            
+            // Appliquer styles directs avec !important
+            overlay.style.setProperty('position', 'fixed', 'important');
+            overlay.style.setProperty('top', '0', 'important');
+            overlay.style.setProperty('right', '0', 'important');
+            overlay.style.setProperty('bottom', '0', 'important');
+            overlay.style.setProperty('left', '0', 'important');
+            overlay.style.setProperty('background', 'rgba(0,0,0,.5)', 'important');
+            overlay.style.setProperty('display', 'flex', 'important');
+            overlay.style.setProperty('align-items', 'center', 'important');
+            overlay.style.setProperty('justify-content', 'center', 'important');
+            overlay.style.setProperty('z-index', '9999', 'important');
+            overlay.style.setProperty('pointer-events', 'auto', 'important');
+            
+            // Créer la modale avec des styles forcés
             const modal = document.createElement('div');
-            modal.className = 'customModal';
-            modal.id = 'payment-modal';
+            modal.id = modalId;
+            modal.className = 'customModal payment-modal';
             modal.setAttribute('role', 'dialog');
             modal.setAttribute('aria-modal', 'true');
-            modal.setAttribute('aria-labelledby', 'modal-title');
-            modal.setAttribute('aria-describedby', 'modal-desc');
-
-            // IMPORTANT: d'abord cssText, ensuite display/position pour ne pas être écrasés
-            modal.style.cssText = `
-              background: #111; color: #fff; border-radius: 12px;
-              width: min(96vw, 520px); max-height: 90vh; overflow: auto;
-              box-shadow: 0 10px 40px rgba(0,0,0,.4); padding: 18px; outline: none;
-            `;
-            // Forcer l'affichage même si une règle globale met .customModal { display:none !important }
+            
+            modal.style.setProperty('background', '#111', 'important');
+            modal.style.setProperty('color', '#fff', 'important');
+            modal.style.setProperty('border-radius', '12px', 'important');
+            modal.style.setProperty('width', 'min(96vw, 520px)', 'important');
+            modal.style.setProperty('max-height', '90vh', 'important');
+            modal.style.setProperty('overflow', 'auto', 'important');
+            modal.style.setProperty('box-shadow', '0 10px 40px rgba(0,0,0,.4)', 'important');
+            modal.style.setProperty('padding', '18px', 'important');
+            modal.style.setProperty('outline', 'none', 'important');
             modal.style.setProperty('display', 'block', 'important');
             modal.style.setProperty('position', 'relative', 'important');
-
-            // Verrouiller le scroll arrière-plan
-            document.documentElement.style.overflow = 'hidden';
-
+            modal.style.setProperty('z-index', '10000', 'important');
+        
+            // Ajouter une règle CSS globale pour forcer l'affichage
+            const styleElement = document.createElement('style');
+            styleElement.textContent = `
+                #${overlayId} { 
+                    display: flex !important; 
+                    position: fixed !important; 
+                    inset: 0 !important; 
+                    z-index: 9999 !important;
+                }
+                #${modalId} { 
+                    display: block !important; 
+                    position: relative !important; 
+                    z-index: 10000 !important;
+                    visibility: visible !important;
+                    opacity: 1 !important;
+                }
+                body.modal-open { overflow: hidden !important; }
+            `;
+            document.head.appendChild(styleElement);
+            
+            // Verrouiller le scroll
+            document.documentElement.style.setProperty('overflow', 'hidden', 'important');
+            document.body.classList.add('modal-open');
+            
+            // Contenu de la modale avec styles inline pour éviter les problèmes de CSS
             modal.innerHTML = `
-              <form id="payment-form" autocomplete="on" novalidate>
-                <h3 id="modal-title" style="margin:.2em 0 0.6em 0;">Finaliser la commande</h3>
-                <p id="modal-desc" style="opacity:.8;margin-top:0;margin-bottom:1em;">
+              <form id="payment-form-${modalId}" autocomplete="on" novalidate style="margin:0;padding:0;">
+                <h3 style="margin:.2em 0 0.6em 0;color:#fff;font-family:inherit;">Finaliser la commande</h3>
+                <p style="opacity:.8;margin-top:0;margin-bottom:1em;color:#fff;font-family:inherit;">
                   Renseignez vos informations pour recevoir vos produits.
                 </p>
-
-                <div class="form-field" style="margin-bottom:10px;">
-                  <label for="payment-nom-client">Nom complet</label>
-                  <input type="text" id="payment-nom-client" name="name" placeholder="Votre nom complet" required autocomplete="name" autocapitalize="words" spellcheck="false" />
+        
+                <div style="margin-bottom:10px;">
+                  <label for="payment-nom-client-${modalId}" style="display:block;margin-bottom:4px;color:#fff;">Nom complet</label>
+                  <input
+                    type="text"
+                    id="payment-nom-client-${modalId}"
+                    name="name"
+                    placeholder="Votre nom complet"
+                    required
+                    autocomplete="name"
+                    style="display:block; width:100%; padding:8px; margin-top:4px; border-radius:4px; background:#fff; color:#000; border:1px solid #ddd;"
+                    />
                 </div>
-
-                <div class="form-field" style="margin-bottom:10px;">
-                  <label for="payment-email">Adresse e-mail</label>
-                  <input type="email" id="payment-email" name="email" placeholder="Pour recevoir vos produits" required autocomplete="email" inputmode="email" />
+        
+                <div style="margin-bottom:10px;">
+                  <label for="payment-email-${modalId}" style="display:block;margin-bottom:4px;color:#fff;">Adresse e-mail</label>
+                  <input
+                    type="email"
+                    id="payment-email-${modalId}"
+                    name="email"
+                    placeholder="Pour recevoir vos produits"
+                    required
+                    autocomplete="email"
+                    style="display:block; width:100%; padding:8px; margin-top:4px; border-radius:4px; background:#fff; color:#000; border:1px solid #ddd;"
+                    />
                 </div>
-
-                <div class="form-field" style="margin-bottom:4px;">
-                  <label for="payment-whatsapp">Numéro WhatsApp</label>
-                  <input type="tel" id="payment-whatsapp" name="tel" placeholder="+2250700000000" autocomplete="tel" inputmode="tel" />
-                  <small id="whats-hint" style="opacity:.7;">Format international recommandé (+225…)</small>
+        
+                <div style="margin-bottom:4px;">
+                  <label for="payment-whatsapp-${modalId}" style="display:block;margin-bottom:4px;color:#fff;">Numéro WhatsApp</label>
+                  <input
+                    type="tel"
+                    id="payment-whatsapp-${modalId}"
+                    name="tel"
+                    placeholder="+2250700000000"
+                    autocomplete="tel"
+                    style="display:block; width:100%; padding:8px; margin-top:4px; border-radius:4px; background:#fff; color:#000; border:1px solid #ddd;"
+                    />
+                  <small style="opacity:.7;color:#fff;display:block;margin-top:2px;">Format international recommandé (+225…)</small>
                 </div>
-
-                <div id="payment-error" aria-live="assertive" style="min-height:1.2em;color:#ff8a80;margin:.4em 0;"></div>
-
+        
+                <div id="payment-error-${modalId}" style="min-height:1.2em;color:#ff8a80;margin:.4em 0;"></div>
+        
                 <div class="customModal-buttons" style="display:flex; gap:10px; margin-top:12px;">
-                  <button type="submit" class="customModal-yes" id="payment-submit">Valider et Payer</button>
-                  <button type="button" class="customModal-no" id="payment-cancel">Annuler</button>
+                  <button type="submit" id="payment-submit-${modalId}" class="customModal-yes" style="flex:1;padding:10px;background:#4CAF50;color:white;border:none;border-radius:4px;cursor:pointer;">Valider et Payer</button>
+                  <button type="button" id="payment-cancel-${modalId}" class="customModal-no" style="flex:1;padding:10px;background:#555;color:white;border:none;border-radius:4px;cursor:pointer;">Annuler</button>
                 </div>
               </form>
             `;
-
+        
+            // Ajouter au DOM 
             overlay.appendChild(modal);
             document.body.appendChild(overlay);
-
-            // AJOUT: Forcer avec stylesheet global en cas de règle !important externe
-            const styleElement = document.createElement('style');
-            styleElement.textContent = `
-                #payment-modal-overlay { display: flex !important; }
-                #payment-modal { display: block !important; position: relative !important; }
-            `;
-            document.head.appendChild(styleElement);
-            const nomEl = modal.querySelector('#payment-nom-client');
-            const emailEl = modal.querySelector('#payment-email');
-            const telEl = modal.querySelector('#payment-whatsapp');
-            const formEl = modal.querySelector('#payment-form');
-            const errEl = modal.querySelector('#payment-error');
-            const btnSubmit = modal.querySelector('#payment-submit');
-            const btnCancel = modal.querySelector('#payment-cancel');
-
+            
+            // Récupérer les références des éléments
+            const formEl = document.getElementById(`payment-form-${modalId}`);
+            const nomEl = document.getElementById(`payment-nom-client-${modalId}`);
+            const emailEl = document.getElementById(`payment-email-${modalId}`);
+            const telEl = document.getElementById(`payment-whatsapp-${modalId}`);
+            const errEl = document.getElementById(`payment-error-${modalId}`);
+            const btnSubmit = document.getElementById(`payment-submit-${modalId}`);
+            const btnCancel = document.getElementById(`payment-cancel-${modalId}`);
+            
+            // Pré-remplir avec les données précédentes
             if (lastProfile && typeof lastProfile === 'object') {
                 if (lastProfile.name) nomEl.value = lastProfile.name;
                 if (lastProfile.email) emailEl.value = lastProfile.email;
                 if (lastProfile.whatsapp) telEl.value = lastProfile.whatsapp;
             }
-
-            setTimeout(() => { nomEl && nomEl.focus(); }, 10);
-
-            const focusableSelectors = 'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])';
-            function trapFocus(e) {
-                if (e.key !== 'Tab') return;
-                const focusables = Array.from(modal.querySelectorAll(focusableSelectors)).filter(el => el.offsetParent !== null);
-                if (!focusables.length) return;
-                const first = focusables[0];
-                const last = focusables[focusables.length - 1];
-                if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
-                else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
-            }
-
+            
+            // Focus initial avec un léger délai
+            setTimeout(() => { 
+                if (nomEl) nomEl.focus(); 
+            }, 50);
+            
             function close() {
-                styleElement.remove(); //nettoyer style injecté
-                document.documentElement.style.overflow = ''; // restaurer le scroll
+                styleElement.remove();
+                document.documentElement.style.removeProperty('overflow');
+                document.body.classList.remove('modal-open');
                 document.removeEventListener('keydown', onKeydown);
-                modal.removeEventListener('keydown', trapFocus);
-                overlay.removeEventListener('click', onOverlayClick);
                 overlay.remove();
-                if (previousActive && typeof previousActive.focus === 'function') previousActive.focus();
-            }
-
-            function onKeydown(e) {
-                if (e.key === 'Escape') { e.preventDefault(); close(); if (typeof onCancel === 'function') onCancel(); }
-                else if (e.key === 'Enter') {
-                    if (e.target && e.target.tagName && ['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) {
-                        e.preventDefault(); btnSubmit.click();
-                    }
+                
+                if (previousActive && typeof previousActive.focus === 'function') {
+                    previousActive.focus();
                 }
             }
-            function onOverlayClick(e) { if (e.target === overlay) { close(); if (typeof onCancel === 'function') onCancel(); } }
-
+            
+            function onKeydown(e) {
+                if (e.key === 'Escape') {
+                    e.preventDefault();
+                    close();
+                    if (typeof onCancel === 'function') onCancel();
+                }
+            }
             document.addEventListener('keydown', onKeydown);
-            modal.addEventListener('keydown', trapFocus);
-            overlay.addEventListener('click', onOverlayClick);
-
+            
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) {
+                    close();
+                    if (typeof onCancel === 'function') onCancel();
+                }
+            });
+            
             formEl.addEventListener('submit', (evt) => {
                 evt.preventDefault();
                 errEl.textContent = '';
-
+                
                 const nom = nomEl.value.trim();
                 const email = emailEl.value.trim();
                 const whatsapp = telEl.value.trim();
-
+                
                 if (!nom || !email) {
-                    errEl.textContent = "Le nom et l’e-mail sont requis.";
+                    errEl.textContent = "Le nom et l'e-mail sont requis.";
                     (nom ? emailEl : nomEl).focus();
                     return;
                 }
+                
                 if (!/^\S+@\S+\.\S+$/.test(email)) {
                     errEl.textContent = "Veuillez entrer une adresse e-mail valide.";
                     emailEl.focus();
                     return;
                 }
-
-                try { localStorage.setItem('da_checkout_profile', JSON.stringify({ name: nom, email, whatsapp })); } catch {}
-
+                
+                try {
+                    localStorage.setItem('da_checkout_profile', JSON.stringify({ name: nom, email, whatsapp }));
+                } catch {}
+                
                 close();
                 onSubmit({ nom_client: nom, email, whatsapp });
             });
-
-            btnCancel.addEventListener('click', () => { close(); if (typeof onCancel === 'function') onCancel(); });
+            
+            btnCancel.addEventListener('click', () => {
+                close();
+                if (typeof onCancel === 'function') onCancel();
+            });
         }
 
         
