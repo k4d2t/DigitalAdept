@@ -586,87 +586,74 @@ window.initProductPage = function () {
         // Remplacer complètement la fonction PaymentInfoModal actuelle par celle-ci:
         
         function PaymentInfoModal(onSubmit, onCancel) {
-            console.log("PaymentInfoModal: création démarrée");
             const previousActive = document.activeElement;
             let lastProfile = {};
             try { lastProfile = JSON.parse(localStorage.getItem('da_checkout_profile') || '{}'); } catch {}
         
-            // IDs uniques pour éviter les conflits avec d'autres modales
+            // IDs uniques pour éviter les conflits
             const overlayId = 'payment-modal-overlay-' + Date.now();
             const modalId = 'payment-modal-' + Date.now();
             
-            // Créer l'overlay avec des styles forcés en inline
+            // Créer l'overlay 
             const overlay = document.createElement('div');
             overlay.id = overlayId;
-            overlay.className = 'customModal-overlay payment-overlay';
+            overlay.className = 'customModal-overlay';
             
-            // Appliquer styles directs avec !important
+            // TECHNIQUE FONCTIONNELLE: forcer les styles critiques avec !important
             overlay.style.setProperty('position', 'fixed', 'important');
-            overlay.style.setProperty('top', '0', 'important');
-            overlay.style.setProperty('right', '0', 'important');
-            overlay.style.setProperty('bottom', '0', 'important');
-            overlay.style.setProperty('left', '0', 'important');
-            overlay.style.setProperty('background', 'rgba(0,0,0,.5)', 'important');
+            overlay.style.setProperty('inset', '0', 'important');
             overlay.style.setProperty('display', 'flex', 'important');
             overlay.style.setProperty('align-items', 'center', 'important');
             overlay.style.setProperty('justify-content', 'center', 'important');
             overlay.style.setProperty('z-index', '9999', 'important');
-            overlay.style.setProperty('pointer-events', 'auto', 'important');
             
-            // Créer la modale avec des styles forcés
+            // RESTAURATION STYLE VISUEL
+            overlay.style.background = 'rgba(0,0,0,.5)';
+            
+            // Créer la modale
             const modal = document.createElement('div');
             modal.id = modalId;
-            modal.className = 'customModal payment-modal';
+            modal.className = 'customModal';
             modal.setAttribute('role', 'dialog');
             modal.setAttribute('aria-modal', 'true');
             
-            modal.style.setProperty('background', '#111', 'important');
-            modal.style.setProperty('color', '#fff', 'important');
-            modal.style.setProperty('border-radius', '12px', 'important');
-            modal.style.setProperty('width', 'min(96vw, 520px)', 'important');
-            modal.style.setProperty('max-height', '90vh', 'important');
-            modal.style.setProperty('overflow', 'auto', 'important');
-            modal.style.setProperty('box-shadow', '0 10px 40px rgba(0,0,0,.4)', 'important');
-            modal.style.setProperty('padding', '18px', 'important');
-            modal.style.setProperty('outline', 'none', 'important');
+            // TECHNIQUE FONCTIONNELLE: forcer display/position critiques
             modal.style.setProperty('display', 'block', 'important');
             modal.style.setProperty('position', 'relative', 'important');
             modal.style.setProperty('z-index', '10000', 'important');
-        
-            // Ajouter une règle CSS globale pour forcer l'affichage
+            
+            // RESTAURATION STYLE VISUEL
+            modal.style.background = '#111';
+            modal.style.color = '#fff';
+            modal.style.borderRadius = '12px';
+            modal.style.width = 'min(96vw, 520px)';
+            modal.style.maxHeight = '90vh';
+            modal.style.overflow = 'auto';
+            modal.style.boxShadow = '0 10px 40px rgba(0,0,0,.4)';
+            modal.style.padding = '18px';
+            modal.style.outline = 'none';
+            
+            // TECHNIQUE FONCTIONNELLE: règle CSS globale uniquement pour l'affichage critique
             const styleElement = document.createElement('style');
             styleElement.textContent = `
-                #${overlayId} { 
-                    display: flex !important; 
-                    position: fixed !important; 
-                    inset: 0 !important; 
-                    z-index: 9999 !important;
-                }
-                #${modalId} { 
-                    display: block !important; 
-                    position: relative !important; 
-                    z-index: 10000 !important;
-                    visibility: visible !important;
-                    opacity: 1 !important;
-                }
-                body.modal-open { overflow: hidden !important; }
+                #${overlayId} { display: flex !important; }
+                #${modalId} { display: block !important; }
             `;
             document.head.appendChild(styleElement);
             
             // Verrouiller le scroll
-            document.documentElement.style.setProperty('overflow', 'hidden', 'important');
-            document.body.classList.add('modal-open');
+            document.documentElement.style.overflow = 'hidden';
             
-            // Contenu de la modale avec styles inline pour éviter les problèmes de CSS
+            // CONTENU: style visuel d'origine et formulaire
             modal.innerHTML = `
-              <form id="payment-form-${modalId}" autocomplete="on" novalidate style="margin:0;padding:0;">
-                <h3 style="margin:.2em 0 0.6em 0;color:#fff;font-family:inherit;">Finaliser la commande</h3>
-                <p style="opacity:.8;margin-top:0;margin-bottom:1em;color:#fff;font-family:inherit;">
+              <form id="payment-form-${modalId}" autocomplete="on" novalidate>
+                <h3 id="modal-title" style="margin:.2em 0 0.6em 0;">Finaliser la commande</h3>
+                <p id="modal-desc" style="opacity:.8;margin-top:0;margin-bottom:1em;">
                   Renseignez vos informations pour recevoir vos produits.
                 </p>
         
-                <div style="margin-bottom:10px;">
-                  <label for="payment-nom-client-${modalId}" style="display:block;margin-bottom:4px;color:#fff;">Nom complet</label>
+                <div class="form-field" style="margin-bottom:10px;">
+                  <label for="payment-nom-client-${modalId}">Nom complet</label>
                   <input
                     type="text"
                     id="payment-nom-client-${modalId}"
@@ -674,12 +661,13 @@ window.initProductPage = function () {
                     placeholder="Votre nom complet"
                     required
                     autocomplete="name"
-                    style="display:block; width:100%; padding:8px; margin-top:4px; border-radius:4px; background:#fff; color:#000; border:1px solid #ddd;"
+                    autocapitalize="words"
+                    spellcheck="false"
                     />
                 </div>
         
-                <div style="margin-bottom:10px;">
-                  <label for="payment-email-${modalId}" style="display:block;margin-bottom:4px;color:#fff;">Adresse e-mail</label>
+                <div class="form-field" style="margin-bottom:10px;">
+                  <label for="payment-email-${modalId}">Adresse e-mail</label>
                   <input
                     type="email"
                     id="payment-email-${modalId}"
@@ -687,37 +675,35 @@ window.initProductPage = function () {
                     placeholder="Pour recevoir vos produits"
                     required
                     autocomplete="email"
-                    style="display:block; width:100%; padding:8px; margin-top:4px; border-radius:4px; background:#fff; color:#000; border:1px solid #ddd;"
+                    inputmode="email"
                     />
                 </div>
         
-                <div style="margin-bottom:4px;">
-                  <label for="payment-whatsapp-${modalId}" style="display:block;margin-bottom:4px;color:#fff;">Numéro WhatsApp</label>
+                <div class="form-field" style="margin-bottom:4px;">
+                  <label for="payment-whatsapp-${modalId}">Numéro WhatsApp</label>
                   <input
                     type="tel"
                     id="payment-whatsapp-${modalId}"
                     name="tel"
                     placeholder="+2250700000000"
                     autocomplete="tel"
-                    style="display:block; width:100%; padding:8px; margin-top:4px; border-radius:4px; background:#fff; color:#000; border:1px solid #ddd;"
+                    inputmode="tel"
                     />
-                  <small style="opacity:.7;color:#fff;display:block;margin-top:2px;">Format international recommandé (+225…)</small>
+                  <small id="whats-hint" style="opacity:.7;">Format international recommandé (+225…)</small>
                 </div>
         
-                <div id="payment-error-${modalId}" style="min-height:1.2em;color:#ff8a80;margin:.4em 0;"></div>
+                <div id="payment-error-${modalId}" aria-live="assertive" style="min-height:1.2em;color:#ff8a80;margin:.4em 0;"></div>
         
                 <div class="customModal-buttons" style="display:flex; gap:10px; margin-top:12px;">
-                  <button type="submit" id="payment-submit-${modalId}" class="customModal-yes" style="flex:1;padding:10px;background:#4CAF50;color:white;border:none;border-radius:4px;cursor:pointer;">Valider et Payer</button>
-                  <button type="button" id="payment-cancel-${modalId}" class="customModal-no" style="flex:1;padding:10px;background:#555;color:white;border:none;border-radius:4px;cursor:pointer;">Annuler</button>
+                  <button type="submit" class="customModal-yes" id="payment-submit-${modalId}">Valider et Payer</button>
+                  <button type="button" class="customModal-no" id="payment-cancel-${modalId}">Annuler</button>
                 </div>
               </form>
             `;
-        
-            // Ajouter au DOM 
+            
             overlay.appendChild(modal);
             document.body.appendChild(overlay);
             
-            // Récupérer les références des éléments
             const formEl = document.getElementById(`payment-form-${modalId}`);
             const nomEl = document.getElementById(`payment-nom-client-${modalId}`);
             const emailEl = document.getElementById(`payment-email-${modalId}`);
@@ -726,22 +712,17 @@ window.initProductPage = function () {
             const btnSubmit = document.getElementById(`payment-submit-${modalId}`);
             const btnCancel = document.getElementById(`payment-cancel-${modalId}`);
             
-            // Pré-remplir avec les données précédentes
             if (lastProfile && typeof lastProfile === 'object') {
                 if (lastProfile.name) nomEl.value = lastProfile.name;
                 if (lastProfile.email) emailEl.value = lastProfile.email;
                 if (lastProfile.whatsapp) telEl.value = lastProfile.whatsapp;
             }
             
-            // Focus initial avec un léger délai
-            setTimeout(() => { 
-                if (nomEl) nomEl.focus(); 
-            }, 50);
+            setTimeout(() => { nomEl.focus(); }, 50);
             
             function close() {
                 styleElement.remove();
-                document.documentElement.style.removeProperty('overflow');
-                document.body.classList.remove('modal-open');
+                document.documentElement.style.overflow = ''; 
                 document.removeEventListener('keydown', onKeydown);
                 overlay.remove();
                 
