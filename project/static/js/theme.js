@@ -583,122 +583,198 @@ window.initProductPage = function () {
             });
         });
         
-        // === Modale de paiement (structure alignée à style.css) ===
+        // Remplacer complètement la fonction PaymentInfoModal actuelle par celle-ci:
+        
         function PaymentInfoModal(onSubmit, onCancel) {
             const previousActive = document.activeElement;
             let lastProfile = {};
             try { lastProfile = JSON.parse(localStorage.getItem('da_checkout_profile') || '{}'); } catch {}
-
-            // Overlay = .customModal (selon style.css), contenu = .customModal-content
+        
+            // IDs uniques pour éviter les conflits
+            const overlayId = 'payment-modal-overlay-' + Date.now();
+            const modalId = 'payment-modal-' + Date.now();
+            
+            // Créer l'overlay 
             const overlay = document.createElement('div');
-            overlay.className = 'customModal visible';
-            // S'assurer qu'elle passe au-dessus de tout (mobile-menu/locale panel/cart)
-            overlay.style.zIndex = '12000';
-
+            overlay.id = overlayId;
+            overlay.className = 'customModal-overlay';
+            
+            // TECHNIQUE FONCTIONNELLE: forcer les styles critiques avec !important
+            overlay.style.setProperty('position', 'fixed', 'important');
+            overlay.style.setProperty('inset', '0', 'important');
+            overlay.style.setProperty('display', 'flex', 'important');
+            overlay.style.setProperty('align-items', 'center', 'important');
+            overlay.style.setProperty('justify-content', 'center', 'important');
+            overlay.style.setProperty('z-index', '9999', 'important');
+            
+            // RESTAURATION STYLE VISUEL
+            overlay.style.background = 'rgba(0,0,0,.5)';
+            
+            // Créer la modale
             const modal = document.createElement('div');
-            modal.className = 'customModal-content';
-
+            modal.id = modalId;
+            modal.className = 'customModal';
+            modal.setAttribute('role', 'dialog');
+            modal.setAttribute('aria-modal', 'true');
+            
+            // TECHNIQUE FONCTIONNELLE: forcer display/position critiques
+            modal.style.setProperty('display', 'block', 'important');
+            modal.style.setProperty('position', 'relative', 'important');
+            modal.style.setProperty('z-index', '10000', 'important');
+            
+            // RESTAURATION STYLE VISUEL
+            modal.style.background = '#111';
+            modal.style.color = '#fff';
+            modal.style.borderRadius = '12px';
+            modal.style.width = 'min(96vw, 520px)';
+            modal.style.maxHeight = '90vh';
+            modal.style.overflow = 'auto';
+            modal.style.boxShadow = '0 10px 40px rgba(0,0,0,.4)';
+            modal.style.padding = '18px';
+            modal.style.outline = 'none';
+            
+            // TECHNIQUE FONCTIONNELLE: règle CSS globale uniquement pour l'affichage critique
+            const styleElement = document.createElement('style');
+            styleElement.textContent = `
+                #${overlayId} { display: flex !important; }
+                #${modalId} { display: block !important; }
+            `;
+            document.head.appendChild(styleElement);
+            
+            // Verrouiller le scroll
+            document.documentElement.style.overflow = 'hidden';
+            
+            // CONTENU: style visuel d'origine et formulaire
             modal.innerHTML = `
-              <h3 id="modal-title">Finaliser la commande</h3>
-              <form id="payment-form" autocomplete="on" novalidate>
-                <label for="payment-nom-client">Nom complet</label>
-                <input type="text" id="payment-nom-client" name="name" placeholder="Votre nom complet" required autocomplete="name" autocapitalize="words" spellcheck="false" />
-
-                <label for="payment-email">Adresse e-mail</label>
-                <input type="email" id="payment-email" name="email" placeholder="Pour recevoir vos produits" required autocomplete="email" inputmode="email" />
-
-                <label for="payment-whatsapp">Numéro WhatsApp</label>
-                <input type="tel" id="payment-whatsapp" name="tel" placeholder="+2250700000000" autocomplete="tel" inputmode="tel" />
-                <div id="payment-error" aria-live="assertive" style="min-height:1.2em;color:#ff8a80;margin:.4em 0 0 0;"></div>
-
-                <div class="customModal-buttons">
-                  <button type="submit" class="customModal-yes" id="payment-submit">Valider et Payer</button>
-                  <button type="button" class="customModal-no" id="payment-cancel">Annuler</button>
+              <form id="payment-form-${modalId}" autocomplete="on" novalidate>
+                <h3 id="modal-title" style="margin:.2em 0 0.6em 0;">Finaliser la commande</h3>
+                <p id="modal-desc" style="opacity:.8;margin-top:0;margin-bottom:1em;">
+                  Renseignez vos informations pour recevoir vos produits.
+                </p>
+        
+                <div class="form-field" style="margin-bottom:10px;">
+                  <label for="payment-nom-client-${modalId}">Nom complet</label>
+                  <input
+                    type="text"
+                    id="payment-nom-client-${modalId}"
+                    name="name"
+                    placeholder="Votre nom complet"
+                    required
+                    autocomplete="name"
+                    autocapitalize="words"
+                    spellcheck="false"
+                    />
+                </div>
+        
+                <div class="form-field" style="margin-bottom:10px;">
+                  <label for="payment-email-${modalId}">Adresse e-mail</label>
+                  <input
+                    type="email"
+                    id="payment-email-${modalId}"
+                    name="email"
+                    placeholder="Pour recevoir vos produits"
+                    required
+                    autocomplete="email"
+                    inputmode="email"
+                    />
+                </div>
+        
+                <div class="form-field" style="margin-bottom:4px;">
+                  <label for="payment-whatsapp-${modalId}">Numéro WhatsApp</label>
+                  <input
+                    type="tel"
+                    id="payment-whatsapp-${modalId}"
+                    name="tel"
+                    placeholder="+2250700000000"
+                    autocomplete="tel"
+                    inputmode="tel"
+                    />
+                  <small id="whats-hint" style="opacity:.7;">Format international recommandé (+225…)</small>
+                </div>
+        
+                <div id="payment-error-${modalId}" aria-live="assertive" style="min-height:1.2em;color:#ff8a80;margin:.4em 0;"></div>
+        
+                <div class="customModal-buttons" style="display:flex; gap:10px; margin-top:12px;">
+                  <button type="submit" class="customModal-yes" id="payment-submit-${modalId}">Valider et Payer</button>
+                  <button type="button" class="customModal-no" id="payment-cancel-${modalId}">Annuler</button>
                 </div>
               </form>
             `;
-
+            
             overlay.appendChild(modal);
             document.body.appendChild(overlay);
-
-            // Lock scroll
-            const prevOverflow = document.documentElement.style.overflow;
-            document.documentElement.style.overflow = 'hidden';
-
-            const nomEl = modal.querySelector('#payment-nom-client');
-            const emailEl = modal.querySelector('#payment-email');
-            const telEl = modal.querySelector('#payment-whatsapp');
-            const formEl = modal.querySelector('#payment-form');
-            const errEl = modal.querySelector('#payment-error');
-            const btnSubmit = modal.querySelector('#payment-submit');
-            const btnCancel = modal.querySelector('#payment-cancel');
-
+            
+            const formEl = document.getElementById(`payment-form-${modalId}`);
+            const nomEl = document.getElementById(`payment-nom-client-${modalId}`);
+            const emailEl = document.getElementById(`payment-email-${modalId}`);
+            const telEl = document.getElementById(`payment-whatsapp-${modalId}`);
+            const errEl = document.getElementById(`payment-error-${modalId}`);
+            const btnSubmit = document.getElementById(`payment-submit-${modalId}`);
+            const btnCancel = document.getElementById(`payment-cancel-${modalId}`);
+            
             if (lastProfile && typeof lastProfile === 'object') {
                 if (lastProfile.name) nomEl.value = lastProfile.name;
                 if (lastProfile.email) emailEl.value = lastProfile.email;
                 if (lastProfile.whatsapp) telEl.value = lastProfile.whatsapp;
             }
-
-            setTimeout(() => { nomEl && nomEl.focus(); }, 50);
-
+            
+            setTimeout(() => { nomEl.focus(); }, 50);
+            
             function close() {
-                document.documentElement.style.overflow = prevOverflow || '';
+                styleElement.remove();
+                document.documentElement.style.overflow = ''; 
                 document.removeEventListener('keydown', onKeydown);
                 overlay.remove();
-                if (previousActive && typeof previousActive.focus === 'function') previousActive.focus();
+                
+                if (previousActive && typeof previousActive.focus === 'function') {
+                    previousActive.focus();
+                }
             }
-
+            
             function onKeydown(e) {
                 if (e.key === 'Escape') {
                     e.preventDefault();
                     close();
                     if (typeof onCancel === 'function') onCancel();
-                } else if (e.key === 'Enter') {
-                    if (e.target && e.target.tagName && ['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName)) {
-                        e.preventDefault();
-                        btnSubmit.click();
-                    }
                 }
             }
             document.addEventListener('keydown', onKeydown);
-
-            // Click en dehors
+            
             overlay.addEventListener('click', (e) => {
                 if (e.target === overlay) {
                     close();
                     if (typeof onCancel === 'function') onCancel();
                 }
             });
-
-            // Submit
+            
             formEl.addEventListener('submit', (evt) => {
                 evt.preventDefault();
                 errEl.textContent = '';
-
+                
                 const nom = nomEl.value.trim();
                 const email = emailEl.value.trim();
                 const whatsapp = telEl.value.trim();
-
+                
                 if (!nom || !email) {
-                    errEl.textContent = "Le nom et l’e-mail sont requis.";
+                    errEl.textContent = "Le nom et l'e-mail sont requis.";
                     (nom ? emailEl : nomEl).focus();
                     return;
                 }
+                
                 if (!/^\S+@\S+\.\S+$/.test(email)) {
                     errEl.textContent = "Veuillez entrer une adresse e-mail valide.";
                     emailEl.focus();
                     return;
                 }
-
+                
                 try {
                     localStorage.setItem('da_checkout_profile', JSON.stringify({ name: nom, email, whatsapp }));
                 } catch {}
-
+                
                 close();
                 onSubmit({ nom_client: nom, email, whatsapp });
             });
-
-            // Cancel
+            
             btnCancel.addEventListener('click', () => {
                 close();
                 if (typeof onCancel === 'function') onCancel();
@@ -853,13 +929,25 @@ window.initProductPage = function () {
         updateCommentsVisibility();
     }
 
-    // --- Product FAQ toggle (respecte les transitions CSS de style.css) ---
     (function initProductFaqToggles() {
-      document.querySelectorAll('.product-faq-item').forEach(item => {
+      const items = document.querySelectorAll('.product-faq-item');
+      items.forEach(item => {
         const q = item.querySelector('.product-faq-question');
-        if (!q) return;
+        const a = item.querySelector('.product-faq-answer');
+        if (!q || !a) return;
+
+        // Masquer par défaut, en forçant l'override de toute règle !important éventuelle
+        a.style.setProperty('display', 'none', 'important');
+
         q.addEventListener('click', () => {
-          item.classList.toggle('open');
+          const isHidden = getComputedStyle(a).display === 'none';
+          if (isHidden) {
+            a.style.setProperty('display', 'block', 'important');
+            item.classList.add('open');
+          } else {
+            a.style.setProperty('display', 'none', 'important');
+            item.classList.remove('open');
+          }
         });
       });
     })();
