@@ -3073,3 +3073,74 @@ display: none;
 @media(min-width: 820px){
   .sticky-cta { display: none !important; }
 }
+
+
+/* AJOUTS MINIMAUX POUR LA NOUVELLE MISE EN PAGE DE LA PAGE PRODUIT */
+
+/* Bloc prix + CTA (réutilise la typo du thème) */
+.price-cta {
+  max-width: 900px;
+  margin: 1.2em auto;
+  padding: 0 1em;
+}
+.price-cta .product-price-detailed {
+  margin-bottom: .6em;
+}
+.price-cta .product-buttons {
+  margin-top: .3em;
+}
+
+/* Carrousel regroupé en section (déjà stylé via .product-gallery) */
+.product-carousel {
+  max-width: 1150px;
+  margin: 1.1em auto 1.2em auto;
+  padding: 0 1em;
+}
+
+/* Promo scaring */
+.promo-scare {
+  max-width: 900px;
+  margin: 1.1em auto;
+  padding: .9em 1.1em;
+  border-radius: .9em;
+  background: linear-gradient(90deg, #1e1e2f 0%, #2b2b3c 100%);
+  color: #e3f6ff;
+  border: 1px solid #4fd8ff22;
+  text-align: center;
+}
+.promo-scare .promo-badge {
+  display: inline-block;
+  background: var(--badge-promo-bg, #ff2d55);
+  color: #fff;
+  padding: .25em .7em;
+  border-radius: 1em;
+  font-weight: 800;
+  margin-bottom: .4em;
+}
+
+/* Paiements: image responsive */
+.payments-section {
+  max-width: 980px;
+  margin: 1em auto 1.2em auto;
+  padding: 0 .8em;
+  text-align: center;
+}
+.payments-strip {
+  width: 100%;
+  height: auto;
+  display: inline-block;
+  border-radius: .6em;
+  box-shadow: 0 2px 12px #0002;
+  background: #fff;
+}
+
+/* Mini-infos sous le hero */
+.product-mini-infos {
+  margin-top: .5em;
+  display: flex;
+  gap: .8em;
+  flex-wrap: wrap;
+  font-size: .95rem;
+  color: #bde9fa;
+}
+.product-mini-infos .sku { color: #9fb6ff; }
