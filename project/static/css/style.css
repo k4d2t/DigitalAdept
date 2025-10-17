@@ -3236,3 +3236,96 @@ display: none;
 }
 
 /* 7) Mini-infos (stock simple "Disponible") déjà géré côté template; couleurs OK */
+
+
+/* === AJOUTS/MODIFS ciblés (placer à la fin du fichier) === */
+
+/* 1) HERO centré, plein largeur utile */
+.product-hero {
+  grid-template-columns: 1fr !important;
+  text-align: center;
+  max-width: 900px;
+}
+.product-hero .hero-content { margin: 0 auto; }
+.product-hero .hero-title {
+  font-size: clamp(1.8rem, 3.5vw, 2.4rem) !important;
+}
+.product-hero .hero-subtitle {
+  font-size: clamp(1rem, 2.2vw, 1.2rem) !important;
+  margin-bottom: .8em;
+}
+
+/* 2) PRIX + CTA + étoiles centrés */
+.price-cta { text-align: center; }
+.price-cta .product-rating {
+  justify-content: center;
+  margin-left: auto; margin-right: auto;
+}
+.price-cta .product-buttons { justify-content: center; }
+
+/* 3) CARROUSEL plus grand, centré, responsive */
+.product-carousel .product-gallery {
+  max-width: 980px;
+  width: 100%;
+  margin: 0 auto;
+}
+.product-gallery { margin-left: auto; margin-right: auto; }
+.product-gallery .gallery-images {
+  height: clamp(300px, 56vw, 560px);
+}
+@media (max-width: 600px) {
+  .product-gallery .gallery-images { height: clamp(240px, 70vw, 380px); }
+}
+.gallery-images .gallery-img {
+  object-fit: contain !important;
+  background: #0b152c;
+}
+
+/* 4) Commentaires lisibles en thème sombre (page produit) */
+.product-page .comments-section h3 {
+  font-size: 1.6rem;
+  color: #fff;
+  text-shadow: var(--neon);
+}
+.product-page .comment-list .comment {
+  background: rgba(30,34,45,0.82);
+  border-left: 4px solid #1976d2;
+  color: #e3f6ff;
+}
+.product-page .comment-content { color: #e3f6ff; }
+.product-page .comment-date { color: #4fc3f7; }
+.product-page .comment-rating { color: #bde9fa; }
+
+/* 5) Description longue (meilleur rendu Quill) */
+.description-content h1 {
+  font-size: clamp(1.6rem, 4.8vw, 2.3rem);
+  color: #4fd8ff;
+  text-shadow: var(--neon);
+  margin: 0 0 .4em 0;
+}
+.description-content h2 {
+  font-size: clamp(1.3rem, 3.5vw, 1.8rem);
+  color: #ffffff;
+  margin: .8em 0 .35em 0;
+}
+.description-content h3 {
+  font-size: clamp(1.15rem, 3vw, 1.4rem);
+  color: #e3f6ff;
+  margin: .7em 0 .3em 0;
+}
+.description-content p,
+.description-content li {
+  font-size: 1.05rem;
+  line-height: 1.7;
+  color: #e6f2ff;
+}
+.description-content a { color: #4fd8ff; text-decoration: underline; }
+
+/* 6) "Découvrez aussi" plus visible */
+.discover-title {
+  font-size: 1.5rem !important;
+  color: #fff;
+  text-shadow: var(--neon);
+}
+
+/* 7) Mini-infos (stock simple "Disponible") déjà géré côté template; couleurs OK */
