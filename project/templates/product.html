@@ -9,50 +9,100 @@
           <h3>Votre panier</h3>
           <button id="close-cart">✘</button>
       </div>
-      <div id="cart-items">
-          <!-- Les produits ajoutés au panier seront affichés ici -->
-      </div>
+      <div id="cart-items"></div>
       <div id="cart-footer">
           <p>Total : <span id="cart-total" data-price="0" data-currency="XOF">0</span></p>
-          <!-- Bouton pour acheter maintenant depuis le panier -->
           <button id="buy-from-cart">Acheter maintenant</button>
       </div>
   </div>
-    <style>
-    /* Remplissage visuel des étoiles (boutons) */
-    .stars-interactive .star-btn svg { fill: #bdbdbd; transition: fill .15s ease; }
-    .stars-interactive .star-btn.filled svg { fill: #FFD600; }
-  </style>
+
+  <!-- 1) HERO (dynamique avec fallback) -->
+  <section class="product-hero">
+    <div class="hero-content">
+      <h1 class="hero-title">
+        {{ produit.hero_title or "Prenez le contrôle de vos finances dès aujourd’hui" }}
+      </h1>
+      <p class="hero-subtitle">
+        {{ produit.hero_subtitle or produit.short_description or "Un planificateur simple, visuel et puissant pour gérer votre budget mensuel et annuel" }}
+      </p>
+      <div class="hero-cta">
+        <button class="btn btn-buy"
+                data-name="{{ produit.name }}"
+                data-price="{{ produit.price }}">
+          {{ produit.hero_cta_label or "Télécharger maintenant" }}
+        </button>
+      </div>
+    </div>
+    <div class="hero-visual">
+      {% set visual = (produit.images[0].url if produit.images else url_for('static', filename='img/logo.webp')) %}
+      <img src="{{ visual }}" alt="{{ produit.name }}" class="hero-mockup" loading="eager">
+    </div>
+  </section>
+
+  <!-- 2) BENEFICES (dynamique avec fallback) -->
+  <section class="product-benefits">
+    <ul class="benefits-list">
+      {% if produit.benefits and produit.benefits|length > 0 %}
+        {% for b in produit.benefits %}
+          {% set txt = (b.text if b is mapping and b.get('text') else (b if b is string else b)) %}
+          <li class="benefit-item">{{ txt }}</li>
+        {% endfor %}
+      {% else %}
+        <li class="benefit-item">💡 Visualisez vos dépenses en un coup d’œil</li>
+        <li class="benefit-item">📈 Suivez vos progrès mois après mois</li>
+        <li class="benefit-item">🧘 Réduisez votre stress financier</li>
+        <li class="benefit-item">🔒 Accès instantané, sécurisé et à vie</li>
+      {% endif %}
+    </ul>
+  </section>
+
+  <!-- 3) DEMO VIDEO (optionnelle) -->
+  {% if produit.demo_video_url %}
+  <section class="video-promo-section">
+    <h2>Le produit en action</h2>
+    <div class="video-promo-flex">
+      <div class="video-promo-player">
+        <iframe
+          src="{{ produit.demo_video_url }}"
+          title="Démonstration"
+          loading="lazy"
+          allowfullscreen></iframe>
+      </div>
+      <div class="video-promo-text">
+        {{ produit.demo_video_text or "Découvrez rapidement comment l’outil fonctionne et ce que vous allez obtenir." }}
+      </div>
+    </div>
+  </section>
+  {% endif %}
+
+  <!-- Galerie + Détails/achat -->
   <div class="product-container">
-    <!-- Carousel Section -->
+    <!-- Galerie -->
     <div class="product-gallery">
       <div class="gallery-main">
         <div class="gallery-images">
         {% for img in produit.images %}
-          {% if img is string %}   {% set url = img %} {% else %}   {% set url = img.url %} {% endif %} {% set base = url.split('/')[-1].rsplit('.', 1)[0] %}
+          {% if img is string %}{% set url = img %}{% else %}{% set url = img.url %}{% endif %}
+          {% set base = url.split('/')[-1].rsplit('.', 1)[0] %}
           <picture>
             <source
               srcset="
                 https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/img/{{ base }}-400.webp 400w,
                 https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/img/{{ base }}-800.webp 800w,
                 https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/img/{{ base }}-1200.webp 1200w
-              "
-              type="image/webp"
-              sizes="(max-width:600px) 400px, (max-width:1100px) 800px, 1200px"
-            >
+              " type="image/webp"
+              sizes="(max-width:600px) 400px, (max-width:1100px) 800px, 1200px">
             <source
               srcset="
                 https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/img/{{ base }}-400.jpg 400w,
                 https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/img/{{ base }}-800.jpg 800w,
                 https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/img/{{ base }}-1200.jpg 1200w
-              "
-              type="image/jpeg"
-              sizes="(max-width:600px) 400px, (max-width:1100px) 800px, 1200px"
-            >
+              " type="image/jpeg"
+              sizes="(max-width:600px) 400px, (max-width:1100px) 800px, 1200px">
             <img src="https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/img/{{ base }}-800.jpg"
-                alt="{{ produit.name }}"
-                class="gallery-img{% if loop.first %} active{% endif %}"
-                width="800" height="533">
+                 alt="{{ produit.name }}"
+                 class="gallery-img{% if loop.first %} active{% endif %}"
+                 width="800" height="533">
           </picture>
         {% endfor %}
         </div>
@@ -63,165 +113,201 @@
       </div>
       {% if produit.images and produit.images|length > 1 %}
       <div class="gallery-thumbnails">
-      {% for img in produit.images %}
-        {% if img is string %}   {% set url = img %} {% else %}   {% set url = img.url %} {% endif %} {% set base = url.split('/')[-1].rsplit('.', 1)[0] %}
-        <picture>
-          <source srcset="https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/img/{{ base }}-400.webp" type="image/webp">
-          <source srcset="https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/img/{{ base }}-400.jpg" type="image/jpeg">
-          <img src="https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/img/{{ base }}-400.jpg"
-              alt="Miniature {{ loop.index }}"
-              class="gallery-thumb{% if loop.first %} active{% endif %}"
-              width="80" height="53"
-              loading="lazy">
-        </picture>
-      {% endfor %}
+        {% for img in produit.images %}
+          {% if img is string %}{% set url = img %}{% else %}{% set url = img.url %}{% endif %}
+          {% set base = url.split('/')[-1].rsplit('.', 1)[0] %}
+          <picture>
+            <source srcset="https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/img/{{ base }}-400.webp" type="image/webp">
+            <source srcset="https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/img/{{ base }}-400.jpg" type="image/jpeg">
+            <img src="https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/img/{{ base }}-400.jpg"
+                 alt="Miniature {{ loop.index }}"
+                 class="gallery-thumb{% if loop.first %} active{% endif %}"
+                 width="80" height="53" loading="lazy">
+          </picture>
+        {% endfor %}
       </div>
       {% endif %}
       <div class="gallery-zoom-hint">Survolez ou touchez pour zoomer</div>
     </div>
 
-    <!-- Product Information Section -->
+    <!-- Détails + achat -->
     <div class="product-details">
-      <!-- BADGES CORRIGÉS -->
+      <!-- Badges dynamiques -->
       <div class="product-badges-detailed">
-        {# Badge PROMO automatique si ancien prix existe #}
         {% if produit.old_price and produit.old_price > produit.price %}
-            {% set discount = ((produit.old_price - produit.price) / produit.old_price * 100) | round | int %}
-            <span class="badge badge-promo">{{ discount }}% OFF</span>
+          {% set discount = ((produit.old_price - produit.price) / produit.old_price * 100) | round | int %}
+          <span class="badge badge-promo">{{ discount }}% OFF</span>
         {% endif %}
-        {# Boucle sur les badges manuels du produit #}
         {% for badge in produit.badges %}
           <span class="badge badge-{{ badge.type|lower }}">{{ badge.text }}</span>
         {% endfor %}
       </div>
 
       <h1 class="product-title">{{ produit.name }}</h1>
-        
-        <div id="product-rating-interactive" class="product-rating" data-product-id="{{ produit.id }}" data-initial-rating="{{ rating|default(0) }}" data-initial-reviews="{{ reviews_count|default(0) }}">
-            <div class="stars-interactive">
-                {% for i in range(1, 6) %}
-                    <button class="star-btn" type="button" data-value="{{ i }}" aria-label="Noter {{ i }} sur 5" style="cursor:pointer;">
-                        <svg viewBox="0 0 24 24" style="pointer-events:none;">
-                            <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
-                        </svg>
-                    </button>
-                {% endfor %}
-            </div>
-            <div class="rating-summary">
-                <span class="rating-value">
-                    {% if reviews_count > 0 %}
-                        {{ "%.1f"|format(rating) }}/5
-                    {% else %}
-                        (Non noté)
-                    {% endif %}
-                </span>
-                <span class="review-count">
-                    {% if reviews_count > 0 %}
-                        – {{ reviews_count }} avis
-                    {% endif %}
-                </span>
-            </div>
-        </div>
 
+      <!-- Notation interactive -->
+      <div id="product-rating-interactive" class="product-rating"
+           data-product-id="{{ produit.id }}"
+           data-initial-rating="{{ rating|default(0) }}"
+           data-initial-reviews="{{ reviews_count|default(0) }}">
+        <div class="stars-interactive">
+          {% for i in range(1, 5+1) %}
+          <button class="star-btn" type="button" data-value="{{ i }}" aria-label="Noter {{ i }} sur 5">
+            <svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+          </button>
+          {% endfor %}
+        </div>
+        <div class="rating-summary">
+          <span class="rating-value">
+            {% if reviews_count > 0 %}{{ "%.1f"|format(rating) }}/5{% else %}(Non noté){% endif %}
+          </span>
+          <span class="review-count">{% if reviews_count > 0 %}– {{ reviews_count }} avis{% endif %}</span>
+        </div>
+      </div>
+
+      <!-- Prix -->
       <div class="product-price-detailed">
         <span class="current-price" data-price="{{ produit.price }}" data-currency="{{ produit.currency }}">{{ produit.price }} {{ produit.currency }}</span>
         {% if produit.old_price %}
           <span class="old-price" data-price="{{ produit.old_price }}" data-currency="{{ produit.currency }}">{{ produit.old_price }} {{ produit.currency }}</span>
         {% endif %}
       </div>
+
+      <!-- Stock + Référence -->
       <div class="product-stock">
-        {% if produit.stock > 0 %}
-          <span class="in-stock">Disponible</span>
-        {% else %}
-          <span class="out-stock">Indisponible</span>
-        {% endif %}
+        {% if produit.stock > 0 %}<span class="in-stock">Disponible</span>{% else %}<span class="out-stock">Indisponible</span>{% endif %}
       </div>
+      {% if produit.sku %}
+      <div class="reference">Référence : {{ produit.sku }}</div>
+      {% endif %}
+
+      <!-- Résumé court -->
       <div class="product-short-desc">
         {{ produit.short_description or produit.description|striptags|truncate(120) }}
       </div>
-      <div class="reference">
-        Référence : {{ produit.sku }}
-      </div>
+
+      <!-- Boutons -->
       <div class="product-meta">
         <div class="product-buttons">
-            <!-- Bouton Acheter Maintenant -->
           <button class="btn btn-buy" data-name="{{ produit.name }}" data-price="{{ produit.price }}">
-              Acheter maintenant
+            {{ produit.hero_cta_label or "Télécharger maintenant" }}
           </button>
-
-          <!-- Bouton Ajouter au Panier -->
           <button class="btn btn-cart add-to-cart" data-id="{{ produit.id }}" data-name="{{ produit.name }}" data-price="{{ produit.price }}">
-              Ajouter au panier
+            Ajouter au panier
           </button>
-
-            <!-- Bouton Partager -->
-            <button class="btn btn-share" id="share-btn">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M18 16c-.76 0-1.44.3-1.96.77l-7.12-4.2c.05-.18.08-.37.08-.57s-.03-.39-.08-.57l7.12-4.2c.52.47 1.2.77 1.96.77 1.66 0 3-1.34 3-3s-1.34-3-3-3-3 1.34-3 3c0 .2.03.39.08.57l-7.12 4.2c-.52-.47-1.2-.77-1.96-.77-1.66 0-3 1.34-3 3s1.34 3 3 3c.76 0 1.44-.3 1.96-.77l7.12 4.2c-.05.18-.08.37-.08.57 0 1.66 1.34 3 3 3s3-1.34 3-3-1.34-3-3-3z"></path>
-                </svg>
-                Partager
-            </button>
+          <button class="btn btn-share" id="share-btn">Partager</button>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Full Description -->
+  <!-- 4) CE QUE VOUS RECEVEZ (dynamique) -->
+  <section class="product-includes">
+    <h2>Ce que vous recevez</h2>
+    <ul class="includes-list">
+      {% if produit.includes and produit.includes|length > 0 %}
+        {% for inc in produit.includes %}
+          {% set txt = (inc.text if inc is mapping and inc.get('text') else (inc if inc is string else inc)) %}
+          <li>✅ {{ txt }}</li>
+        {% endfor %}
+      {% else %}
+        <li>✅ Modèle Google Sheets/Excel</li>
+        <li>✅ Guide PDF d’utilisation</li>
+        <li>✅ Support WhatsApp inclus</li>
+      {% endif %}
+    </ul>
+  </section>
+
+  <!-- 5) TEMOIGNAGES (basé sur comments déjà dynamiques) -->
+  {% set testimonials = comments|selectattr('comment')|list %}
+  {% if testimonials and testimonials|length > 0 %}
+  <section class="product-testimonials">
+    <h2>Ils en parlent</h2>
+    <div class="testimonials-grid">
+      {% for c in testimonials[:3] %}
+      <div class="testimonial-card">
+        <div class="testimonial-header">
+          <div class="avatar">{{ (c.comment[:1] or 'U')|upper }}</div>
+          <div class="meta">
+            <div class="name">Client</div>
+            <div class="note">⭐ {{ c.rating or 5 }}/5</div>
+          </div>
+        </div>
+        <p class="content">{{ c.comment }}</p>
+      </div>
+      {% endfor %}
+    </div>
+  </section>
+  {% endif %}
+
+  <!-- 6) FAQ (déjà dynamique via produit.faqs, fallback fourni) -->
+  <section class="product-faq">
+    <h2>Questions fréquentes</h2>
+    <div class="product-faq-container">
+      {% if produit.faqs and produit.faqs|length > 0 %}
+        {% for faq in produit.faqs %}
+        <div class="product-faq-item">
+          <button class="product-faq-question">{{ faq.question }}</button>
+          <div class="product-faq-answer">{{ faq.answer }}</div>
+        </div>
+        {% endfor %}
+      {% else %}
+        <div class="product-faq-item">
+          <button class="product-faq-question">Est-ce que ça fonctionne sur mobile ?</button>
+          <div class="product-faq-answer">Oui, le modèle est accessible et modifiable sur mobile via Google Sheets.</div>
+        </div>
+        <div class="product-faq-item">
+          <button class="product-faq-question">Puis-je l’utiliser sans compte Google ?</button>
+          <div class="product-faq-answer">Oui, vous pouvez aussi l’utiliser en version Excel (fichier .xlsx) sur votre ordinateur.</div>
+        </div>
+        <div class="product-faq-item">
+          <button class="product-faq-question">Puis-je l’offrir à quelqu’un ?</button>
+          <div class="product-faq-answer">Absolument. Vous pouvez offrir le fichier et le guide d’utilisation à la personne de votre choix.</div>
+        </div>
+      {% endif %}
+    </div>
+  </section>
+
+  <!-- 7) GARANTIE / RÉASSURANCE (dynamique) -->
+  <section class="product-guarantee">
+    <div class="guarantee-items">
+      {% if produit.guarantees and produit.guarantees|length > 0 %}
+        {% for g in produit.guarantees %}
+          {% set txt = (g.text if g is mapping and g.get('text') else (g if g is string else g)) %}
+          <div class="guarantee-item">{{ txt }}</div>
+        {% endfor %}
+      {% else %}
+        <div class="guarantee-item">🔁 Satisfait ou remboursé sous 7 jours</div>
+        <div class="guarantee-item">🔐 Paiement 100% sécurisé via Mobile Money ou Carte</div>
+      {% endif %}
+    </div>
+  </section>
+
+  <!-- 8) CTA FINAL (dynamique) -->
+  <section class="product-final-cta">
+    <h3>{{ produit.final_cta_title or "Prêt à prendre le contrôle de vos finances ?" }}</h3>
+    <button class="btn btn-buy" data-name="{{ produit.name }}" data-price="{{ produit.price }}">
+      {{ produit.final_cta_label or "Télécharger maintenant" }}
+    </button>
+  </section>
+
+  <!-- Description longue -->
+  {% if produit.description %}
   <div class="product-description">
     <h2>Description</h2>
     <div class="description-content">
       {{ produit.description|safe }}
     </div>
   </div>
-
-  <!-- FAQ Section - CORRIGÉ -->
-  {% if produit.faqs and produit.faqs|length > 0 %}
-  <div class="product-faq">
-    <h2>Questions Fréquentes</h2>
-    <div class="product-faq-container">
-      {% for faq in produit.faqs %}
-      <div class="product-faq-item">
-        <button class="product-faq-question">{{ faq.question }}</button>
-        <div class="product-faq-answer">{{ faq.answer }}</div>
-      </div>
-      {% endfor %}
-    </div>
-  </div>
   {% endif %}
 
-  <!-- Comments Section -->
-  <div class="comments-section">
-    <h3>Commentaires</h3>
-    <div class="comment-list">
-      {% for comment in comments if comment.comment %}
-        <div class="comment">
-          <div class="comment-date">{{ comment.date.strftime('%d/%m/%Y') }}</div>
-          <div class="comment-content">{{ comment.comment }}</div>
-          <div class="comment-rating">Note : {{ comment.rating }} ⭐</div>
-        </div>
-      {% endfor %}
-    </div>
-    <form class="add-comment" method="POST" action="/produit/{{ produit.slug }}/comment">
-      <textarea name="comment" placeholder="Laissez un commentaire..." required></textarea>
-      <div class="rating">
-        <span>Noter le produit :</span>
-        <select name="rating">
-          {% for i in range(1, 6) %}
-          <option value="{{ i }}">{{ i }} ⭐</option>
-          {% endfor %}
-        </select>
-      </div>
-      <button type="submit">Soumettre</button>
-    </form>
-  </div>
-
+  <!-- Carrousel "Découvrez aussi" (conservé) -->
   <div class="discover-carousel-container mt-5">
     <h4 class="discover-title mb-4">Découvrez aussi&nbsp;:</h4>
     <div class="discover-carousel" id="discoverCarousel">
       {% for p in produits|shuffle if p.id != produit.id %}
         <div class="carousel-item">
           <a href="{{ url_for('product_detail', slug=p.slug) }}" class="product-card">
-            
             <div class="product-badges-container">
               {% if p.old_price and p.old_price > p.price %}
                   {% set discount = ((p.old_price - p.price) / p.old_price * 100) | round | int %}
@@ -231,18 +317,13 @@
                   <span class="product-badge badge-{{ badge.type|lower }}">{{ badge.text }}</span>
               {% endfor %}
             </div>
-
             <img src="{{ p.images[0].url if p.images else url_for('static', filename='img/logo.webp') }}" alt="{{ p.name }}">
             <div class="product-info">
               <h3>{{ p.name }}</h3>
-             <div class="product-desc">
-                {{ (p.short_description or p.description)|striptags|truncate(80) }}
-              </div>
+              <div class="product-desc">{{ (p.short_description or p.description)|striptags|truncate(80) }}</div>
               <div class="product-bottom">
                 <span class="product-price">{{ p.price }} XOF</span>
-                {% if p.old_price %}
-                  <span class="product-old-price">{{ p.old_price }} XOF</span>
-                {% endif %}
+                {% if p.old_price %}<span class="product-old-price">{{ p.old_price }} XOF</span>{% endif %}
               </div>
             </div>
           </a>
@@ -251,158 +332,81 @@
     </div>
   </div>
 
-  <style>
-.discover-carousel-container {
-  position: relative;
-  width: 100%;
-  max-width: 1200px;
-  margin: 0 auto 3rem auto;
-  overflow: hidden;
-}
+  <!-- Sticky CTA (mobile) -->
+  <div class="sticky-cta">
+    <button class="btn btn-buy" data-name="{{ produit.name }}" data-price="{{ produit.price }}">
+      {{ produit.hero_cta_label or "Télécharger maintenant" }}
+    </button>
+  </div>
 
-.discover-title {
-  color: var(--primary-dark);
-  font-family:  'Google Sans', 'Roboto', Arial, sans-serif;
-  text-shadow: var(--neon);x
-  font-weight: 800;
-  font-size: 1.5rem;
-  text-align: center;
-  margin-bottom: 2.2rem;
-}
-
-.discover-carousel {
-  display: flex;
-  gap: 2em;
-  transition: transform 0.75s cubic-bezier(0.4,0.2,0.2,1);
-  will-change: transform;
-  padding-bottom: 1.5rem;
-}
-
-/* Parallaxe : les cartes latérales bougent plus lentement */
-.carousel-item {
-  flex: 0 0 260px;
-  transition:
-    filter 0.5s,
-    opacity 0.45s,
-    transform 0.8s cubic-bezier(0.6,0.2,0.2,1);
-  opacity: 0.45;
-  filter: blur(2.7px) grayscale(0.12);
-  pointer-events: none;
-  transform: scale(0.93) translateY(24px);
-  z-index: 1;
-}
-
-.carousel-item.center {
-  opacity: 1;
-  filter: blur(0) grayscale(0) drop-shadow(0 0 12px var(--primary));
-  transform: scale(1.07) translateY(-8px);
-  pointer-events: auto;
-  z-index: 3;
-  background: rgba(255,255,255,0.04);
-  box-shadow: 0 8px 44px -8px var(--primary-dark), 0 0 20px var(--primary)88;
-}
-
-.carousel-item.active:not(.center) {
-  opacity: 0.75;
-  filter: blur(1.1px) grayscale(0.04);
-  transform: scale(0.97) translateY(10px);
-  z-index: 2;
-}
-
-@media (max-width: 700px){
-  .discover-carousel-container {max-width: 99vw;}
-  .carousel-item {flex-basis: 180px;}
-}
-@media (max-width: 500px){
-  .carousel-item {flex-basis: 130px;}
-}
-
-  </style>
-
-
-  <!-- Back to Products -->
+  <!-- Retour -->
   <div class="back-to-products">
     <a href="/produits" class="btn btn-back"> Retour aux produits</a>
   </div>
 </section>
 
+<!-- Script notation (conservé) -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    // --- SCRIPT NOTATION PRODUIT (LOCAL) ---
-    const ratingContainer = document.getElementById('product-rating-interactive');
-    if (!ratingContainer) return;
+  const ratingContainer = document.getElementById('product-rating-interactive');
+  if (!ratingContainer) return;
 
-    // Assure un device_id persistant (cookie + localStorage)
-    function getCookie(name) {
-        // Version simple et robuste: pas de regex piégeuse
-        const entry = document.cookie.split('; ').find(row => row.startsWith(name + '='));
-        return entry ? decodeURIComponent(entry.split('=')[1]) : null;
+  function getCookie(name) {
+    const entry = document.cookie.split('; ').find(row => row.startsWith(name + '='));
+    return entry ? decodeURIComponent(entry.split('=')[1]) : null;
+  }
+  function ensureDeviceId() {
+    let id = getCookie('da_device_id');
+    if (!id) { try { id = localStorage.getItem('da_device_id') || ''; } catch(e) { id = ''; } }
+    if (!id) {
+      id = (self.crypto && crypto.randomUUID) ? crypto.randomUUID() : (Date.now().toString(36) + Math.random().toString(36).slice(2,10));
+      const expires = new Date(Date.now() + 730*24*60*60*1000).toUTCString();
+      document.cookie = `da_device_id=${encodeURIComponent(id)}; expires=${expires}; path=/; samesite=Lax`;
+      try { localStorage.setItem('da_device_id', id); } catch(e) {}
     }
-    function ensureDeviceId() {
-        let id = getCookie('da_device_id');
-        if (!id) {
-            try { id = localStorage.getItem('da_device_id') || ''; } catch(e) { id = ''; }
-        }
-        if (!id) {
-            id = (self.crypto && crypto.randomUUID) ? crypto.randomUUID() : (Date.now().toString(36) + Math.random().toString(36).slice(2,10));
-            // cookie 2 ans
-            const expires = new Date(Date.now() + 730*24*60*60*1000).toUTCString();
-            document.cookie = `da_device_id=${encodeURIComponent(id)}; expires=${expires}; path=/; samesite=Lax`;
-            try { localStorage.setItem('da_device_id', id); } catch(e) {}
-        }
-        return id;
-    }
-    const DEVICE_ID = ensureDeviceId();
+    return id;
+  }
+  const DEVICE_ID = ensureDeviceId();
 
-    const stars = ratingContainer.querySelectorAll('.star-btn');
-    const ratingValueEl = ratingContainer.querySelector('.rating-value');
-    const reviewCountEl = ratingContainer.querySelector('.review-count');
-    const productId = ratingContainer.dataset.productId;
-    let currentAvg = parseFloat(ratingContainer.dataset.initialRating) || 0;
+  const stars = ratingContainer.querySelectorAll('.star-btn');
+  const ratingValueEl = ratingContainer.querySelector('.rating-value');
+  const reviewCountEl = ratingContainer.querySelector('.review-count');
+  const productId = ratingContainer.dataset.productId;
+  let currentAvg = parseFloat(ratingContainer.dataset.initialRating) || 0;
 
-    function updateStars(rating) {
-        stars.forEach(star => {
-            const starValue = parseInt(star.dataset.value);
-            star.classList.toggle('filled', starValue <= rating);
-        });
-    }
-
-    // Etat initial (affichage)
-    updateStars(Math.round(currentAvg));
-
+  function updateStars(rating) {
     stars.forEach(star => {
-        star.addEventListener('mouseover', () => {
-            updateStars(parseInt(star.dataset.value));
-        });
-        star.addEventListener('mouseout', () => {
-            updateStars(Math.round(currentAvg));
-        });
-        star.addEventListener('click', () => {
-            const newRating = parseInt(star.dataset.value);
-            fetch(`/api/produit/${productId}/rate`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-DA-Device': DEVICE_ID
-                },
-                body: JSON.stringify({ rating: newRating, device_id: DEVICE_ID })
-            })
-            .then(r => r.json())
-            .then(data => {
-                if (data.average_rating !== undefined) {
-                    currentAvg = data.average_rating;
-                    ratingValueEl.textContent = `${data.average_rating.toFixed(1)}/5`;
-                    reviewCountEl.textContent = data.reviews_count > 0 ? `– ${data.reviews_count} avis` : '';
-                    updateStars(Math.round(currentAvg));
-                    const msg = data.action === 'updated' ? 'Votre note a été mise à jour.' : 'Merci pour votre vote !';
-                    showNotification(msg, 'success');
-                } else {
-                    showNotification(data.error || 'Erreur lors de la notation.', 'error');
-                }
-            })
-            .catch(() => showNotification('Erreur réseau. Veuillez réessayer.', 'error'));
-        });
+      const val = parseInt(star.dataset.value);
+      star.classList.toggle('filled', val <= rating);
     });
+  }
+  updateStars(Math.round(currentAvg));
+
+  stars.forEach(star => {
+    star.addEventListener('mouseover', () => updateStars(parseInt(star.dataset.value)));
+    star.addEventListener('mouseout', () => updateStars(Math.round(currentAvg)));
+    star.addEventListener('click', () => {
+      const newRating = parseInt(star.dataset.value);
+      fetch(`/api/produit/${productId}/rate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-DA-Device': DEVICE_ID },
+        body: JSON.stringify({ rating: newRating, device_id: DEVICE_ID })
+      })
+      .then(r => r.json())
+      .then(data => {
+        if (data.average_rating !== undefined) {
+          currentAvg = data.average_rating;
+          ratingValueEl.textContent = `${data.average_rating.toFixed(1)}/5`;
+          reviewCountEl.textContent = data.reviews_count > 0 ? `– ${data.reviews_count} avis` : '';
+          updateStars(Math.round(currentAvg));
+          showNotification(data.action === 'updated' ? 'Votre note a été mise à jour.' : 'Merci pour votre vote !', 'success');
+        } else {
+          showNotification(data.error || 'Erreur lors de la notation.', 'error');
+        }
+      })
+      .catch(() => showNotification('Erreur réseau. Veuillez réessayer.', 'error'));
+    });
+  });
 });
 </script>
 {% endblock %}
