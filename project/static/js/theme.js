@@ -617,7 +617,7 @@ window.initProductPage = function () {
               </label>
         
               <label>
-                Numéro WhatsApp :
+                Numéro WhatsApp (avec indicatif) :
                 <input type="tel" id="payment-whatsapp" placeholder="Pour le suivi de commande">
               </label>
         
