@@ -3,34 +3,38 @@
 {% block content %}
 
 <section class="product-page">
-  <!-- Barre du panier -->
+  <!-- Panier (inchangé) -->
   <div id="cart-bar" class="hidden">
-      <div id="cart-header">
-          <h3>Votre panier</h3>
-          <button id="close-cart">✘</button>
-      </div>
-      <div id="cart-items"></div>
-      <div id="cart-footer">
-          <p>Total : <span id="cart-total" data-price="0" data-currency="XOF">0</span></p>
-          <button id="buy-from-cart">Acheter maintenant</button>
-      </div>
+    <div id="cart-header">
+      <h3>Votre panier</h3>
+      <button id="close-cart">✘</button>
+    </div>
+    <div id="cart-items"></div>
+    <div id="cart-footer">
+      <p>Total : <span id="cart-total" data-price="0" data-currency="XOF">0</span></p>
+      <button id="buy-from-cart">Acheter maintenant</button>
+    </div>
   </div>
 
-  <!-- 1) HERO (dynamique avec fallback) -->
+  <!-- 1) HERO -->
   <section class="product-hero">
     <div class="hero-content">
-      <h1 class="hero-title">
-        {{ produit.hero_title or "Prenez le contrôle de vos finances dès aujourd’hui" }}
-      </h1>
+      <h1 class="hero-title">{{ produit.hero_title or produit.name }}</h1>
       <p class="hero-subtitle">
         {{ produit.hero_subtitle or produit.short_description or "Un planificateur simple, visuel et puissant pour gérer votre budget mensuel et annuel" }}
       </p>
-      <div class="hero-cta">
-        <button class="btn btn-buy"
-                data-name="{{ produit.name }}"
-                data-price="{{ produit.price }}">
-          {{ produit.hero_cta_label or "Télécharger maintenant" }}
-        </button>
+      <!-- Petites infos sous le titre -->
+      <div class="product-mini-infos">
+        {% if produit.stock is not none %}
+          {% if produit.stock > 0 %}
+            <span class="in-stock">En stock • {{ produit.stock }} restant(s)</span>
+          {% else %}
+            <span class="out-stock">Indisponible</span>
+          {% endif %}
+        {% endif %}
+        {% if produit.sku %}
+          <span class="sku">Réf: {{ produit.sku }}</span>
+        {% endif %}
       </div>
     </div>
     <div class="hero-visual">
@@ -39,82 +43,96 @@
     </div>
   </section>
 
-  <!-- 2) BENEFICES (dynamique avec fallback) -->
-  <section class="product-benefits">
-    <ul class="benefits-list">
-      {% if produit.benefits and produit.benefits|length > 0 %}
-        {% for b in produit.benefits %}
-          {% set txt = (b.text if b is mapping and b.get('text') else (b if b is string else b)) %}
-          <li class="benefit-item">{{ txt }}</li>
-        {% endfor %}
-      {% else %}
-        <li class="benefit-item">💡 Visualisez vos dépenses en un coup d’œil</li>
-        <li class="benefit-item">📈 Suivez vos progrès mois après mois</li>
-        <li class="benefit-item">🧘 Réduisez votre stress financier</li>
-        <li class="benefit-item">🔒 Accès instantané, sécurisé et à vie</li>
+  <!-- 2) PRIX + CTA (bloc principal avec note) -->
+  <section class="price-cta">
+    <div class="product-price-detailed">
+      {% if produit.old_price %}
+        <span class="old-price" data-price="{{ produit.old_price }}" data-currency="{{ produit.currency }}">{{ produit.old_price }} {{ produit.currency }}</span>
       {% endif %}
-    </ul>
-  </section>
+      <span class="current-price" data-price="{{ produit.price }}" data-currency="{{ produit.currency }}">{{ produit.price }} {{ produit.currency }}</span>
+      {% if produit.old_price and produit.old_price > produit.price %}
+        {% set discount = ((produit.old_price - produit.price) / produit.old_price * 100) | round | int %}
+        <span class="badge badge-promo" style="margin-left:.6em;">-{{ discount }}%</span>
+      {% endif %}
+    </div>
 
-  <!-- 3) DEMO VIDEO (optionnelle) -->
-  {% if produit.demo_video_url %}
-  <section class="video-promo-section">
-    <h2>Le produit en action</h2>
-    <div class="video-promo-flex">
-      <div class="video-promo-player">
-        <iframe
-          src="{{ produit.demo_video_url }}"
-          title="Démonstration"
-          loading="lazy"
-          allowfullscreen></iframe>
+    <!-- Notation interactive (unique ID) -->
+    <div id="product-rating-interactive" class="product-rating"
+         data-product-id="{{ produit.id }}"
+         data-initial-rating="{{ rating|default(0) }}"
+         data-initial-reviews="{{ reviews_count|default(0) }}">
+      <div class="stars-interactive">
+        {% for i in range(1, 6) %}
+          <button class="star-btn" type="button" data-value="{{ i }}" aria-label="Noter {{ i }} sur 5">
+            <svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+          </button>
+        {% endfor %}
       </div>
-      <div class="video-promo-text">
-        {{ produit.demo_video_text or "Découvrez rapidement comment l’outil fonctionne et ce que vous allez obtenir." }}
+      <div class="rating-summary">
+        <span class="rating-value">
+          {% if reviews_count > 0 %}{{ "%.1f"|format(rating) }}/5{% else %}(Non noté){% endif %}
+        </span>
+        <span class="review-count">{% if reviews_count > 0 %}– {{ reviews_count }} avis{% endif %}</span>
       </div>
     </div>
-  </section>
-  {% endif %}
 
-  <!-- Galerie + Détails/achat -->
-  <div class="product-container">
-    <!-- Galerie -->
+    <div class="product-buttons">
+      <button class="btn btn-buy"
+              data-name="{{ produit.name }}"
+              data-price="{{ produit.price }}">
+        {{ produit.hero_cta_label or "Télécharger maintenant" }}
+      </button>
+      <button class="btn btn-cart add-to-cart"
+              data-id="{{ produit.id }}"
+              data-name="{{ produit.name }}"
+              data-price="{{ produit.price }}">
+        Ajouter au panier
+      </button>
+      <button class="btn btn-share" id="share-btn">Partager</button>
+    </div>
+  </section>
+
+  <!-- 3) CARROUSEL IMAGES PRODUIT -->
+  {% if produit.images and produit.images|length > 0 %}
+  <section class="product-carousel">
     <div class="product-gallery">
       <div class="gallery-main">
         <div class="gallery-images">
-        {% for img in produit.images %}
-          {% if img is string %}{% set url = img %}{% else %}{% set url = img.url %}{% endif %}
-          {% set base = url.split('/')[-1].rsplit('.', 1)[0] %}
-          <picture>
-            <source
-              srcset="
-                https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/img/{{ base }}-400.webp 400w,
-                https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/img/{{ base }}-800.webp 800w,
-                https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/img/{{ base }}-1200.webp 1200w
-              " type="image/webp"
-              sizes="(max-width:600px) 400px, (max-width:1100px) 800px, 1200px">
-            <source
-              srcset="
-                https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/img/{{ base }}-400.jpg 400w,
-                https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/img/{{ base }}-800.jpg 800w,
-                https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/img/{{ base }}-1200.jpg 1200w
-              " type="image/jpeg"
-              sizes="(max-width:600px) 400px, (max-width:1100px) 800px, 1200px">
-            <img src="https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/img/{{ base }}-800.jpg"
-                 alt="{{ produit.name }}"
-                 class="gallery-img{% if loop.first %} active{% endif %}"
-                 width="800" height="533">
-          </picture>
-        {% endfor %}
+          {% for img in produit.images %}
+            {% set url = (img if img is string else img.url) %}
+            {% set base = url.split('/')[-1].rsplit('.', 1)[0] %}
+            <picture>
+              <source
+                srcset="
+                  https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/img/{{ base }}-400.webp 400w,
+                  https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/img/{{ base }}-800.webp 800w,
+                  https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/img/{{ base }}-1200.webp 1200w
+                " type="image/webp"
+                sizes="(max-width:600px) 400px, (max-width:1100px) 800px, 1200px">
+              <source
+                srcset="
+                  https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/img/{{ base }}-400.jpg 400w,
+                  https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/img/{{ base }}-800.jpg 800w,
+                  https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/img/{{ base }}-1200.jpg 1200w
+                " type="image/jpeg"
+                sizes="(max-width:600px) 400px, (max-width:1100px) 800px, 1200px">
+              <img src="https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/img/{{ base }}-800.jpg"
+                   alt="{{ produit.name }}"
+                   class="gallery-img{% if loop.first %} active{% endif %}"
+                   width="800" height="533" loading="lazy">
+            </picture>
+          {% endfor %}
         </div>
-        {% if produit.images and produit.images|length > 1 %}
+        {% if produit.images|length > 1 %}
           <button class="gallery-arrow left" aria-label="Image précédente">&#8249;</button>
           <button class="gallery-arrow right" aria-label="Image suivante">&#8250;</button>
         {% endif %}
       </div>
-      {% if produit.images and produit.images|length > 1 %}
+
+      {% if produit.images|length > 1 %}
       <div class="gallery-thumbnails">
         {% for img in produit.images %}
-          {% if img is string %}{% set url = img %}{% else %}{% set url = img.url %}{% endif %}
+          {% set url = (img if img is string else img.url) %}
           {% set base = url.split('/')[-1].rsplit('.', 1)[0] %}
           <picture>
             <source srcset="https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/img/{{ base }}-400.webp" type="image/webp">
@@ -129,107 +147,67 @@
       {% endif %}
       <div class="gallery-zoom-hint">Survolez ou touchez pour zoomer</div>
     </div>
+  </section>
+  {% endif %}
 
-    <!-- Détails + achat -->
-    <div class="product-details">
-      <!-- Badges dynamiques -->
-      <div class="product-badges-detailed">
-        {% if produit.old_price and produit.old_price > produit.price %}
-          {% set discount = ((produit.old_price - produit.price) / produit.old_price * 100) | round | int %}
-          <span class="badge badge-promo">{{ discount }}% OFF</span>
-        {% endif %}
-        {% for badge in produit.badges %}
-          <span class="badge badge-{{ badge.type|lower }}">{{ badge.text }}</span>
-        {% endfor %}
-      </div>
+  <!-- 4) PROMO (scaring) -->
+  {% if produit.old_price and produit.old_price > produit.price %}
+  <section class="promo-scare">
+    <div class="promo-badge">Promo limitée</div>
+    <p>Profitez de <b>{{ ((produit.old_price - produit.price) / produit.old_price * 100) | round | int }}% de réduction</b> aujourd’hui.</p>
+    {% if produit.stock is not none and produit.stock > 0 %}
+      <p>Plus que <b>{{ produit.stock }}</b> exemplaire(s) au tarif promo.</p>
+    {% endif %}
+  </section>
+  {% endif %}
 
-      <h1 class="product-title">{{ produit.name }}</h1>
-
-      <!-- Notation interactive -->
-      <div id="product-rating-interactive" class="product-rating"
-           data-product-id="{{ produit.id }}"
-           data-initial-rating="{{ rating|default(0) }}"
-           data-initial-reviews="{{ reviews_count|default(0) }}">
-        <div class="stars-interactive">
-          {% for i in range(1, 5+1) %}
-          <button class="star-btn" type="button" data-value="{{ i }}" aria-label="Noter {{ i }} sur 5">
-            <svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
-          </button>
-          {% endfor %}
-        </div>
-        <div class="rating-summary">
-          <span class="rating-value">
-            {% if reviews_count > 0 %}{{ "%.1f"|format(rating) }}/5{% else %}(Non noté){% endif %}
-          </span>
-          <span class="review-count">{% if reviews_count > 0 %}– {{ reviews_count }} avis{% endif %}</span>
-        </div>
-      </div>
-
-      <!-- Prix -->
-      <div class="product-price-detailed">
-        <span class="current-price" data-price="{{ produit.price }}" data-currency="{{ produit.currency }}">{{ produit.price }} {{ produit.currency }}</span>
-        {% if produit.old_price %}
-          <span class="old-price" data-price="{{ produit.old_price }}" data-currency="{{ produit.currency }}">{{ produit.old_price }} {{ produit.currency }}</span>
-        {% endif %}
-      </div>
-
-      <!-- Stock + Référence -->
-      <div class="product-stock">
-        {% if produit.stock > 0 %}<span class="in-stock">Disponible</span>{% else %}<span class="out-stock">Indisponible</span>{% endif %}
-      </div>
-      {% if produit.sku %}
-      <div class="reference">Référence : {{ produit.sku }}</div>
-      {% endif %}
-
-      <!-- Résumé court -->
-      <div class="product-short-desc">
-        {{ produit.short_description or produit.description|striptags|truncate(120) }}
-      </div>
-
-      <!-- Boutons -->
-      <div class="product-meta">
-        <div class="product-buttons">
-          <button class="btn btn-buy" data-name="{{ produit.name }}" data-price="{{ produit.price }}">
-            {{ produit.hero_cta_label or "Télécharger maintenant" }}
-          </button>
-          <button class="btn btn-cart add-to-cart" data-id="{{ produit.id }}" data-name="{{ produit.name }}" data-price="{{ produit.price }}">
-            Ajouter au panier
-          </button>
-          <button class="btn btn-share" id="share-btn">Partager</button>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- 4) CE QUE VOUS RECEVEZ (dynamique) -->
-  <section class="product-includes">
-    <h2>Ce que vous recevez</h2>
-    <ul class="includes-list">
-      {% if produit.includes and produit.includes|length > 0 %}
-        {% for inc in produit.includes %}
-          {% set txt = (inc.text if inc is mapping and inc.get('text') else (inc if inc is string else inc)) %}
-          <li>✅ {{ txt }}</li>
-        {% endfor %}
-      {% else %}
-        <li>✅ Modèle Google Sheets/Excel</li>
-        <li>✅ Guide PDF d’utilisation</li>
-        <li>✅ Support WhatsApp inclus</li>
-      {% endif %}
-    </ul>
+  <!-- 5) MÉTHODES DE PAIEMENT (image responsive, lazy) -->
+  <section class="payments-section" aria-label="Méthodes de paiement acceptées">
+    <img
+      src="{{ url_for('static', filename='img/payments.png') }}"
+      alt="Paiements acceptés: Mobile Money, Cartes, etc."
+      class="payments-strip"
+      loading="lazy"
+      width="980" height="200">
   </section>
 
-  <!-- 5) TEMOIGNAGES (basé sur comments déjà dynamiques) -->
+  <!-- 6) PRIX + CTA (rappel) -->
+  <section class="price-cta">
+    <div class="product-price-detailed">
+      {% if produit.old_price %}
+        <span class="old-price" data-price="{{ produit.old_price }}" data-currency="{{ produit.currency }}">{{ produit.old_price }} {{ produit.currency }}</span>
+      {% endif %}
+      <span class="current-price" data-price="{{ produit.price }}" data-currency="{{ produit.currency }}">{{ produit.price }} {{ produit.currency }}</span>
+    </div>
+    <div class="product-buttons">
+      <button class="btn btn-buy" data-name="{{ produit.name }}" data-price="{{ produit.price }}">
+        {{ produit.hero_cta_label or "Télécharger maintenant" }}
+      </button>
+      <button class="btn btn-cart add-to-cart"
+              data-id="{{ produit.id }}"
+              data-name="{{ produit.name }}"
+              data-price="{{ produit.price }}">
+        Ajouter au panier
+      </button>
+    </div>
+  </section>
+
+  <!-- 7) AVIS CLIENTS (+ images si présents) -->
   {% set testimonials = comments|selectattr('comment')|list %}
   {% if testimonials and testimonials|length > 0 %}
   <section class="product-testimonials">
-    <h2>Ils en parlent</h2>
+    <h2>Avis clients</h2>
     <div class="testimonials-grid">
       {% for c in testimonials[:3] %}
       <div class="testimonial-card">
         <div class="testimonial-header">
-          <div class="avatar">{{ (c.comment[:1] or 'U')|upper }}</div>
+          {% if c.photo %}
+            <img src="{{ c.photo }}" class="avatar" alt="Avatar client" loading="lazy" width="38" height="38" style="border-radius:50%;object-fit:cover;">
+          {% else %}
+            <div class="avatar">{{ (c.comment[:1] or 'U')|upper }}</div>
+          {% endif %}
           <div class="meta">
-            <div class="name">Client</div>
+            <div class="name">{{ c.name or "Client" }}</div>
             <div class="note">⭐ {{ c.rating or 5 }}/5</div>
           </div>
         </div>
@@ -240,7 +218,59 @@
   </section>
   {% endif %}
 
-  <!-- 6) FAQ (déjà dynamique via produit.faqs, fallback fourni) -->
+  <!-- 8) PRIX + CTA (rappel) -->
+  <section class="price-cta">
+    <div class="product-price-detailed">
+      {% if produit.old_price %}
+        <span class="old-price" data-price="{{ produit.old_price }}" data-currency="{{ produit.currency }}">{{ produit.old_price }} {{ produit.currency }}</span>
+      {% endif %}
+      <span class="current-price" data-price="{{ produit.price }}" data-currency="{{ produit.currency }}">{{ produit.price }} {{ produit.currency }}</span>
+    </div>
+    <div class="product-buttons">
+      <button class="btn btn-buy" data-name="{{ produit.name }}" data-price="{{ produit.price }}">
+        {{ produit.final_cta_label or "Télécharger maintenant" }}
+      </button>
+      <button class="btn btn-cart add-to-cart"
+              data-id="{{ produit.id }}"
+              data-name="{{ produit.name }}"
+              data-price="{{ produit.price }}">
+        Ajouter au panier
+      </button>
+    </div>
+  </section>
+
+  <!-- 9) DESCRIPTION LONGUE -->
+  {% if produit.description %}
+  <section class="product-description">
+    <h2>Description détaillée</h2>
+    <div class="description-content">
+      {{ produit.description|safe }}
+    </div>
+  </section>
+  {% endif %}
+
+  <!-- 10) PRIX + CTA (rappel) -->
+  <section class="price-cta">
+    <div class="product-price-detailed">
+      {% if produit.old_price %}
+        <span class="old-price" data-price="{{ produit.old_price }}" data-currency="{{ produit.currency }}">{{ produit.old_price }} {{ produit.currency }}</span>
+      {% endif %}
+      <span class="current-price" data-price="{{ produit.price }}" data-currency="{{ produit.currency }}">{{ produit.price }} {{ produit.currency }}</span>
+    </div>
+    <div class="product-buttons">
+      <button class="btn btn-buy" data-name="{{ produit.name }}" data-price="{{ produit.price }}">
+        {{ produit.final_cta_label or "Télécharger maintenant" }}
+      </button>
+      <button class="btn btn-cart add-to-cart"
+              data-id="{{ produit.id }}"
+              data-name="{{ produit.name }}"
+              data-price="{{ produit.price }}">
+        Ajouter au panier
+      </button>
+    </div>
+  </section>
+
+  <!-- 11) FAQ -->
   <section class="product-faq">
     <h2>Questions fréquentes</h2>
     <div class="product-faq-container">
@@ -268,40 +298,28 @@
     </div>
   </section>
 
-  <!-- 7) GARANTIE / RÉASSURANCE (dynamique) -->
-  <section class="product-guarantee">
-    <div class="guarantee-items">
-      {% if produit.guarantees and produit.guarantees|length > 0 %}
-        {% for g in produit.guarantees %}
-          {% set txt = (g.text if g is mapping and g.get('text') else (g if g is string else g)) %}
-          <div class="guarantee-item">{{ txt }}</div>
-        {% endfor %}
-      {% else %}
-        <div class="guarantee-item">🔁 Satisfait ou remboursé sous 7 jours</div>
-        <div class="guarantee-item">🔐 Paiement 100% sécurisé via Mobile Money ou Carte</div>
+  <!-- 12) PRIX + CTA (rappel) -->
+  <section class="price-cta">
+    <div class="product-price-detailed">
+      {% if produit.old_price %}
+        <span class="old-price" data-price="{{ produit.old_price }}" data-currency="{{ produit.currency }}">{{ produit.old_price }} {{ produit.currency }}</span>
       {% endif %}
+      <span class="current-price" data-price="{{ produit.price }}" data-currency="{{ produit.currency }}">{{ produit.price }} {{ produit.currency }}</span>
+    </div>
+    <div class="product-buttons">
+      <button class="btn btn-buy" data-name="{{ produit.name }}" data-price="{{ produit.price }}">
+        {{ produit.final_cta_label or "Télécharger maintenant" }}
+      </button>
+      <button class="btn btn-cart add-to-cart"
+              data-id="{{ produit.id }}"
+              data-name="{{ produit.name }}"
+              data-price="{{ produit.price }}">
+        Ajouter au panier
+      </button>
     </div>
   </section>
 
-  <!-- 8) CTA FINAL (dynamique) -->
-  <section class="product-final-cta">
-    <h3>{{ produit.final_cta_title or "Prêt à prendre le contrôle de vos finances ?" }}</h3>
-    <button class="btn btn-buy" data-name="{{ produit.name }}" data-price="{{ produit.price }}">
-      {{ produit.final_cta_label or "Télécharger maintenant" }}
-    </button>
-  </section>
-
-  <!-- Description longue -->
-  {% if produit.description %}
-  <div class="product-description">
-    <h2>Description</h2>
-    <div class="description-content">
-      {{ produit.description|safe }}
-    </div>
-  </div>
-  {% endif %}
-
-  <!-- Carrousel "Découvrez aussi" (conservé) -->
+  <!-- 13) PRODUITS SIMILAIRES -->
   <div class="discover-carousel-container mt-5">
     <h4 class="discover-title mb-4">Découvrez aussi&nbsp;:</h4>
     <div class="discover-carousel" id="discoverCarousel">
@@ -341,11 +359,11 @@
 
   <!-- Retour -->
   <div class="back-to-products">
-    <a href="/produits" class="btn btn-back"> Retour aux produits</a>
+    <a href="/produits" class="btn btn-back">Retour aux produits</a>
   </div>
 </section>
 
-<!-- Script notation (conservé) -->
+<!-- Script notation (inchangé) -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
   const ratingContainer = document.getElementById('product-rating-interactive');
@@ -387,7 +405,7 @@ document.addEventListener('DOMContentLoaded', function() {
     star.addEventListener('mouseout', () => updateStars(Math.round(currentAvg)));
     star.addEventListener('click', () => {
       const newRating = parseInt(star.dataset.value);
-      fetch(`/api/produit/${productId}/rate`, {
+      fetch(`/api/produit/{{ produit.id }}/rate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-DA-Device': DEVICE_ID },
         body: JSON.stringify({ rating: newRating, device_id: DEVICE_ID })
@@ -397,7 +415,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (data.average_rating !== undefined) {
           currentAvg = data.average_rating;
           ratingValueEl.textContent = `${data.average_rating.toFixed(1)}/5`;
-          reviewCountEl.textContent = data.reviews_count > 0 ? `– ${data.reviews_count} avis` : '';
+          reviewCountEl.textContent = data.reviews_count > 0 ? `– {{ reviews_count }} avis` : '';
           updateStars(Math.round(currentAvg));
           showNotification(data.action === 'updated' ? 'Votre note a été mise à jour.' : 'Merci pour votre vote !', 'success');
         } else {
