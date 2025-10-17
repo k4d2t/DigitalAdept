@@ -3329,3 +3329,91 @@ display: none;
 }
 
 /* 7) Mini-infos (stock simple "Disponible") déjà géré côté template; couleurs OK */
+
+
+
+/* === OVERRIDES CIBLÉS (placer à la toute fin du fichier) === */
+
+/* 1) HERO: centré, large et lisible */
+.product-hero {
+  grid-template-columns: 1fr !important;
+  justify-items: center !important;
+  text-align: center !important;
+  max-width: 1000px !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+.product-hero .hero-title {
+  font-size: clamp(2rem, 4vw, 2.8rem) !important;
+}
+.product-hero .hero-subtitle {
+  font-size: clamp(1.05rem, 2.4vw, 1.25rem) !important;
+}
+.product-mini-infos {
+  justify-content: center !important;
+}
+
+/* 2) PRIX + CTA + ÉTOILES: tout centré proprement */
+.price-cta {
+  display: grid !important;
+  justify-items: center !important;
+  text-align: center !important;
+  row-gap: .5em !important;
+  max-width: 980px !important;
+}
+.price-cta .product-price-detailed {
+  margin: 0 auto !important;
+}
+.price-cta .product-rating {
+  width: 100% !important;
+  justify-content: center !important;
+  align-items: center !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+.price-cta .product-buttons {
+  justify-content: center !important;
+}
+
+/* 3) CARROUSEL: plus grand, bien centré, responsive */
+.product-carousel {
+  max-width: 1200px !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+.product-carousel .product-gallery {
+  max-width: 1100px !important;
+  width: 100% !important;
+  margin: 0 auto !important;
+}
+.product-carousel .gallery-images {
+  height: clamp(360px, 60vw, 640px) !important;
+}
+@media (max-width: 600px) {
+  .product-carousel .gallery-images { height: clamp(240px, 75vw, 420px) !important; }
+}
+.gallery-images .gallery-img {
+  object-fit: contain !important;
+  background: #0b152c !important;
+}
+
+/* 4) TÉMOIGNAGES: lisibles en thème sombre */
+[data-theme="dark"] .product-testimonials .testimonial-card {
+  background: rgba(30,34,45,0.88) !important;
+  color: #e3f6ff !important;
+  border-left-color: #1976d2 !important;
+}
+[data-theme="dark"] .product-testimonials .testimonial-card .content,
+[data-theme="dark"] .product-testimonials .testimonial-card .meta .name,
+[data-theme="dark"] .product-testimonials .testimonial-card .meta .note {
+  color: #e3f6ff !important;
+}
+
+/* 5) (Ceinture et bretelles) Commentaires natifs lisibles en sombre si section présente */
+[data-theme="dark"] .comments-section .comment {
+  background: rgba(30,34,45,0.88) !important;
+  color: #e3f6ff !important;
+}
+[data-theme="dark"] .comments-section .comment .comment-content { color: #e3f6ff !important; }
+[data-theme="dark"] .comments-section .comment .comment-date { color: #4fc3f7 !important; }
+[data-theme="dark"] .comments-section .comment .comment-rating { color: #bde9fa !important; }
