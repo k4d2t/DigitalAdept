@@ -16,7 +16,7 @@
     </div>
   </div>
 
-  <!-- 1) HERO -->
+  <!-- 1) HERO (centré, sans visuel ici) -->
   <section class="product-hero">
     <div class="hero-content">
       <h1 class="hero-title">{{ produit.hero_title or produit.name }}</h1>
@@ -27,7 +27,7 @@
       <div class="product-mini-infos">
         {% if produit.stock is not none %}
           {% if produit.stock > 0 %}
-            <span class="in-stock">En stock • {{ produit.stock }} restant(s)</span>
+            <span class="in-stock">Disponible</span>
           {% else %}
             <span class="out-stock">Indisponible</span>
           {% endif %}
@@ -37,13 +37,9 @@
         {% endif %}
       </div>
     </div>
-    <div class="hero-visual">
-      {% set visual = (produit.images[0].url if produit.images else url_for('static', filename='img/logo.webp')) %}
-      <img src="{{ visual }}" alt="{{ produit.name }}" class="hero-mockup" loading="eager">
-    </div>
   </section>
 
-  <!-- 2) PRIX + CTA (bloc principal avec note) -->
+  <!-- 2) PRIX + CTA (centrés, avec note centrée) -->
   <section class="price-cta">
     <div class="product-price-detailed">
       {% if produit.old_price %}
@@ -92,7 +88,7 @@
     </div>
   </section>
 
-  <!-- 3) CARROUSEL IMAGES PRODUIT -->
+  <!-- 3) CARROUSEL IMAGES PRODUIT (plus grand, centré, responsive) -->
   {% if produit.images and produit.images|length > 0 %}
   <section class="product-carousel">
     <div class="product-gallery">
@@ -108,18 +104,18 @@
                   https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/img/{{ base }}-800.webp 800w,
                   https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/img/{{ base }}-1200.webp 1200w
                 " type="image/webp"
-                sizes="(max-width:600px) 400px, (max-width:1100px) 800px, 1200px">
+                sizes="(max-width:600px) 100vw, (max-width:1100px) 80vw, 980px">
               <source
                 srcset="
                   https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/img/{{ base }}-400.jpg 400w,
                   https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/img/{{ base }}-800.jpg 800w,
                   https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/img/{{ base }}-1200.jpg 1200w
                 " type="image/jpeg"
-                sizes="(max-width:600px) 400px, (max-width:1100px) 800px, 1200px">
+                sizes="(max-width:600px) 100vw, (max-width:1100px) 80vw, 980px">
               <img src="https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/img/{{ base }}-800.jpg"
                    alt="{{ produit.name }}"
                    class="gallery-img{% if loop.first %} active{% endif %}"
-                   width="800" height="533" loading="lazy">
+                   width="980" height="560" loading="lazy">
             </picture>
           {% endfor %}
         </div>
@@ -140,7 +136,7 @@
             <img src="https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/img/{{ base }}-400.jpg"
                  alt="Miniature {{ loop.index }}"
                  class="gallery-thumb{% if loop.first %} active{% endif %}"
-                 width="80" height="53" loading="lazy">
+                 width="100" height="70" loading="lazy">
           </picture>
         {% endfor %}
       </div>
@@ -161,7 +157,7 @@
   </section>
   {% endif %}
 
-  <!-- 5) MÉTHODES DE PAIEMENT (image responsive, lazy) -->
+  <!-- 5) MÉTHODES DE PAIEMENT -->
   <section class="payments-section" aria-label="Méthodes de paiement acceptées">
     <img
       src="{{ url_for('static', filename='img/payments.png') }}"
@@ -171,7 +167,7 @@
       width="980" height="200">
   </section>
 
-  <!-- 6) PRIX + CTA (rappel) -->
+  <!-- 6) PRIX + CTA -->
   <section class="price-cta">
     <div class="product-price-detailed">
       {% if produit.old_price %}
@@ -192,7 +188,7 @@
     </div>
   </section>
 
-  <!-- 7) AVIS CLIENTS (+ images si présents) -->
+  <!-- 7) AVIS CLIENTS -->
   {% set testimonials = comments|selectattr('comment')|list %}
   {% if testimonials and testimonials|length > 0 %}
   <section class="product-testimonials">
@@ -218,7 +214,7 @@
   </section>
   {% endif %}
 
-  <!-- 8) PRIX + CTA (rappel) -->
+  <!-- 8) PRIX + CTA -->
   <section class="price-cta">
     <div class="product-price-detailed">
       {% if produit.old_price %}
@@ -239,7 +235,7 @@
     </div>
   </section>
 
-  <!-- 9) DESCRIPTION LONGUE -->
+  <!-- 9) DESCRIPTION LONGUE (amélioration de rendu) -->
   {% if produit.description %}
   <section class="product-description">
     <h2>Description détaillée</h2>
@@ -249,7 +245,7 @@
   </section>
   {% endif %}
 
-  <!-- 10) PRIX + CTA (rappel) -->
+  <!-- 10) PRIX + CTA -->
   <section class="price-cta">
     <div class="product-price-detailed">
       {% if produit.old_price %}
@@ -298,7 +294,7 @@
     </div>
   </section>
 
-  <!-- 12) PRIX + CTA (rappel) -->
+  <!-- 12) PRIX + CTA -->
   <section class="price-cta">
     <div class="product-price-detailed">
       {% if produit.old_price %}
@@ -389,7 +385,6 @@ document.addEventListener('DOMContentLoaded', function() {
   const stars = ratingContainer.querySelectorAll('.star-btn');
   const ratingValueEl = ratingContainer.querySelector('.rating-value');
   const reviewCountEl = ratingContainer.querySelector('.review-count');
-  const productId = ratingContainer.dataset.productId;
   let currentAvg = parseFloat(ratingContainer.dataset.initialRating) || 0;
 
   function updateStars(rating) {
@@ -415,7 +410,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (data.average_rating !== undefined) {
           currentAvg = data.average_rating;
           ratingValueEl.textContent = `${data.average_rating.toFixed(1)}/5`;
-          reviewCountEl.textContent = data.reviews_count > 0 ? `– {{ reviews_count }} avis` : '';
+          reviewCountEl.textContent = data.reviews_count > 0 ? `– ${data.reviews_count} avis` : '';
           updateStars(Math.round(currentAvg));
           showNotification(data.action === 'updated' ? 'Votre note a été mise à jour.' : 'Merci pour votre vote !', 'success');
         } else {
