@@ -570,11 +570,15 @@ def send_telegram_message(data):
     email = html.escape(str(data.get("email", "")).strip())
     message = str(data.get("message", "")).strip()
 
-    # AJOUT: WhatsApp
-    whatsapp = html.escape(str(data.get("whatsapp", "")).strip())
-    if whatsapp.startswith("00"):
-        whatsapp = "+" + whatsapp[2:]
-
+    # WhatsApp: normalisation + lien wa.me
+    whatsapp_raw = str(data.get("whatsapp", "")).strip()
+    if whatsapp_raw.startswith("00"):
+        whatsapp_raw = "+" + whatsapp_raw[2:]
+    # Garde la version affichable échappée
+    whatsapp_display = html.escape(whatsapp_raw)
+    # Construit l'URL wa.me (chiffres uniquement, sans '+')
+    wa_digits = re.sub(r"\D", "", whatsapp_raw)
+    wa_link = f"https://wa.me/{wa_digits}" if wa_digits else ""
 
     # Quote et bold chaque ligne du message utilisateur
     if message:
@@ -587,7 +591,7 @@ def send_telegram_message(data):
         f"📩 Nouveau message de contact\n\n"
         f"👤 Nom : {nom}\n"
         f"✉️ E-mail : {email}\n\n"
-        f"📱 WhatsApp : {whatsapp}\n\n" 
+        f"📱 WhatsApp : {wa_link} {f'({whatsapp_display})' if whatsapp_display else ''}\n\n"
         f"📝 Message :\n\n"
         f"{quoted_message}"
     )
