@@ -1281,3 +1281,15 @@ document.addEventListener('DOMContentLoaded', () => {
     window.initCategoryFilter();
     window.initProductPage();
 });
+// AJOUT MINIMAL (à la fin du fichier ou après window.initProductPage()):
+document.addEventListener('DOMContentLoaded', () => {
+  const sticky = document.querySelector('.sticky-cta');
+  if (!sticky) return;
+  function onScroll() {
+    const hero = document.querySelector('.product-hero');
+    const show = hero ? window.scrollY > (hero.offsetHeight * 0.6) : window.scrollY > 220;
+    sticky.classList.toggle('visible', show);
+  }
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+});
