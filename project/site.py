@@ -875,6 +875,16 @@ def api_produits():
             "badges": [{"type": b.type, "text": b.text} for b in p.badges],
             "faq": [{"question": f.question, "answer": f.answer} for f in p.faqs],
             "resource_files": [{"type": r.type, "url": r.url, "file_id": r.file_id} for r in p.resource_files],
+            "hero_title": getattr(p, "hero_title", None),
+            "hero_subtitle": getattr(p, "hero_subtitle", None),
+            "hero_cta_label": getattr(p, "hero_cta_label", None),
+            "demo_video_url": getattr(p, "demo_video_url", None),
+            "demo_video_text": getattr(p, "demo_video_text", None),
+            "final_cta_title": getattr(p, "final_cta_title", None),
+            "final_cta_label": getattr(p, "final_cta_label", None),
+            "benefits": getattr(p, "benefits", None),
+            "includes": getattr(p, "includes", None),
+            "guarantees": getattr(p, "guarantees", None),
         }
     return jsonify([product_to_dict(produit) for produit in produits])
 
@@ -1710,6 +1720,17 @@ def get_products():
             "badges": [{"type": b.type, "text": b.text} for b in p.badges],
             "faq": [{"question": f.question, "answer": f.answer} for f in p.faqs],
             "resource_files": [{"type": r.type, "url": r.url, "file_id": r.file_id} for r in p.resource_files],
+            #NOUVEAU:
+            "hero_title": getattr(p, "hero_title", None),
+            "hero_subtitle": getattr(p, "hero_subtitle", None),
+            "hero_cta_label": getattr(p, "hero_cta_label", None),
+            "demo_video_url": getattr(p, "demo_video_url", None),
+            "demo_video_text": getattr(p, "demo_video_text", None),
+            "final_cta_title": getattr(p, "final_cta_title", None),
+            "final_cta_label": getattr(p, "final_cta_label", None),
+            "benefits": getattr(p, "benefits", None),
+            "includes": getattr(p, "includes", None),
+            "guarantees": getattr(p, "guarantees", None),
         }
     return jsonify([to_dict(prod) for prod in products])
     
@@ -1840,6 +1861,16 @@ def get_product_by_id(product_id):
             "badges": [{"type": b.type, "text": b.text} for b in p.badges],
             "faq": [{"question": f.question, "answer": f.answer} for f in p.faqs],
             "resource_files": [{"type": r.type, "url": r.url, "file_id": r.file_id} for r in p.resource_files],
+            "hero_title": getattr(p, "hero_title", None),
+            "hero_subtitle": getattr(p, "hero_subtitle", None),
+            "hero_cta_label": getattr(p, "hero_cta_label", None),
+            "demo_video_url": getattr(p, "demo_video_url", None),
+            "demo_video_text": getattr(p, "demo_video_text", None),
+            "final_cta_title": getattr(p, "final_cta_title", None),
+            "final_cta_label": getattr(p, "final_cta_label", None),
+            "benefits": getattr(p, "benefits", None),
+            "includes": getattr(p, "includes", None),
+            "guarantees": getattr(p, "guarantees", None),
         }
     return jsonify(to_dict(product)), 200
 
