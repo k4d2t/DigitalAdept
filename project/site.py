@@ -3367,6 +3367,49 @@ def ensure_admin_indexes():
                 conn.execute(text("CREATE INDEX IF NOT EXISTS ix_role_tiles_role ON role_tiles (role_id)"))
     except Exception as e:
         logging.warning(f"ensure_admin_indexes: {e}")
+
+def ensure_product_new_columns():
+    """
+    Ajoute les nouvelles colonnes produit si manquantes (PostgreSQL/SQLite).
+    Evite les erreurs si elles existent déjà.
+    """
+    try:
+        dialect = db.engine.dialect.name
+        stmts_pg = [
+            "ALTER TABLE product ADD COLUMN IF NOT EXISTS hero_title VARCHAR(255)",
+            "ALTER TABLE product ADD COLUMN IF NOT EXISTS hero_subtitle TEXT",
+            "ALTER TABLE product ADD COLUMN IF NOT EXISTS hero_cta_label VARCHAR(80)",
+            "ALTER TABLE product ADD COLUMN IF NOT EXISTS demo_video_url VARCHAR(255)",
+            "ALTER TABLE product ADD COLUMN IF NOT EXISTS demo_video_text VARCHAR(255)",
+            "ALTER TABLE product ADD COLUMN IF NOT EXISTS final_cta_title VARCHAR(255)",
+            "ALTER TABLE product ADD COLUMN IF NOT EXISTS final_cta_label VARCHAR(80)",
+            "ALTER TABLE product ADD COLUMN IF NOT EXISTS benefits JSONB",
+            "ALTER TABLE product ADD COLUMN IF NOT EXISTS includes JSONB",
+            "ALTER TABLE product ADD COLUMN IF NOT EXISTS guarantees JSONB",
+        ]
+        # SQLite/MySQL: pas toujours de IF NOT EXISTS -> on tente et on ignore si présent
+        stmts_generic = [
+            "ALTER TABLE product ADD COLUMN hero_title TEXT",
+            "ALTER TABLE product ADD COLUMN hero_subtitle TEXT",
+            "ALTER TABLE product ADD COLUMN hero_cta_label TEXT",
+            "ALTER TABLE product ADD COLUMN demo_video_url TEXT",
+            "ALTER TABLE product ADD COLUMN demo_video_text TEXT",
+            "ALTER TABLE product ADD COLUMN final_cta_title TEXT",
+            "ALTER TABLE product ADD COLUMN final_cta_label TEXT",
+            "ALTER TABLE product ADD COLUMN benefits JSON",
+            "ALTER TABLE product ADD COLUMN includes JSON",
+            "ALTER TABLE product ADD COLUMN guarantees JSON",
+        ]
+        stmts = stmts_pg if dialect in ('postgresql', 'postgres') else stmts_generic
+        with db.engine.connect() as conn:
+            for sql in stmts:
+                try:
+                    conn.execute(text(sql))
+                except Exception:
+                    pass
+    except Exception as e:
+        logging.warning(f"ensure_product_new_columns: {e}")
+        
         
 # --- MODIFICATION DANS LA FONCTION DE DÉMARRAGE `if __name__ == '__main__':` ---
 # Remplacez votre bloc `if __name__ == '__main__':` par celui-ci pour tout initialiser correctement.
