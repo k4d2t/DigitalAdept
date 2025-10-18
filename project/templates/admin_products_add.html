@@ -53,6 +53,50 @@
         <label for="productCategory">Catégorie :</label>
         <input type="text" id="productCategory" name="category" placeholder="Catégorie" required>
 
+        <!-- AJOUTE ce bloc dans le formulaire #addProductForm, après le champ "Catégorie" et avant "Resource File IDs" -->
+        <!-- — Marketing / Sections dynamiques — -->
+        <fieldset class="product-marketing">
+          <legend>Sections de la page produit</legend>
+        
+          <!-- HERO -->
+          <h3>Hero</h3>
+          <label>Titre (Hero)</label>
+          <input type="text" id="heroTitle" name="hero_title" placeholder="Ex: Prenez le contrôle de vos finances dès aujourd’hui">
+          <label>Sous-titre (Hero)</label>
+          <input type="text" id="heroSubtitle" name="hero_subtitle" placeholder="Ex: Un planificateur simple, visuel et puissant...">
+          <label>Texte bouton (Hero)</label>
+          <input type="text" id="heroCtaLabel" name="hero_cta_label" placeholder="Télécharger maintenant">
+        
+          <!-- BÉNÉFICES -->
+          <h3>Bénéfices (liste)</h3>
+          <div id="benefitsContainer"></div>
+          <button type="button" id="addBenefitBtn">+ Ajouter un bénéfice</button>
+        
+          <!-- DÉMO VIDÉO -->
+          <h3>Démo vidéo</h3>
+          <label>URL vidéo (YouTube, Loom…)</label>
+          <input type="url" id="demoVideoUrl" name="demo_video_url" placeholder="https://www.youtube.com/embed/...">
+          <label>Texte d’accompagnement</label>
+          <input type="text" id="demoVideoText" name="demo_video_text" placeholder="Présentation rapide de l’outil...">
+        
+          <!-- CE QUE VOUS RECEVEZ -->
+          <h3>Ce que vous recevez (liste)</h3>
+          <div id="includesContainer"></div>
+          <button type="button" id="addIncludeBtn">+ Ajouter un élément</button>
+        
+          <!-- GARANTIES -->
+          <h3>Garanties / Réassurance (liste)</h3>
+          <div id="guaranteesContainer"></div>
+          <button type="button" id="addGuaranteeBtn">+ Ajouter une garantie</button>
+        
+          <!-- CTA FINAL -->
+          <h3>CTA final</h3>
+          <label>Titre de section</label>
+          <input type="text" id="finalCtaTitle" name="final_cta_title" placeholder="Prêt à prendre le contrôle de vos finances ?">
+          <label>Texte bouton</label>
+          <input type="text" id="finalCtaLabel" name="final_cta_label" placeholder="Télécharger maintenant">
+        </fieldset>
+
         <!-- Bloc pour les file_ids -->
         <div id="resourceFileIdsContainer">
             <label>Resource File IDs :</label>
@@ -212,6 +256,24 @@
             resourceFileIdsContainer.querySelectorAll(".remove-file-id-btn").forEach(btn => btn.style.display = "");
         });
 
+        // helpers UI pour listes (bénéfices / includes / garanties)
+        function addRow(container, placeholder = "Texte...") {
+          const row = document.createElement('div');
+          row.className = 'dynamic-form-row';
+          row.innerHTML = `
+            <input type="text" class="list-input" placeholder="${placeholder}">
+            <button type="button" class="remove-row-btn">–</button>
+          `;
+          row.querySelector('.remove-row-btn').addEventListener('click', () => row.remove());
+          container.appendChild(row);
+        }
+        const benefitsContainer = document.getElementById('benefitsContainer');
+        const includesContainer = document.getElementById('includesContainer');
+        const guaranteesContainer = document.getElementById('guaranteesContainer');
+        document.getElementById('addBenefitBtn').addEventListener('click', () => addRow(benefitsContainer, "Ex: 💡 Visualisez vos dépenses en un coup d’œil"));
+        document.getElementById('addIncludeBtn').addEventListener('click', () => addRow(includesContainer, "Ex: ✅ Modèle Google Sheets/Excel"));
+        document.getElementById('addGuaranteeBtn').addEventListener('click', () => addRow(guaranteesContainer, "Ex: 🔁 Satisfait ou remboursé sous 7 jours"));
+
         function handleFormSubmit(event) {
             event.preventDefault();
             const formData = new FormData();
@@ -224,6 +286,23 @@
             formData.append("stock", document.getElementById("productStock").value);
             formData.append("sku", document.getElementById("productSku").value);
             formData.append("category", document.getElementById("productCategory").value);
+            
+            // NOUVEAU: champs marketing simples
+            formData.append("hero_title", document.getElementById("heroTitle").value || "");
+            formData.append("hero_subtitle", document.getElementById("heroSubtitle").value || "");
+            formData.append("hero_cta_label", document.getElementById("heroCtaLabel").value || "");
+            formData.append("demo_video_url", document.getElementById("demoVideoUrl").value || "");
+            formData.append("demo_video_text", document.getElementById("demoVideoText").value || "");
+            formData.append("final_cta_title", document.getElementById("finalCtaTitle").value || "");
+            formData.append("final_cta_label", document.getElementById("finalCtaLabel").value || "");
+            
+            // NOUVEAU: listes JSON
+            const pickList = (container) => Array.from(container.querySelectorAll('.list-input'))
+            .map(i => i.value.trim()).filter(Boolean);
+            formData.append("benefits", JSON.stringify(pickList(benefitsContainer)));
+            formData.append("includes", JSON.stringify(pickList(includesContainer)));
+            formData.append("guarantees", JSON.stringify(pickList(guaranteesContainer)));
+
             const fileIdInputs = document.querySelectorAll("input[name='resource_file_id[]']");
             const resource_file_ids = Array.from(fileIdInputs)
                 .map(input => input.value.trim())
