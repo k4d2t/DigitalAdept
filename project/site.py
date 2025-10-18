@@ -116,22 +116,22 @@ app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     "pool_recycle": 300,  # recycle connexions toutes les 5 min
 }
 
-+# --- Bootstrap DB (une seule fois) ---
-+def bootstrap_db_once():
-+    if getattr(app, '_da_bootstrapped', False):
-+        return
-+    try:
-+        with app.app_context():
-+            ensure_admin_indexes()
-+            ensure_product_new_columns()  # crée les colonnes hero_title, benefits, etc. si manquantes
-+            db.create_all()
-+            initialize_database()
-+        app._da_bootstrapped = True
-+        logger.info("Bootstrap DB effectué.")
-+    except Exception as e:
-+        logger.warning(f"bootstrap_db_once: {e}")
-+
-+bootstrap_db_once()
+# --- Bootstrap DB (une seule fois) ---
+def bootstrap_db_once():
+    if getattr(app, '_da_bootstrapped', False):
+        return
+    try:
+        with app.app_context():
+            ensure_admin_indexes()
+            ensure_product_new_columns()  # crée les colonnes hero_title, benefits, etc. si manquantes
+            db.create_all()
+            initialize_database()
+        app._da_bootstrapped = True
+        logger.info("Bootstrap DB effectué.")
+    except Exception as e:
+        logger.warning(f"bootstrap_db_once: {e}")
+
+bootstrap_db_once()
     
 # Initialisation SQLAlchemy
 db.init_app(app)
