@@ -2018,7 +2018,7 @@ def add_product():
         category=data['category'],
         stock=int(data['stock']),
         sku=data.get('sku', ''),
-        slug=slugify(data['name'])
+        slug=slugify(data['name']),
         hero_title=data.get('hero_title') or None,
         hero_subtitle=data.get('hero_subtitle') or None,
         hero_cta_label=data.get('hero_cta_label') or None,
