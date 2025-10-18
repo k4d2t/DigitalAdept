@@ -26,6 +26,7 @@ import logging
 from flask_sqlalchemy import SQLAlchemy
 from models import *
 from sqlalchemy import text 
+from sqlalchemy.exc import ProgrammingError
 
 # --- Logging robuste en prod ---
 logging.basicConfig(
@@ -115,7 +116,23 @@ app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     "pool_recycle": 300,  # recycle connexions toutes les 5 min
 }
 
-
++# --- Bootstrap DB (une seule fois) ---
++def bootstrap_db_once():
++    if getattr(app, '_da_bootstrapped', False):
++        return
++    try:
++        with app.app_context():
++            ensure_admin_indexes()
++            ensure_product_new_columns()  # crée les colonnes hero_title, benefits, etc. si manquantes
++            db.create_all()
++            initialize_database()
++        app._da_bootstrapped = True
++        logger.info("Bootstrap DB effectué.")
++    except Exception as e:
++        logger.warning(f"bootstrap_db_once: {e}")
++
++bootstrap_db_once()
+    
 # Initialisation SQLAlchemy
 db.init_app(app)
 # --- Helper functions ---
@@ -776,18 +793,30 @@ def produits():
 @cache.cached(timeout=300)
 @app.route('/produit/<slug>')
 def product_detail(slug):
-    produit = Product.query.options(
-        joinedload(Product.images),
-        joinedload(Product.badges),
-        joinedload(Product.faqs),
-        joinedload(Product.comments)
-    ).filter_by(slug=slug).first()
+    try:
+        produit = Product.query.options(
+            joinedload(Product.images),
+            joinedload(Product.badges),
+            joinedload(Product.faqs),
+            joinedload(Product.comments)
+        ).filter_by(slug=slug).first()
+    except ProgrammingError as e:
+        # Colonnes manquantes -> on répare puis on réessaie
+        db.session.rollback()
+        try:
+            ensure_product_new_columns()
+        except Exception:
+            pass
+        produit = Product.query.options(
+            joinedload(Product.images),
+            joinedload(Product.badges),
+            joinedload(Product.faqs),
+            joinedload(Product.comments)
+        ).filter_by(slug=slug).first()
 
     if not produit:
-        # ... (gestion 404)
-        pass
+        abort(404)
 
-    # Calcul de la note moyenne et du nombre d'avis
     produit_comments = produit.comments
     ratings = [c.rating for c in produit_comments if c.rating is not None]
     reviews_count = len(ratings)
@@ -833,7 +862,6 @@ def product_detail(slug):
         }
     )
     return render_template('product.html', **context)
-
 
 @app.route('/produit/<slug>/comment', methods=['POST'])
 def add_comment(slug):
