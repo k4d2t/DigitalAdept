@@ -135,6 +135,11 @@ bootstrap_db_once()
     
 # Initialisation SQLAlchemy
 db.init_app(app)
+
+# Lancer le bootstrap une seule fois au premier hit (prod/gunicorn)
+@app.before_first_request
+def _bootstrap_on_first_request():
+    bootstrap_db_once()
 # --- Helper functions ---
 
 LOGS_FILE = "data/logs.json"
@@ -642,10 +647,21 @@ def shuffle_filter(seq):
 @app.route('/')
 def home():
     # --- OPTIMISATION : Chargement anticipé des relations ---
-    produits = Product.query.options(
-        joinedload(Product.images),
-        joinedload(Product.badges)
-    ).all()
+    try:
+        produits = Product.query.options(
+            joinedload(Product.images),
+            joinedload(Product.badges)
+        ).all()
+    except ProgrammingError:
+        db.session.rollback()
+        try:
+            ensure_product_new_columns()
+        except Exception:
+            pass
+        produits = Product.query.options(
+            joinedload(Product.images),
+            joinedload(Product.badges)
+        ).all()
     
     produits_vedette = [p for p in produits if p.featured]
 
@@ -764,10 +780,21 @@ def home():
 @app.route('/produits')
 def produits():
     # --- OPTIMISATION : Chargement anticipé des relations ---
-    produits = Product.query.options(
-        joinedload(Product.images),
-        joinedload(Product.badges)
-    ).all()
+    try:
+        produits = Product.query.options(
+            joinedload(Product.images),
+            joinedload(Product.badges)
+        ).all()
+    except ProgrammingError:
+        db.session.rollback()
+        try:
+            ensure_product_new_columns()
+        except Exception:
+            pass
+        produits = Product.query.options(
+            joinedload(Product.images),
+            joinedload(Product.badges)
+        ).all()
     
     context = get_seo_context(
         meta_title="Tous les produits - Digital Adept™",
