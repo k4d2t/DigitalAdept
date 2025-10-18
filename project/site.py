@@ -116,6 +116,9 @@ app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     "pool_recycle": 300,  # recycle connexions toutes les 5 min
 }
 
+# Initialisation SQLAlchemy
+db.init_app(app)
+
 # --- Bootstrap DB (une seule fois) ---
 def bootstrap_db_once():
     if getattr(app, '_da_bootstrapped', False):
@@ -123,7 +126,7 @@ def bootstrap_db_once():
     try:
         with app.app_context():
             ensure_admin_indexes()
-            ensure_product_new_columns()  # crée les colonnes hero_title, benefits, etc. si manquantes
+            ensure_product_new_columns()
             db.create_all()
             initialize_database()
         app._da_bootstrapped = True
@@ -131,15 +134,11 @@ def bootstrap_db_once():
     except Exception as e:
         logger.warning(f"bootstrap_db_once: {e}")
 
-bootstrap_db_once()
-    
-# Initialisation SQLAlchemy
-db.init_app(app)
-
-# Lancer le bootstrap une seule fois au premier hit (prod/gunicorn)
-@app.before_first_request
-def _bootstrap_on_first_request():
-    bootstrap_db_once()
+# Flask 3: before_first_request supprimé -> on boote au premier request (une seule fois)
+@app.before_request
+def _bootstrap_guard():
+    if not getattr(app, '_da_bootstrapped', False):
+        bootstrap_db_once()
 # --- Helper functions ---
 
 LOGS_FILE = "data/logs.json"
@@ -3418,16 +3417,12 @@ def ensure_admin_indexes():
                 conn.execute(text("CREATE INDEX IF NOT EXISTS ix_ab_cart_created_at ON abandoned_cart (created_at)"))
                 conn.execute(text("CREATE INDEX IF NOT EXISTS ix_ab_cart_status_created ON abandoned_cart (status, created_at)"))
                 conn.execute(text("CREATE INDEX IF NOT EXISTS ix_email_sendlog_sent_at ON email_send_log (sent_at)"))
-                conn.execute(text('CREATE INDEX IF NOT EXISTS ix_user_role_id ON "user" (role_id)'))
+                conn.execute(text('CREATE INDEX IF NOT EXISTS ix_user_role_id ON \"user\" (role_id)'))
                 conn.execute(text("CREATE INDEX IF NOT EXISTS ix_role_tiles_role ON role_tiles (role_id)"))
     except Exception as e:
         logging.warning(f"ensure_admin_indexes: {e}")
 
 def ensure_product_new_columns():
-    """
-    Ajoute les nouvelles colonnes produit si manquantes (PostgreSQL/SQLite).
-    Evite les erreurs si elles existent déjà.
-    """
     try:
         dialect = db.engine.dialect.name
         stmts_pg = [
@@ -3442,7 +3437,6 @@ def ensure_product_new_columns():
             "ALTER TABLE product ADD COLUMN IF NOT EXISTS includes JSONB",
             "ALTER TABLE product ADD COLUMN IF NOT EXISTS guarantees JSONB",
         ]
-        # SQLite/MySQL: pas toujours de IF NOT EXISTS -> on tente et on ignore si présent
         stmts_generic = [
             "ALTER TABLE product ADD COLUMN hero_title TEXT",
             "ALTER TABLE product ADD COLUMN hero_subtitle TEXT",
