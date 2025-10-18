@@ -141,6 +141,43 @@
                 </div>
             </div>
 
+            <!-- AJOUTE ces champs dans la modale #productEditForm (placer après Catégorie et avant Resource File IDs) -->
+            <fieldset class="product-marketing">
+              <legend>Sections de la page produit</legend>
+            
+              <h3>Hero</h3>
+              <label>Titre (Hero)</label>
+              <input type="text" id="heroTitleEdit" name="hero_title">
+              <label>Sous-titre (Hero)</label>
+              <input type="text" id="heroSubtitleEdit" name="hero_subtitle">
+              <label>Texte bouton (Hero)</label>
+              <input type="text" id="heroCtaLabelEdit" name="hero_cta_label">
+            
+              <h3>Bénéfices (liste)</h3>
+              <div id="benefitsContainerEdit"></div>
+              <button type="button" id="addBenefitBtnEdit" class="add-row-btn">+ Ajouter un bénéfice</button>
+            
+              <h3>Démo vidéo</h3>
+              <label>URL vidéo</label>
+              <input type="url" id="demoVideoUrlEdit" name="demo_video_url">
+              <label>Texte d’accompagnement</label>
+              <input type="text" id="demoVideoTextEdit" name="demo_video_text">
+            
+              <h3>Ce que vous recevez (liste)</h3>
+              <div id="includesContainerEdit"></div>
+              <button type="button" id="addIncludeBtnEdit" class="add-row-btn">+ Ajouter</button>
+            
+              <h3>Garanties / Réassurance (liste)</h3>
+              <div id="guaranteesContainerEdit"></div>
+              <button type="button" id="addGuaranteeBtnEdit" class="add-row-btn">+ Ajouter</button>
+            
+              <h3>CTA final</h3>
+              <label>Titre</label>
+              <input type="text" id="finalCtaTitleEdit" name="final_cta_title">
+              <label>Texte bouton</label>
+              <input type="text" id="finalCtaLabelEdit" name="final_cta_label">
+            </fieldset>
+
             <!-- Fichiers de ressource (multi) -->
             <label>Resource File IDs (Telegram) :</label>
             <div id="resourceFileIdsContainerEdit"></div>
@@ -376,6 +413,23 @@ document.addEventListener("DOMContentLoaded", () => {
                 document.getElementById("productEditModal").style.display = "block";
                 selectedEditFilesSet.clear();
                 fileUploadStatus.textContent = "";
+
+                document.getElementById("heroTitleEdit").value = product.hero_title || "";
+                document.getElementById("heroSubtitleEdit").value = product.hero_subtitle || "";
+                document.getElementById("heroCtaLabelEdit").value = product.hero_cta_label || "";
+                document.getElementById("demoVideoUrlEdit").value = product.demo_video_url || "";
+                document.getElementById("demoVideoTextEdit").value = product.demo_video_text || "";
+                document.getElementById("finalCtaTitleEdit").value = product.final_cta_title || "";
+                document.getElementById("finalCtaLabelEdit").value = product.final_cta_label || "";
+                
+                benefitsContainerEdit.innerHTML = "";
+                (product.benefits || []).forEach(b => addRowEdit(benefitsContainerEdit, b));
+                includesContainerEdit.innerHTML = "";
+                (product.includes || []).forEach(i => addRowEdit(includesContainerEdit, i));
+                guaranteesContainerEdit.innerHTML = "";
+                (product.guarantees || []).forEach(g => addRowEdit(guaranteesContainerEdit, g));
+                
+                document.getElementById("productEditModal").style.display = "block";
             })
             .catch((error) => console.error("Erreur lors de l'ouverture de la modale :", error));
     }
@@ -495,6 +549,17 @@ document.addEventListener("DOMContentLoaded", () => {
     function updateProduct() {
         const productId = form.getAttribute("data-product-id");
         const formData = new FormData();
+
+        formData.append("hero_title", document.getElementById("heroTitleEdit").value || "");
+        formData.append("hero_subtitle", document.getElementById("heroSubtitleEdit").value || "");
+        formData.append("hero_cta_label", document.getElementById("heroCtaLabelEdit").value || "");
+        formData.append("demo_video_url", document.getElementById("demoVideoUrlEdit").value || "");
+        formData.append("demo_video_text", document.getElementById("demoVideoTextEdit").value || "");
+        formData.append("final_cta_title", document.getElementById("finalCtaTitleEdit").value || "");
+        formData.append("final_cta_label", document.getElementById("finalCtaLabelEdit").value || "");
+        formData.append("benefits", JSON.stringify(pickListEdit(benefitsContainerEdit)));
+        formData.append("includes", JSON.stringify(pickListEdit(includesContainerEdit)));
+        formData.append("guarantees", JSON.stringify(pickListEdit(guaranteesContainerEdit)));
         
         formData.append("name", document.getElementById("productName").value);
         formData.append("short_description", document.getElementById("productShortDescription").value);
