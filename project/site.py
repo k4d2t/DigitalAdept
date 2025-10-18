@@ -1883,7 +1883,8 @@ def update_product(product_id):
     files = request.files.getlist("images")
 
     # Màj champs principaux
-    for field in ['name', 'short_description', 'description', 'price', 'old_price', 'currency', 'featured', 'category', 'stock', 'sku']:
+    for field in ['name', 'short_description', 'description', 'price', 'old_price', 'currency', 'featured', 'category', 'stock', 'sku','hero_title','hero_subtitle','hero_cta_label',
+        'demo_video_url','demo_video_text','final_cta_title','final_cta_label']:
         if field in data:
             # Convert types si besoin
             if field in ['price', 'old_price', 'stock']:
@@ -1895,6 +1896,16 @@ def update_product(product_id):
                 setattr(product, field, data[field] == "true" or data[field] == "on")
             else:
                 setattr(product, field, data[field])
+                
+    if 'benefits' in data:
+        try: product.benefits = json.loads(data.get('benefits','[]'))
+        except Exception: product.benefits = []
+    if 'includes' in data:
+        try: product.includes = json.loads(data.get('includes','[]'))
+        except Exception: product.includes = []
+    if 'guarantees' in data:
+        try: product.guarantees = json.loads(data.get('guarantees','[]'))
+        except Exception: product.guarantees = []
     # Slug : regénérer si name changé ou reçu explicitement
     if "slug" in data:
         product.slug = data["slug"]
@@ -2008,7 +2019,28 @@ def add_product():
         stock=int(data['stock']),
         sku=data.get('sku', ''),
         slug=slugify(data['name'])
+        hero_title=data.get('hero_title') or None,
+        hero_subtitle=data.get('hero_subtitle') or None,
+        hero_cta_label=data.get('hero_cta_label') or None,
+        demo_video_url=data.get('demo_video_url') or None,
+        demo_video_text=data.get('demo_video_text') or None,
+        final_cta_title=data.get('final_cta_title') or None,
+        final_cta_label=data.get('final_cta_label') or None,
     )
+    # NOUVEAU: listes JSON
+    try:
+        produit.benefits = json.loads(data.get('benefits', '[]'))
+    except Exception:
+        produit.benefits = []
+    try:
+        produit.includes = json.loads(data.get('includes', '[]'))
+    except Exception:
+        produit.includes = []
+    try:
+        produit.guarantees = json.loads(data.get('guarantees', '[]'))
+    except Exception:
+        produit.guarantees = []
+        
     db.session.add(produit)
     db.session.flush()  # Pour récupérer produit.id sans commit
 
