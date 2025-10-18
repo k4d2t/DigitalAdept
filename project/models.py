@@ -49,7 +49,7 @@ class Tile(db.Model):
     description = db.Column(db.String(200))
     icon_svg = db.Column(db.Text, nullable=True)
 
-    roles = db.relationship('Role', secondary=role_tiles, back_populates='roles', lazy='dynamic')
+    roles = db.relationship('Role', secondary=role_tiles, back_populates='tiles', lazy='dynamic')
 
     def __repr__(self):
         return f'<Tile {self.name}>'
