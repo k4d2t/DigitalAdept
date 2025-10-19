@@ -152,7 +152,7 @@
     <div class="promo-badge">Promo limitée</div>
     <p>Profitez de <b>{{ ((produit.old_price - produit.price) / produit.old_price * 100) | round | int }}% de réduction</b> aujourd’hui.</p>
     {% if produit.stock is not none and produit.stock > 0 %}
-      <p>Plus que <b>{{ produit.stock }}</b> exemplaire(s) au tarif promo.</p>
+      <!--<p>Plus que <b>{{ produit.stock }}</b> exemplaire(s) au tarif promo.</p>-->
     {% endif %}
   </section>
   {% endif %}
@@ -238,7 +238,7 @@
   <!-- 9) DESCRIPTION LONGUE (amélioration de rendu) -->
   {% if produit.description %}
   <section class="product-description">
-    <h2>Description détaillée</h2>
+ 
     <div class="description-content">
       {{ produit.description|safe }}
     </div>
@@ -268,7 +268,7 @@
 
   <!-- 11) FAQ -->
   <section class="product-faq">
-    <h2>Questions fréquentes</h2>
+    <h2>À lire absolument !</h2>
     <div class="product-faq-container">
       {% if produit.faqs and produit.faqs|length > 0 %}
         {% for faq in produit.faqs %}
