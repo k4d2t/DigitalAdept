@@ -358,14 +358,31 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     
     function loadProducts() {
-        fetch("/admin/products")
-            .then((response) => response.json())
-            .then((products) => {
-                allProducts = products.sort((a, b) => b.id - a.id);
-                currentPage = 1;
-                renderProducts();
-            })
-            .catch((error) => console.error("Erreur lors du chargement des produits :", error));
+      fetch("/admin/products", { credentials: "same-origin", cache: "no-store" })
+        .then(async (response) => {
+          let data = null;
+          try { data = await response.json(); } catch (e) { data = null; }
+    
+          if (!response.ok) {
+            const msg = (data && (data.error || data.message)) || `HTTP ${response.status}`;
+            showNotification("Erreur chargement produits: " + msg, "error");
+            if (response.status === 401) window.location.href = "/k4d3t"; // session expirée
+            throw new Error(msg);
+          }
+    
+          if (!Array.isArray(data)) {
+            console.error("Réponse inattendue /admin/products:", data);
+            showNotification("Réponse inattendue du serveur.", "error");
+            return;
+          }
+    
+          allProducts = data.slice().sort((a, b) => (b.id || 0) - (a.id || 0));
+          currentPage = 1;
+          renderProducts();
+        })
+        .catch((error) => {
+          console.error("Erreur lors du chargement des produits :", error);
+        });
     }
 
     function deleteProduct(productId) {
@@ -382,56 +399,70 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function openProductModal(productId) {
-        fetch(`/admin/products/manage/${productId}`)
-            .then((response) => response.json())
-            .then((product) => {
-                form.setAttribute("data-product-id", productId);
-                document.getElementById("productName").value = product.name;
-                document.getElementById("productShortDescription").value = product.short_description || "";
-                quill.root.innerHTML = product.description;
-                document.getElementById("productPrice").value = product.price;
-                document.getElementById("productOldPrice").value = product.old_price || "";
-                document.getElementById("productCurrency").value = product.currency;
-                document.getElementById("productStock").value = product.stock;
-                document.getElementById("productSku").value = product.sku || "";
-                document.getElementById("productCategory").value = product.category;
-                document.getElementById("productFeatured").checked = !!product.featured;
-                
-                let fileIds = product.resource_files ? product.resource_files.map(rf => rf.file_id) : [];
-                renderResourceFileIdInputs(fileIds);
-
-                badgesContainer.innerHTML = "";
-                if(product.badges) product.badges.forEach((badge) => addBadge(badge));
-
-                faqContainer.innerHTML = "";
-                if(product.faq) product.faq.forEach((faq) => addFaq(faq));
-
-                imagesContainer.innerHTML = "";
-                imagesField = [...product.images];
-                imagesField.forEach((imageUrl) => displayExistingImage(imageUrl));
-
-                document.getElementById("productEditModal").style.display = "block";
-                selectedEditFilesSet.clear();
-                fileUploadStatus.textContent = "";
-
-                document.getElementById("heroTitleEdit").value = product.hero_title || "";
-                document.getElementById("heroSubtitleEdit").value = product.hero_subtitle || "";
-                document.getElementById("heroCtaLabelEdit").value = product.hero_cta_label || "";
-                document.getElementById("demoVideoUrlEdit").value = product.demo_video_url || "";
-                document.getElementById("demoVideoTextEdit").value = product.demo_video_text || "";
-                document.getElementById("finalCtaTitleEdit").value = product.final_cta_title || "";
-                document.getElementById("finalCtaLabelEdit").value = product.final_cta_label || "";
-                
-                benefitsContainerEdit.innerHTML = "";
-                (product.benefits || []).forEach(b => addRowEdit(benefitsContainerEdit, b));
-                includesContainerEdit.innerHTML = "";
-                (product.includes || []).forEach(i => addRowEdit(includesContainerEdit, i));
-                guaranteesContainerEdit.innerHTML = "";
-                (product.guarantees || []).forEach(g => addRowEdit(guaranteesContainerEdit, g));
-                
-                document.getElementById("productEditModal").style.display = "block";
-            })
-            .catch((error) => console.error("Erreur lors de l'ouverture de la modale :", error));
+      fetch(`/admin/products/manage/${productId}`, { credentials: "same-origin", cache: "no-store" })
+        .then(async (response) => {
+          let data = null;
+          try { data = await response.json(); } catch (e) { data = null; }
+          if (!response.ok) {
+            const msg = (data && (data.error || data.message)) || `HTTP ${response.status}`;
+            showNotification("Erreur chargement produit: " + msg, "error");
+            if (response.status === 401) window.location.href = "/k4d3t";
+            throw new Error(msg);
+          }
+          if (!data || typeof data !== "object") {
+            showNotification("Produit introuvable ou réponse invalide.", "error");
+            throw new Error("invalid product payload");
+          }
+          return data;
+        })
+        .then((product) => {
+          form.setAttribute("data-product-id", productId);
+          document.getElementById("productName").value = product.name;
+          document.getElementById("productShortDescription").value = product.short_description || "";
+          quill.root.innerHTML = product.description || "";
+          document.getElementById("productPrice").value = product.price;
+          document.getElementById("productOldPrice").value = product.old_price || "";
+          document.getElementById("productCurrency").value = product.currency || "XOF";
+          document.getElementById("productStock").value = product.stock;
+          document.getElementById("productSku").value = product.sku || "";
+          document.getElementById("productCategory").value = product.category || "";
+          document.getElementById("productFeatured").checked = !!product.featured;
+    
+          let fileIds = product.resource_files ? product.resource_files.map(rf => rf.file_id) : [];
+          renderResourceFileIdInputs(fileIds);
+    
+          badgesContainer.innerHTML = "";
+          if (Array.isArray(product.badges)) product.badges.forEach((badge) => addBadge(badge));
+    
+          faqContainer.innerHTML = "";
+          if (Array.isArray(product.faq)) product.faq.forEach((faq) => addFaq(faq));
+    
+          imagesContainer.innerHTML = "";
+          imagesField = Array.isArray(product.images) ? [...product.images] : [];
+          imagesField.forEach((imageUrl) => displayExistingImage(imageUrl));
+    
+          // Champs marketing
+          document.getElementById("heroTitleEdit").value = product.hero_title || "";
+          document.getElementById("heroSubtitleEdit").value = product.hero_subtitle || "";
+          document.getElementById("heroCtaLabelEdit").value = product.hero_cta_label || "";
+          document.getElementById("demoVideoUrlEdit").value = product.demo_video_url || "";
+          document.getElementById("demoVideoTextEdit").value = product.demo_video_text || "";
+          document.getElementById("finalCtaTitleEdit").value = product.final_cta_title || "";
+          document.getElementById("finalCtaLabelEdit").value = product.final_cta_label || "";
+    
+          // Listes dynamiques
+          benefitsContainerEdit.innerHTML = "";
+          (product.benefits || []).forEach(b => addRowEdit(benefitsContainerEdit, b));
+          includesContainerEdit.innerHTML = "";
+          (product.includes || []).forEach(i => addRowEdit(includesContainerEdit, i));
+          guaranteesContainerEdit.innerHTML = "";
+          (product.guarantees || []).forEach(g => addRowEdit(guaranteesContainerEdit, g));
+    
+          document.getElementById("productEditModal").style.display = "block";
+          selectedEditFilesSet.clear();
+          fileUploadStatus.textContent = "";
+        })
+        .catch((error) => console.error("Erreur lors de l'ouverture de la modale :", error));
     }
 
     function handleFileSelection(event) {
