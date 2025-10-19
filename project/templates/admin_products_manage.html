@@ -622,6 +622,41 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         });
     }
+
+    // === AJOUT: helpers pour les listes (Hero/Bénéfices/Includes/Garanties) ===
+    // Références aux conteneurs et boutons "Ajouter"
+    const benefitsContainerEdit = document.getElementById('benefitsContainerEdit');
+    const includesContainerEdit = document.getElementById('includesContainerEdit');
+    const guaranteesContainerEdit = document.getElementById('guaranteesContainerEdit');
+    const addBenefitBtnEdit = document.getElementById('addBenefitBtnEdit');
+    const addIncludeBtnEdit = document.getElementById('addIncludeBtnEdit');
+    const addGuaranteeBtnEdit = document.getElementById('addGuaranteeBtnEdit');
+    
+    // Ajoute une ligne dans une liste dynamique
+    function addRowEdit(container, value = "", placeholder = "Texte...") {
+    if (!container) return;
+    const row = document.createElement('div');
+    row.className = 'dynamic-form-row';
+    row.innerHTML = `
+      <input type="text" class="list-input" placeholder="${placeholder}" value="${(value||"").replace(/"/g,'&quot;')}">
+      <button type="button" class="remove-row-btn">–</button>
+    `;
+    row.querySelector('.remove-row-btn').addEventListener('click', () => row.remove());
+    container.appendChild(row);
+    }
+    
+    // Récupère toutes les valeurs d'une liste dynamique
+    function pickListEdit(container) {
+    return Array.from((container && container.querySelectorAll('.list-input')) || [])
+      .map(i => i.value.trim())
+      .filter(Boolean);
+    }
+    
+    // Boutons "Ajouter" pour chaque liste
+    if (addBenefitBtnEdit)   addBenefitBtnEdit.addEventListener('click',   () => addRowEdit(benefitsContainerEdit,  "", "Ex: 💡 Visualisez vos dépenses..."));
+    if (addIncludeBtnEdit)   addIncludeBtnEdit.addEventListener('click',   () => addRowEdit(includesContainerEdit,  "", "Ex: ✅ Modèle Google Sheets/Excel"));
+    if (addGuaranteeBtnEdit) addGuaranteeBtnEdit.addEventListener('click', () => addRowEdit(guaranteesContainerEdit,"", "Ex: 🔁 Satisfait ou remboursé 7j"));
+
     
     // Lancement initial
     loadProducts();
