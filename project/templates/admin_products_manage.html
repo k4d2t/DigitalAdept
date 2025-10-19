@@ -330,7 +330,13 @@ document.addEventListener("DOMContentLoaded", () => {
                 card.className = "product-card";
                 card.setAttribute("data-id", product.id);
                 
-                const imageUrl = product.images.length > 0 ? product.images[0] : 'https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/img/default.jpg';
+               // Robuste: normaliser product.images en tableau
+               const imgs = Array.isArray(product.images) ? product.images
+                         : (product.images ? [product.images] : []);
+               const imageUrl = imgs.length > 0
+                  ? imgs[0]
+                  : 'https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/img/default.jpg';
+               const imageUrl = product.images.length > 0 ? product.images[0] : 'https://cdn.jsdelivr.net/gh/k4d2t/DigitalAdept@main/project/static/img/default.jpg';
                 card.innerHTML = `
                     ${renderProductPicture(imageUrl, product.name)}
                     <h2>${product.name}</h2>
@@ -436,10 +442,14 @@ document.addEventListener("DOMContentLoaded", () => {
     
           faqContainer.innerHTML = "";
           if (Array.isArray(product.faq)) product.faq.forEach((faq) => addFaq(faq));
-    
-          imagesContainer.innerHTML = "";
-          imagesField = Array.isArray(product.images) ? [...product.images] : [];
-          imagesField.forEach((imageUrl) => displayExistingImage(imageUrl));
+            
+         imagesContainer.innerHTML = "";
+         // Robuste: normaliser product.images en tableau
+         const imgs = Array.isArray(product.images) ? product.images
+                     : (product.images ? [product.images] : []);
+         imagesField = imgs.slice();
+         imagesField.forEach((imageUrl) => displayExistingImage(imageUrl));
+
     
           // Champs marketing
           document.getElementById("heroTitleEdit").value = product.hero_title || "";
@@ -452,11 +462,12 @@ document.addEventListener("DOMContentLoaded", () => {
     
           // Listes dynamiques
           benefitsContainerEdit.innerHTML = "";
-          (product.benefits || []).forEach(b => addRowEdit(benefitsContainerEdit, b));
+          (Array.isArray(product.benefits) ? product.benefits : []).forEach(b => addRowEdit(benefitsContainerEdit, b));
+
           includesContainerEdit.innerHTML = "";
-          (product.includes || []).forEach(i => addRowEdit(includesContainerEdit, i));
+          (Array.isArray(product.includes) ? product.includes : []).forEach(i => addRowEdit(includesContainerEdit, i));
           guaranteesContainerEdit.innerHTML = "";
-          (product.guarantees || []).forEach(g => addRowEdit(guaranteesContainerEdit, g));
+          (Array.isArray(product.guarantees) ? product.guarantees : []).forEach(g => addRowEdit(guaranteesContainerEdit, g));
     
           document.getElementById("productEditModal").style.display = "block";
           selectedEditFilesSet.clear();
