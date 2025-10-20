@@ -144,6 +144,78 @@ def _bootstrap_guard():
 LOGS_FILE = "data/logs.json"
 COMMENTS_FILE = "data/comments.json"
 
+# À coller sous: db.init_app(app)
+
+# --- Helpers Visiteurs (analytics) ---
+def _client_ip():
+    try:
+        xff = request.headers.get('X-Forwarded-For', '') or ''
+        if xff:
+            return xff.split(',')[0].strip()
+        return request.remote_addr
+    except Exception:
+        return None
+
+BOT_HINTS = ('bot', 'crawl', 'spider', 'curl', 'wget', 'httpclient', 'monitor', 'pingdom')
+def _is_bot(ua: str):
+    if not ua:
+        return False
+    ual = ua.lower()
+    return any(b in ual for b in BOT_HINTS)
+
+def _should_track_request():
+    p = request.path or ''
+    if request.method != 'GET':
+        return False
+    if p.startswith('/admin') or p.startswith('/k4d3t'):
+        return False
+    if p.startswith('/api/'):
+        return False
+    if p.startswith('/static/') or p.startswith('/favicon') or p.startswith('/robots') or p.startswith('/sitemap'):
+        return False
+    if p in ('/health', '/_debug/ip'):
+        return False
+    return True
+
+def _ensure_device_cookie(response):
+    try:
+        if request.cookies.get('da_device_id'):
+            return response
+        import uuid as _uuid
+        did = str(_uuid.uuid4())
+        expires = datetime.utcnow() + timedelta(days=730)
+        response.set_cookie('da_device_id', did, expires=expires, samesite='Lax', secure=False)
+    except Exception:
+        pass
+    return response
+
+@app.after_request
+def track_visit(response):
+    try:
+        if _should_track_request():
+            from models import VisitorEvent
+            ua = request.headers.get('User-Agent', '') or ''
+            ev = VisitorEvent(
+                ts=datetime.now(timezone.utc),
+                session_id=request.cookies.get('da_device_id'),
+                ip=_client_ip(),
+                user_agent=(ua[:255] if ua else None),
+                path=(request.full_path[:255] if request.full_path else request.path[:255]),
+                referrer=(request.referrer[:255] if request.referrer else None),
+                country=(session.get('country') or None),
+                is_bot=_is_bot(ua)
+            )
+            if not ev.is_bot:
+                db.session.add(ev)
+                db.session.commit()
+    except Exception as e:
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+        logger.debug(f"track_visit skipped: {e}")
+    return _ensure_device_cookie(response)
+
 # --- Locale: mapping pays -> devise/lang (subset de pays/monnaies principales) ---
 LOCALE_MAP = {
     # code pays: {name, flag (emoji/simple), currency, lang}
