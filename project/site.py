@@ -3227,53 +3227,112 @@ def api_admin_visitors_devices():
     e = request.args.get('end_date')
     start_date, end_date, _, _, _ = _parse_period(period, s, e)
 
-    base = VisitorEvent.query.filter(
-        VisitorEvent.ts >= start_date,
-        VisitorEvent.ts < end_date,
-        VisitorEvent.is_bot == False
-    )
+    try:
+        rows_type = db.session.query(
+            VisitorEvent.device_type,
+            db.func.count(VisitorEvent.id)
+        ).filter(
+            VisitorEvent.ts >= start_date, VisitorEvent.ts < end_date, VisitorEvent.is_bot == False
+        ).group_by(VisitorEvent.device_type).all()
+        by_type = [{"type": (t or "unknown"), "count": int(c or 0)} for t, c in rows_type]
 
-    # Répartition par type
-    rows_type = db.session.query(
-        VisitorEvent.device_type,
-        db.func.count(VisitorEvent.id)
-    ).filter(
-        VisitorEvent.ts >= start_date, VisitorEvent.ts < end_date, VisitorEvent.is_bot == False
-    ).group_by(VisitorEvent.device_type).all()
+        rows_brand = db.session.query(
+            VisitorEvent.device_brand,
+            db.func.count(VisitorEvent.id)
+        ).filter(
+            VisitorEvent.ts >= start_date, VisitorEvent.ts < end_date, VisitorEvent.is_bot == False,
+            db.func.coalesce(VisitorEvent.device_brand, '') != ''
+        ).group_by(VisitorEvent.device_brand).order_by(db.func.count(VisitorEvent.id).desc()).limit(10).all()
+        top_brands = [{"brand": (b or "Unknown"), "count": int(c or 0)} for b, c in rows_brand]
 
-    by_type = [{"type": (t or "unknown"), "count": int(c or 0)} for t, c in rows_type]
+        rows_os = db.session.query(
+            VisitorEvent.os_name, db.func.count(VisitorEvent.id)
+        ).filter(
+            VisitorEvent.ts >= start_date, VisitorEvent.ts < end_date, VisitorEvent.is_bot == False
+        ).group_by(VisitorEvent.os_name).order_by(db.func.count(VisitorEvent.id).desc()).all()
+        by_os = [{"os": (o or "Unknown"), "count": int(c or 0)} for o, c in rows_os]
 
-    # Top marques
-    rows_brand = db.session.query(
-        VisitorEvent.device_brand,
-        db.func.count(VisitorEvent.id)
-    ).filter(
-        VisitorEvent.ts >= start_date, VisitorEvent.ts < end_date, VisitorEvent.is_bot == False,
-        db.func.coalesce(VisitorEvent.device_brand, '') != ''
-    ).group_by(VisitorEvent.device_brand).order_by(db.func.count(VisitorEvent.id).desc()).limit(10).all()
-    top_brands = [{"brand": (b or "Unknown"), "count": int(c or 0)} for b, c in rows_brand]
+        rows_browser = db.session.query(
+            VisitorEvent.browser_name, db.func.count(VisitorEvent.id)
+        ).filter(
+            VisitorEvent.ts >= start_date, VisitorEvent.ts < end_date, VisitorEvent.is_bot == False
+        ).group_by(VisitorEvent.browser_name).order_by(db.func.count(VisitorEvent.id).desc()).all()
+        by_browser = [{"browser": (b or "Unknown"), "count": int(c or 0)} for b, c in rows_browser]
 
-    # OS et navigateurs (optionnel)
-    rows_os = db.session.query(
-        VisitorEvent.os_name, db.func.count(VisitorEvent.id)
-    ).filter(
-        VisitorEvent.ts >= start_date, VisitorEvent.ts < end_date, VisitorEvent.is_bot == False
-    ).group_by(VisitorEvent.os_name).order_by(db.func.count(VisitorEvent.id).desc()).all()
-    by_os = [{"os": (o or "Unknown"), "count": int(c or 0)} for o, c in rows_os]
+        return jsonify({"by_type": by_type, "top_brands": top_brands, "by_os": by_os, "by_browser": by_browser}), 200
+    except ProgrammingError:
+        db.session.rollback()
+        try:
+            ensure_visitor_event_columns()
+            rows_type = db.session.query(
+                VisitorEvent.device_type,
+                db.func.count(VisitorEvent.id)
+            ).filter(
+                VisitorEvent.ts >= start_date, VisitorEvent.ts < end_date, VisitorEvent.is_bot == False
+            ).group_by(VisitorEvent.device_type).all()
+            by_type = [{"type": (t or "unknown"), "count": int(c or 0)} for t, c in rows_type]
 
-    rows_browser = db.session.query(
-        VisitorEvent.browser_name, db.func.count(VisitorEvent.id)
-    ).filter(
-        VisitorEvent.ts >= start_date, VisitorEvent.ts < end_date, VisitorEvent.is_bot == False
-    ).group_by(VisitorEvent.browser_name).order_by(db.func.count(VisitorEvent.id).desc()).all()
-    by_browser = [{"browser": (b or "Unknown"), "count": int(c or 0)} for b, c in rows_browser]
+            rows_brand = db.session.query(
+                VisitorEvent.device_brand,
+                db.func.count(VisitorEvent.id)
+            ).filter(
+                VisitorEvent.ts >= start_date, VisitorEvent.ts < end_date, VisitorEvent.is_bot == False,
+                db.func.coalesce(VisitorEvent.device_brand, '') != ''
+            ).group_by(VisitorEvent.device_brand).order_by(db.func.count(VisitorEvent.id).desc()).limit(10).all()
+            top_brands = [{"brand": (b or "Unknown"), "count": int(c or 0)} for b, c in rows_brand]
 
-    return jsonify({
-        "by_type": by_type,
-        "top_brands": top_brands,
-        "by_os": by_os,
-        "by_browser": by_browser
-    }), 200
+            rows_os = db.session.query(
+                VisitorEvent.os_name, db.func.count(VisitorEvent.id)
+            ).filter(
+                VisitorEvent.ts >= start_date, VisitorEvent.ts < end_date, VisitorEvent.is_bot == False
+            ).group_by(VisitorEvent.os_name).order_by(db.func.count(VisitorEvent.id).desc()).all()
+            by_os = [{"os": (o or "Unknown"), "count": int(c or 0)} for o, c in rows_os]
+
+            rows_browser = db.session.query(
+                VisitorEvent.browser_name, db.func.count(VisitorEvent.id)
+            ).filter(
+                VisitorEvent.ts >= start_date, VisitorEvent.ts < end_date, VisitorEvent.is_bot == False
+            ).group_by(VisitorEvent.browser_name).order_by(db.func.count(VisitorEvent.id).desc()).all()
+            by_browser = [{"browser": (b or "Unknown"), "count": int(c or 0)} for b, c in rows_browser]
+
+            return jsonify({"by_type": by_type, "top_brands": top_brands, "by_os": by_os, "by_browser": by_browser}), 200
+        except ProgrammingError:
+            db.session.rollback()
+            # Fallback: scanner les UA sur la période sans dépendre des colonnes manquantes
+            raw = db.session.execute(
+                text("""
+                    SELECT user_agent
+                    FROM visitor_event
+                    WHERE ts >= :start AND ts < :end AND is_bot = false
+                    ORDER BY ts DESC
+                    LIMIT 10000
+                """),
+                {"start": start_date, "end": end_date}
+            ).mappings().all()
+
+            type_map = {}
+            brand_map = {}
+            os_map = {}
+            br_map = {}
+
+            for r in raw:
+                ua = r.get("user_agent") or ""
+                p = _parse_user_agent(ua)
+                t = (p.get("device_type") or "unknown")
+                type_map[t] = type_map.get(t, 0) + 1
+                b = p.get("device_brand") or "Unknown"
+                brand_map[b] = brand_map.get(b, 0) + 1
+                osn = p.get("os_name") or "Unknown"
+                os_map[osn] = os_map.get(osn, 0) + 1
+                bn = p.get("browser_name") or "Unknown"
+                br_map[bn] = br_map.get(bn, 0) + 1
+
+            by_type = [{"type": k, "count": v} for k, v in type_map.items()]
+            top_brands = sorted([{"brand": k, "count": v} for k, v in brand_map.items()], key=lambda x: x["count"], reverse=True)[:10]
+            by_os = [{"os": k, "count": v} for k, v in os_map.items()]
+            by_browser = [{"browser": k, "count": v} for k, v in br_map.items()]
+
+            return jsonify({"by_type": by_type, "top_brands": top_brands, "by_os": by_os, "by_browser": by_browser}), 200
 
 
 @app.route('/api/admin/suivi/visitors/live', methods=['GET'])
@@ -3284,35 +3343,83 @@ def api_admin_visitors_live():
     now = datetime.now(timezone.utc)
     since = now - timedelta(minutes=5)
 
-    rows = VisitorEvent.query.filter(
-        VisitorEvent.ts >= since,
-        VisitorEvent.is_bot == False
-    ).order_by(VisitorEvent.ts.desc()).limit(40).all()
+    def build_payload_from_rows(rows):
+        live = []
+        for ev in rows:
+            live.append({
+                "ts": ev.ts.isoformat(),
+                "path": ev.path or "/",
+                "device_type": getattr(ev, 'device_type', None) or "unknown",
+                "device_brand": getattr(ev, 'device_brand', None),
+                "device_model": getattr(ev, 'device_model', None),
+                "os": getattr(ev, 'os_name', None),
+                "browser": getattr(ev, 'browser_name', None),
+                "country": ev.country
+            })
+        active_sessions = db.session.query(
+            db.func.count(
+                db.func.distinct(db.func.coalesce(VisitorEvent.session_id, VisitorEvent.ip))
+            )
+        ).filter(
+            VisitorEvent.ts >= since,
+            VisitorEvent.is_bot == False
+        ).scalar() or 0
+        return jsonify({"active_5m": int(active_sessions), "events": live}), 200
 
-    live = []
-    for ev in rows:
-        live.append({
-            "ts": ev.ts.isoformat(),
-            "path": ev.path or "/",
-            "device_type": ev.device_type or "unknown",
-            "device_brand": ev.device_brand,
-            "device_model": ev.device_model,
-            "os": ev.os_name,
-            "browser": ev.browser_name,
-            "country": ev.country
-        })
+    try:
+        rows = VisitorEvent.query.filter(
+            VisitorEvent.ts >= since,
+            VisitorEvent.is_bot == False
+        ).order_by(VisitorEvent.ts.desc()).limit(40).all()
+        return build_payload_from_rows(rows)
+    except ProgrammingError:
+        db.session.rollback()
+        try:
+            ensure_visitor_event_columns()
+            rows = VisitorEvent.query.filter(
+                VisitorEvent.ts >= since,
+                VisitorEvent.is_bot == False
+            ).order_by(VisitorEvent.ts.desc()).limit(40).all()
+            return build_payload_from_rows(rows)
+        except ProgrammingError:
+            db.session.rollback()
+            # Fallback: SELECT brut sur colonnes existantes + parse UA à la volée
+            raw = db.session.execute(
+                text("""
+                    SELECT ts, path, user_agent, session_id, ip, country
+                    FROM visitor_event
+                    WHERE ts >= :since AND is_bot = false
+                    ORDER BY ts DESC
+                    LIMIT 40
+                """),
+                {"since": since}
+            ).mappings().all()
 
-    active_sessions = db.session.query(
-        db.func.count(db.func.distinct(db.func.coalesce(VisitorEvent.session_id, VisitorEvent.ip)))
-    ).filter(
-        VisitorEvent.ts >= since,
-        VisitorEvent.is_bot == False
-    ).scalar() or 0
+            events = []
+            for r in raw:
+                ua = r.get("user_agent") or ""
+                parsed = _parse_user_agent(ua)
+                events.append({
+                    "ts": (r.get("ts") or now).isoformat(),
+                    "path": r.get("path") or "/",
+                    "device_type": parsed.get("device_type") or "unknown",
+                    "device_brand": parsed.get("device_brand"),
+                    "device_model": parsed.get("device_model"),
+                    "os": parsed.get("os_name"),
+                    "browser": parsed.get("browser_name"),
+                    "country": r.get("country")
+                })
 
-    return jsonify({
-        "active_5m": int(active_sessions),
-        "events": live
-    }), 200
+            active = db.session.execute(
+                text("""
+                    SELECT COUNT(DISTINCT COALESCE(session_id, ip)) AS c
+                    FROM visitor_event
+                    WHERE ts >= :since AND is_bot = false
+                """),
+                {"since": since}
+            ).scalar() or 0
+
+            return jsonify({"active_5m": int(active), "events": events}), 200
     
 
 @cache.cached(timeout=60)
