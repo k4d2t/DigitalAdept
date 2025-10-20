@@ -202,3 +202,21 @@ class Payout(db.Model):
     provider_payload = db.Column(db.JSON, nullable=True)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
+
+# --- Analytics visiteurs ---
+class VisitorEvent(db.Model):
+    __tablename__ = 'visitor_event'
+    __table_args__ = (
+        db.Index('ix_visit_ts', 'ts'),
+        db.Index('ix_visit_path', 'path'),
+        db.Index('ix_visit_session', 'session_id'),
+    )
+    id = db.Column(db.Integer, primary_key=True)
+    ts = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    session_id = db.Column(db.String(64), nullable=True)  # cookie da_device_id
+    ip = db.Column(db.String(64), nullable=True)
+    user_agent = db.Column(db.String(255), nullable=True)
+    path = db.Column(db.String(255), nullable=True)
+    referrer = db.Column(db.String(255), nullable=True)
+    country = db.Column(db.String(8), nullable=True)  # depuis la session
+    is_bot = db.Column(db.Boolean, default=False)
