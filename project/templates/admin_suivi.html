@@ -8,7 +8,6 @@
     </nav>
     <h1>Suivi du Chiffre d'Affaires</h1>
 
-    <!-- Filtre auto (pas de bouton) -->
     <div class="filter-card">
         <form id="period-filter-form" onsubmit="return false;">
             <div class="filter-controls">
@@ -30,7 +29,6 @@
         </form>
     </div>
 
-    <!-- KPIs -->
     <div class="suivi-kpis">
         <div class="kpi-card">
             <div class="kpi-title">CA Total (période)</div>
@@ -48,12 +46,40 @@
       <div class="kpi-detail">XOF</div>
     </div>
 
-    <!-- Graphique -->
     <div class="chart-container">
         <h2>Évolution du Chiffre d'Affaires</h2>
         <canvas id="revenueChart"></canvas>
     </div>
+
+    <h1 style="margin-top:1.2rem">Suivi des Visiteurs</h1>
+    <div class="suivi-kpis">
+        <div class="kpi-card">
+            <div class="kpi-title">Pages vues (période)</div>
+            <div class="kpi-value" id="kpi-pageviews">0</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-title">Visiteurs uniques</div>
+            <div class="kpi-value" id="kpi-visitors">0</div>
+        </div>
+        <div class="kpi-card">
+            <div class="kpi-title">Actifs (5 min)</div>
+            <div class="kpi-value" id="kpi-active">0</div>
+            <div class="kpi-detail">Sessions récentes</div>
+        </div>
+    </div>
+
+    <div class="chart-container">
+        <h2>Trafic (Pages vues vs Visiteurs)</h2>
+        <canvas id="visitorsChart"></canvas>
+    </div>
+
+    <div class="chart-container">
+        <h2>Pages les plus consultées</h2>
+        <ul id="topPagesList" class="top-pages"></ul>
+    </div>
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 async function refreshAvailableBalanceKPI() {
   const card = document.getElementById('kpiAvailableCard');
@@ -73,19 +99,9 @@ async function refreshAvailableBalanceKPI() {
 
 document.addEventListener('DOMContentLoaded', () => {
   refreshAvailableBalanceKPI();
-
-  // Si tu as un bouton "Filtrer" ou changements de période, relance si souhaité:
-  // Exemple si un bouton .filter-btn existe:
-  const filterBtn = document.querySelector('.filter-btn button, .filter-btn .cta, .filter-btn');
-  if (filterBtn) {
-    filterBtn.addEventListener('click', () => {
-      // On rafraîchit le solde aussi, même si le solde n’est pas censé dépendre de la période
-      refreshAvailableBalanceKPI();
-    });
-  }
 });
 </script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const periodSelect = document.getElementById('period-select');
@@ -93,90 +109,145 @@ document.addEventListener('DOMContentLoaded', function() {
     const startInput = document.getElementById('start_date');
     const endInput = document.getElementById('end_date');
 
-    // Style harmonisé: le select suit le thème via CSS (admin.css)
-    // Affichage/masquage des dates personnalisées
     function toggleCustom() {
         customRange.style.display = (periodSelect.value === 'custom') ? 'flex' : 'none';
     }
-    periodSelect.addEventListener('change', () => { toggleCustom(); fetchAndUpdate(); });
-    startInput.addEventListener('change', fetchAndUpdate);
-    endInput.addEventListener('change', fetchAndUpdate);
+    periodSelect.addEventListener('change', () => { toggleCustom(); fetchRevenue(); fetchVisitors(); fetchTopPages(); });
+    startInput.addEventListener('change', () => { if (periodSelect.value==='custom') { fetchRevenue(); fetchVisitors(); fetchTopPages(); }});
+    endInput.addEventListener('change', () => { if (periodSelect.value==='custom') { fetchRevenue(); fetchVisitors(); fetchTopPages(); }});
 
     const ctx = document.getElementById('revenueChart').getContext('2d');
     const gradient = ctx.createLinearGradient(0, 0, 0, 320);
     gradient.addColorStop(0, 'rgba(79, 195, 247, 0.6)');
     gradient.addColorStop(1, 'rgba(25, 118, 210, 0.1)');
 
-    const chart = new Chart(ctx, {
+    const revenueChart = new Chart(ctx, {
         type: 'line',
-        data: {
-            labels: [],
-            datasets: [{
-                label: "Chiffre d'Affaires (XOF)",
-                data: [],
-                backgroundColor: gradient,
-                borderColor: '#4FC3F7',
-                borderWidth: 3,
-                pointBackgroundColor: '#fff',
-                pointBorderColor: '#1976D2',
-                pointHoverBackgroundColor: '#1976D2',
-                pointHoverBorderColor: '#fff',
-                tension: 0.4,
-                fill: true
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false, // géré par CSS
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: { color: '#E8F1FA' },
-                    grid: { color: 'rgba(255, 255, 255, 0.1)' }
-                },
-                x: {
-                    ticks: { color: '#E8F1FA' },
-                    grid: { display: false }
-                }
-            },
-            plugins: { legend: { display: false } }
+        data: { labels: [], datasets: [{
+            label: "Chiffre d'Affaires (XOF)",
+            data: [],
+            backgroundColor: gradient,
+            borderColor: '#4FC3F7',
+            borderWidth: 3,
+            pointBackgroundColor: '#fff',
+            pointBorderColor: '#1976D2',
+            pointHoverBackgroundColor: '#1976D2',
+            pointHoverBorderColor: '#fff',
+            tension: 0.4, fill: true
+        }]},
+        options: { responsive: true, maintainAspectRatio: false,
+            scales: { y:{beginAtZero:true, ticks:{color:'#E8F1FA'}, grid:{color:'rgba(255,255,255,0.1)'}},
+                      x:{ticks:{color:'#E8F1FA'}, grid:{display:false}} },
+            plugins:{ legend:{ display:false } }
         }
     });
 
     const fmt = new Intl.NumberFormat('fr-FR');
 
-    async function fetchAndUpdate() {
+    async function fetchRevenue() {
         const params = new URLSearchParams();
         params.set('period', periodSelect.value);
         if (periodSelect.value === 'custom') {
-            if (!startInput.value || !endInput.value) return; // attend les deux dates
+            if (!startInput.value || !endInput.value) return;
             params.set('start_date', startInput.value);
             params.set('end_date', endInput.value);
         }
-
         try {
             const res = await fetch(`/api/admin/suivi/metrics?${params.toString()}`, { credentials: 'same-origin' });
             if (!res.ok) return;
             const data = await res.json();
-
-            // KPIs
             document.getElementById('kpi-total').textContent = `${fmt.format(Math.round(data.total_revenue))} XOF`;
             document.getElementById('kpi-user').textContent = `${fmt.format(Math.round(data.user_revenue))} XOF`;
             const detail = (data.role && data.role !== 'super_admin') ? `(${data.user_percentage}% du CA)` : '';
             document.getElementById('kpi-detail').textContent = detail;
-
-            // Graph
-            chart.data.labels = data.labels || [];
-            chart.data.datasets[0].data = (data.data || []).map(v => Math.round(v));
-            chart.update();
+            revenueChart.data.labels = data.labels || [];
+            revenueChart.data.datasets[0].data = (data.data || []).map(v => Math.round(v));
+            revenueChart.update();
         } catch (e) {
             console.error('Erreur fetch metrics', e);
         }
     }
 
-    // Initialisation
+    const vctx = document.getElementById('visitorsChart').getContext('2d');
+    const visitorsChart = new Chart(vctx, {
+        type: 'line',
+        data: { labels: [], datasets: [
+            { label: "Pages vues", data: [], borderColor:'#FFB74D', backgroundColor:'rgba(255,183,77,0.2)', borderWidth:2, tension:0.35, fill:true },
+            { label: "Visiteurs", data: [], borderColor:'#81C784', backgroundColor:'rgba(129,199,132,0.2)', borderWidth:2, tension:0.35, fill:true }
+        ]},
+        options: { responsive:true, maintainAspectRatio:false,
+            scales:{ y:{beginAtZero:true, ticks:{color:'#E8F1FA'}, grid:{color:'rgba(255,255,255,0.08)'}},
+                     x:{ticks:{color:'#E8F1FA'}, grid:{display:false}} }
+        }
+    });
+
+    async function fetchVisitors() {
+        const params = new URLSearchParams();
+        params.set('period', periodSelect.value);
+        if (periodSelect.value === 'custom') {
+            if (!startInput.value || !endInput.value) return;
+            params.set('start_date', startInput.value);
+            params.set('end_date', endInput.value);
+        }
+        try {
+            const res = await fetch(`/api/admin/suivi/visitors/summary?${params.toString()}`, { credentials:'same-origin' });
+            if (res.ok) {
+                const s = await res.json();
+                document.getElementById('kpi-pageviews').textContent = fmt.format(s.pageviews||0);
+                document.getElementById('kpi-visitors').textContent = fmt.format(s.visitors||0);
+                document.getElementById('kpi-active').textContent = fmt.format(s.active_5m||0);
+            }
+        } catch(e){}
+
+        try {
+            const res2 = await fetch(`/api/admin/suivi/visitors/timeseries?${params.toString()}`, { credentials:'same-origin' });
+            if (res2.ok) {
+                const t = await res2.json();
+                visitorsChart.data.labels = t.labels || [];
+                visitorsChart.data.datasets[0].data = (t.pageviews||[]).map(Number);
+                visitorsChart.data.datasets[1].data = (t.visitors||[]).map(Number);
+                visitorsChart.update();
+            }
+        } catch(e){}
+    }
+
+    async function fetchTopPages() {
+        const params = new URLSearchParams();
+        params.set('period', periodSelect.value);
+        if (periodSelect.value === 'custom') {
+            if (!startInput.value || !endInput.value) return;
+            params.set('start_date', startInput.value);
+            params.set('end_date', endInput.value);
+        }
+        try {
+            const res = await fetch(`/api/admin/suivi/visitors/top-pages?${params.toString()}`, { credentials:'same-origin' });
+            const list = document.getElementById('topPagesList');
+            list.innerHTML = '';
+            if (res.ok) {
+                const arr = await res.json();
+                arr.forEach(row => {
+                    const li = document.createElement('li');
+                    li.textContent = `${row.path} — ${fmt.format(row.pageviews)} vues`;
+                    list.appendChild(li);
+                });
+            }
+        } catch(e){}
+    }
+
+    setInterval(async () => {
+        try {
+            const res = await fetch('/api/admin/suivi/visitors/summary?period=today', { credentials:'same-origin', cache:'no-store' });
+            if (res.ok) {
+                const s = await res.json();
+                document.getElementById('kpi-active').textContent = fmt.format(s.active_5m||0);
+            }
+        } catch(e){}
+    }, 15000);
+
     toggleCustom();
-    fetchAndUpdate();
+    fetchRevenue();
+    fetchVisitors();
+    fetchTopPages();
 });
 </script>
 {% endblock %}
