@@ -2970,6 +2970,117 @@ def api_admin_suivi_metrics():
         "data": data
     }), 200
 
+# À coller vers la fin du fichier (après vos routes /k4d3t/suivi et /api/admin/suivi/metrics)
+
+def _parse_period(period, start_date_str=None, end_date_str=None):
+    today = date.today()
+    if period == 'today':
+        start_date = today
+        end_date = today + timedelta(days=1)
+        grp = 'YYYY-MM-DD HH24'
+        fmt_in = '%Y-%m-%d %H'
+        fmt_out = '%H:00'
+    elif period == 'last_7_days':
+        start_date = today - timedelta(days=6)
+        end_date = today + timedelta(days=1)
+        grp = 'YYYY-MM-DD'
+        fmt_in = '%Y-%m-%d'
+        fmt_out = '%d %b'
+    elif period == 'last_30_days':
+        start_date = today - timedelta(days=29)
+        end_date = today + timedelta(days=1)
+        grp = 'YYYY-MM-DD'
+        fmt_in = '%Y-%m-%d'
+        fmt_out = '%d %b'
+    elif period == 'last_month':
+        end_of_last_month = today.replace(day=1) - timedelta(days=1)
+        start_date = end_of_last_month.replace(day=1)
+        end_date = today.replace(day=1)
+        grp = 'YYYY-MM-DD'
+        fmt_in = '%Y-%m-%d'
+        fmt_out = '%d %b'
+    elif period == 'custom' and start_date_str and end_date_str:
+        start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date()
+        end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date() + timedelta(days=1)
+        grp = 'YYYY-MM-DD'
+        fmt_in = '%Y-%m-%d'
+        fmt_out = '%d %b %Y'
+    else:
+        start_date = today.replace(day=1)
+        end_date = (start_date + timedelta(days=32)).replace(day=1)
+        grp = 'YYYY-MM-DD'
+        fmt_in = '%Y-%m-%d'
+        fmt_out = '%d %b'
+    return start_date, end_date, grp, fmt_in, fmt_out
+
+@app.route('/api/admin/suivi/visitors/summary', methods=['GET'])
+def api_admin_visitors_summary():
+    if not session.get('admin_logged_in'):
+        return jsonify({"error": "Unauthorized"}), 401
+    from models import VisitorEvent
+    period = request.args.get('period', 'this_month')
+    s = request.args.get('start_date')
+    e = request.args.get('end_date')
+    start_date, end_date, grp, _, _ = _parse_period(period, s, e)
+    q = VisitorEvent.query.filter(VisitorEvent.ts >= start_date, VisitorEvent.ts < end_date, VisitorEvent.is_bot == False)
+    pageviews = q.count()
+    visitors = db.session.query(db.func.count(db.func.distinct(VisitorEvent.session_id))).filter(
+        VisitorEvent.ts >= start_date, VisitorEvent.ts < end_date, VisitorEvent.is_bot == False
+    ).scalar() or 0
+    now = datetime.now(timezone.utc)
+    active_5m = db.session.query(db.func.count(db.func.distinct(VisitorEvent.session_id))).filter(
+        VisitorEvent.ts >= (now - timedelta(minutes=5)), VisitorEvent.is_bot == False
+    ).scalar() or 0
+    return jsonify({"pageviews": int(pageviews), "visitors": int(visitors), "active_5m": int(active_5m)}), 200
+
+@app.route('/api/admin/suivi/visitors/timeseries', methods=['GET'])
+def api_admin_visitors_timeseries():
+    if not session.get('admin_logged_in'):
+        return jsonify({"error": "Unauthorized"}), 401
+    from models import VisitorEvent
+    period = request.args.get('period', 'this_month')
+    s = request.args.get('start_date')
+    e = request.args.get('end_date')
+    start_date, end_date, grp, fmt_in, fmt_out = _parse_period(period, s, e)
+    rows = db.session.query(
+        db.func.to_char(VisitorEvent.ts, grp),
+        db.func.count(VisitorEvent.id),
+        db.func.count(db.func.distinct(VisitorEvent.session_id))
+    ).filter(
+        VisitorEvent.ts >= start_date, VisitorEvent.ts < end_date, VisitorEvent.is_bot == False
+    ).group_by(
+        db.func.to_char(VisitorEvent.ts, grp)
+    ).order_by(
+        db.func.to_char(VisitorEvent.ts, grp)
+    ).all()
+    labels, pv, uv = [], [], []
+    for k, c_pv, c_uv in rows:
+        try:
+            dt = datetime.strptime(k, fmt_in)
+            labels.append(dt.strftime(fmt_out))
+        except Exception:
+            labels.append(k)
+        pv.append(int(c_pv or 0))
+        uv.append(int(c_uv or 0))
+    return jsonify({"labels": labels, "pageviews": pv, "visitors": uv}), 200
+
+@app.route('/api/admin/suivi/visitors/top-pages', methods=['GET'])
+def api_admin_visitors_top_pages():
+    if not session.get('admin_logged_in'):
+        return jsonify({"error": "Unauthorized"}), 401
+    from models import VisitorEvent
+    period = request.args.get('period', 'this_month')
+    s = request.args.get('start_date')
+    e = request.args.get('end_date')
+    start_date, end_date, _, _, _ = _parse_period(period, s, e)
+    rows = db.session.query(
+        VisitorEvent.path, db.func.count(VisitorEvent.id)
+    ).filter(
+        VisitorEvent.ts >= start_date, VisitorEvent.ts < end_date, VisitorEvent.is_bot == False
+    ).group_by(VisitorEvent.path).order_by(db.func.count(VisitorEvent.id).desc()).limit(10).all()
+    out = [{"path": (r[0] or "/"), "pageviews": int(r[1] or 0)} for r in rows]
+    return jsonify(out), 200
+
 @cache.cached(timeout=60)
 def cached_admin_settings_roles_page():
     suivi_tile = Tile.query.filter((Tile.endpoint == 'admin_suivi') | (Tile.name == 'Suivi')).first()
