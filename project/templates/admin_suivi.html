@@ -77,6 +77,34 @@
         <h2>Pages les plus consultées</h2>
         <ul id="topPagesList" class="top-pages"></ul>
     </div>
+
+    <!-- NOUVEAU: Live + Appareils -->
+    <div class="chart-container">
+        <h2>En temps réel (5 dernières minutes)</h2>
+        <ul id="liveVisitorsList" class="top-pages"></ul>
+    </div>
+
+    <div class="chart-container">
+        <h2>Répartition appareils</h2>
+        <div class="device-grid" style="display:grid; gap:12px; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
+            <div>
+                <h3>Par type</h3>
+                <ul id="devicesByType" class="top-pages"></ul>
+            </div>
+            <div>
+                <h3>Top marques</h3>
+                <ul id="devicesTopBrands" class="top-pages"></ul>
+            </div>
+            <div>
+                <h3>OS</h3>
+                <ul id="devicesByOS" class="top-pages"></ul>
+            </div>
+            <div>
+                <h3>Navigateur</h3>
+                <ul id="devicesByBrowser" class="top-pages"></ul>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -92,14 +120,10 @@ async function refreshAvailableBalanceKPI() {
     if (data.status !== 'success' || typeof data.available !== 'number') { card.style.display = 'none'; return; }
     valEl.textContent = Number(data.available).toLocaleString('fr-FR');
     card.style.display = '';
-  } catch {
-    card.style.display = 'none';
-  }
+  } catch { card.style.display = 'none'; }
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  refreshAvailableBalanceKPI();
-});
+document.addEventListener('DOMContentLoaded', () => { refreshAvailableBalanceKPI(); });
 </script>
 
 <script>
@@ -112,9 +136,9 @@ document.addEventListener('DOMContentLoaded', function() {
     function toggleCustom() {
         customRange.style.display = (periodSelect.value === 'custom') ? 'flex' : 'none';
     }
-    periodSelect.addEventListener('change', () => { toggleCustom(); fetchRevenue(); fetchVisitors(); fetchTopPages(); });
-    startInput.addEventListener('change', () => { if (periodSelect.value==='custom') { fetchRevenue(); fetchVisitors(); fetchTopPages(); }});
-    endInput.addEventListener('change', () => { if (periodSelect.value==='custom') { fetchRevenue(); fetchVisitors(); fetchTopPages(); }});
+    periodSelect.addEventListener('change', () => { toggleCustom(); fetchRevenue(); fetchVisitors(); fetchTopPages(); fetchDevices(); });
+    startInput.addEventListener('change', () => { if (periodSelect.value==='custom') { fetchRevenue(); fetchVisitors(); fetchTopPages(); fetchDevices(); }});
+    endInput.addEventListener('change', () => { if (periodSelect.value==='custom') { fetchRevenue(); fetchVisitors(); fetchTopPages(); fetchDevices(); }});
 
     const ctx = document.getElementById('revenueChart').getContext('2d');
     const gradient = ctx.createLinearGradient(0, 0, 0, 320);
@@ -163,9 +187,7 @@ document.addEventListener('DOMContentLoaded', function() {
             revenueChart.data.labels = data.labels || [];
             revenueChart.data.datasets[0].data = (data.data || []).map(v => Math.round(v));
             revenueChart.update();
-        } catch (e) {
-            console.error('Erreur fetch metrics', e);
-        }
+        } catch (e) { console.error('Erreur fetch metrics', e); }
     }
 
     const vctx = document.getElementById('visitorsChart').getContext('2d');
@@ -234,20 +256,94 @@ document.addEventListener('DOMContentLoaded', function() {
         } catch(e){}
     }
 
-    setInterval(async () => {
+    async function fetchLiveVisitors() {
         try {
-            const res = await fetch('/api/admin/suivi/visitors/summary?period=today', { credentials:'same-origin', cache:'no-store' });
-            if (res.ok) {
-                const s = await res.json();
-                document.getElementById('kpi-active').textContent = fmt.format(s.active_5m||0);
+            const res = await fetch('/api/admin/suivi/visitors/live', { credentials: 'same-origin', cache: 'no-store' });
+            if (!res.ok) return;
+            const data = await res.json();
+            // KPI actif (rafraîchi en “live” aussi)
+            if (typeof data.active_5m === 'number') {
+                document.getElementById('kpi-active').textContent = fmt.format(data.active_5m || 0);
             }
-        } catch(e){}
-    }, 15000);
+            const list = document.getElementById('liveVisitorsList');
+            if (!list) return;
+            list.innerHTML = '';
+            (data.events || []).forEach(ev => {
+                const li = document.createElement('li');
+                const when = new Date(ev.ts).toLocaleTimeString('fr-FR', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+                const who = [
+                    ev.device_type || 'unknown',
+                    ev.device_brand || '',
+                    ev.device_model || '',
+                    ev.os || '',
+                    ev.browser || ''
+                ].filter(Boolean).join(' • ');
+                li.textContent = `[${when}] ${ev.path} — ${who}`;
+                list.appendChild(li);
+            });
+        } catch(e) {}
+    }
+
+    async function fetchDevices() {
+        const params = new URLSearchParams();
+        params.set('period', periodSelect.value);
+        if (periodSelect.value === 'custom') {
+            if (!startInput.value || !endInput.value) return;
+            params.set('start_date', startInput.value);
+            params.set('end_date', endInput.value);
+        }
+        try {
+            const res = await fetch(`/api/admin/suivi/visitors/devices?${params.toString()}`, { credentials:'same-origin' });
+            if (!res.ok) return;
+            const data = await res.json();
+            const typeList = document.getElementById('devicesByType');
+            const brandList = document.getElementById('devicesTopBrands');
+            const osList = document.getElementById('devicesByOS');
+            const brList = document.getElementById('devicesByBrowser');
+            if (typeList) {
+                typeList.innerHTML = '';
+                (data.by_type || []).forEach(row => {
+                    const li = document.createElement('li');
+                    li.textContent = `${row.type} — ${fmt.format(row.count)}`;
+                    typeList.appendChild(li);
+                });
+            }
+            if (brandList) {
+                brandList.innerHTML = '';
+                (data.top_brands || []).forEach(row => {
+                    const li = document.createElement('li');
+                    li.textContent = `${row.brand} — ${fmt.format(row.count)}`;
+                    brandList.appendChild(li);
+                });
+            }
+            if (osList) {
+                osList.innerHTML = '';
+                (data.by_os || []).forEach(row => {
+                    const li = document.createElement('li');
+                    li.textContent = `${row.os} — ${fmt.format(row.count)}`;
+                    osList.appendChild(li);
+                });
+            }
+            if (brList) {
+                brList.innerHTML = '';
+                (data.by_browser || []).forEach(row => {
+                    const li = document.createElement('li');
+                    li.textContent = `${row.browser} — ${fmt.format(row.count)}`;
+                    brList.appendChild(li);
+                });
+            }
+        } catch(e) {}
+    }
+
+    // Poll “live” toutes les 10 secondes
+    setInterval(fetchLiveVisitors, 10000);
 
     toggleCustom();
     fetchRevenue();
     fetchVisitors();
     fetchTopPages();
+    fetchDevices();
+    fetchLiveVisitors();
 });
 </script>
 {% endblock %}
