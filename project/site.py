@@ -3339,87 +3339,53 @@ def api_admin_visitors_devices():
 def api_admin_visitors_live():
     if not session.get('admin_logged_in'):
         return jsonify({"error": "Unauthorized"}), 401
-    from models import VisitorEvent
+
     now = datetime.now(timezone.utc)
     since = now - timedelta(minutes=5)
 
-    def build_payload_from_rows(rows):
-        live = []
-        for ev in rows:
-            live.append({
-                "ts": ev.ts.isoformat(),
-                "path": ev.path or "/",
-                "device_type": getattr(ev, 'device_type', None) or "unknown",
-                "device_brand": getattr(ev, 'device_brand', None),
-                "device_model": getattr(ev, 'device_model', None),
-                "os": getattr(ev, 'os_name', None),
-                "browser": getattr(ev, 'browser_name', None),
-                "country": ev.country
-            })
-        active_sessions = db.session.query(
-            db.func.count(
-                db.func.distinct(db.func.coalesce(VisitorEvent.session_id, VisitorEvent.ip))
-            )
-        ).filter(
-            VisitorEvent.ts >= since,
-            VisitorEvent.is_bot == False
-        ).scalar() or 0
-        return jsonify({"active_5m": int(active_sessions), "events": live}), 200
-
     try:
-        rows = VisitorEvent.query.filter(
-            VisitorEvent.ts >= since,
-            VisitorEvent.is_bot == False
-        ).order_by(VisitorEvent.ts.desc()).limit(40).all()
-        return build_payload_from_rows(rows)
-    except ProgrammingError:
-        db.session.rollback()
-        try:
-            ensure_visitor_event_columns()
-            rows = VisitorEvent.query.filter(
-                VisitorEvent.ts >= since,
-                VisitorEvent.is_bot == False
-            ).order_by(VisitorEvent.ts.desc()).limit(40).all()
-            return build_payload_from_rows(rows)
-        except ProgrammingError:
-            db.session.rollback()
-            # Fallback: SELECT brut sur colonnes existantes + parse UA à la volée
-            raw = db.session.execute(
-                text("""
-                    SELECT ts, path, user_agent, session_id, ip, country
-                    FROM visitor_event
-                    WHERE ts >= :since AND is_bot = false
-                    ORDER BY ts DESC
-                    LIMIT 40
-                """),
-                {"since": since}
-            ).mappings().all()
+        # SELECT brut ultra-rapide (pas d’ORM => jamais d’erreur de schéma)
+        raw = db.session.execute(
+            text("""
+                SELECT ts, path, user_agent, session_id, ip, country
+                FROM visitor_event
+                WHERE ts >= :since AND is_bot = false
+                ORDER BY ts DESC
+                LIMIT 40
+            """),
+            {"since": since}
+        ).mappings().all()
 
-            events = []
-            for r in raw:
-                ua = r.get("user_agent") or ""
-                parsed = _parse_user_agent(ua)
-                events.append({
-                    "ts": (r.get("ts") or now).isoformat(),
-                    "path": r.get("path") or "/",
-                    "device_type": parsed.get("device_type") or "unknown",
-                    "device_brand": parsed.get("device_brand"),
-                    "device_model": parsed.get("device_model"),
-                    "os": parsed.get("os_name"),
-                    "browser": parsed.get("browser_name"),
-                    "country": r.get("country")
-                })
+        events = []
+        for r in raw:
+            ua = r.get("user_agent") or ""
+            p = _parse_user_agent(ua)
+            events.append({
+                "ts": (r.get("ts") or now).isoformat(),
+                "path": r.get("path") or "/",
+                "device_type": p.get("device_type") or "unknown",
+                "device_brand": p.get("device_brand"),
+                "device_model": p.get("device_model"),
+                "os": p.get("os_name"),
+                "browser": p.get("browser_name"),
+                "country": r.get("country")
+            })
 
-            active = db.session.execute(
-                text("""
-                    SELECT COUNT(DISTINCT COALESCE(session_id, ip)) AS c
-                    FROM visitor_event
-                    WHERE ts >= :since AND is_bot = false
-                """),
-                {"since": since}
-            ).scalar() or 0
+        active = db.session.execute(
+            text("""
+                SELECT COUNT(DISTINCT COALESCE(session_id, ip)) AS c
+                FROM visitor_event
+                WHERE ts >= :since AND is_bot = false
+            """),
+            {"since": since}
+        ).scalar() or 0
 
-            return jsonify({"active_5m": int(active), "events": events}), 200
+        return jsonify({"active_5m": int(active), "events": events}), 200
+
+    except Exception as e:
+        try: db.session.rollback()
+        except Exception: pass
+        return jsonify({"active_5m": 0, "events": []}), 200
     
 
 @cache.cached(timeout=60)
@@ -3937,17 +3903,18 @@ def debug_ip():
 def ensure_admin_indexes():
     try:
         if db.engine.dialect.name in ('postgresql', 'postgres'):
-            with db.engine.connect() as conn:
+            with db.engine.begin() as conn:  # COMMIT garanti
                 conn.execute(text("CREATE INDEX IF NOT EXISTS ix_ab_cart_status ON abandoned_cart (status)"))
                 conn.execute(text("CREATE INDEX IF NOT EXISTS ix_ab_cart_created_at ON abandoned_cart (created_at)"))
                 conn.execute(text("CREATE INDEX IF NOT EXISTS ix_ab_cart_status_created ON abandoned_cart (status, created_at)"))
                 conn.execute(text("CREATE INDEX IF NOT EXISTS ix_email_sendlog_sent_at ON email_send_log (sent_at)"))
-                conn.execute(text('CREATE INDEX IF NOT EXISTS ix_user_role_id ON "user" (role_id)'))
+                conn.execute(text('CREATE INDEX IF NOT EXISTS ix_user_role_id ON \"user\" (role_id)'))
                 conn.execute(text("CREATE INDEX IF NOT EXISTS ix_role_tiles_role ON role_tiles (role_id)"))
-                # Nouveaux index analytics (si table déjà là)
+                # Index analytics standards (ne plantent plus si ensure_visitor_event_columns a tourné)
                 conn.execute(text("CREATE INDEX IF NOT EXISTS ix_visit_ts ON visitor_event (ts)"))
                 conn.execute(text("CREATE INDEX IF NOT EXISTS ix_visit_path ON visitor_event (path)"))
                 conn.execute(text("CREATE INDEX IF NOT EXISTS ix_visit_session ON visitor_event (session_id)"))
+                # Ceux-ci requièrent les colonnes; OK après ensure_visitor_event_columns()
                 conn.execute(text("CREATE INDEX IF NOT EXISTS ix_visit_device_type ON visitor_event (device_type)"))
                 conn.execute(text("CREATE INDEX IF NOT EXISTS ix_visit_is_bot ON visitor_event (is_bot)"))
     except Exception as e:
@@ -3957,7 +3924,7 @@ def ensure_admin_indexes():
 
 def ensure_visitor_event_columns():
     """
-    Ajoute à chaud les colonnes device/os/browser si la table visitor_event existe déjà.
+    Ajoute à chaud les colonnes device/os/browser (COMMIT explicite).
     """
     try:
         dialect = db.engine.dialect.name
@@ -3970,19 +3937,19 @@ def ensure_visitor_event_columns():
             ("browser_name", "VARCHAR(32)"),
             ("browser_version", "VARCHAR(32)"),
         ]
-        with db.engine.connect() as conn:
-            for name, typ in cols:
-                if dialect in ('postgresql','postgres'):
+        if dialect in ('postgresql','postgres'):
+            with db.engine.begin() as conn:  # COMMIT garanti
+                for name, typ in cols:
                     conn.execute(text(f'ALTER TABLE visitor_event ADD COLUMN IF NOT EXISTS {name} {typ}'))
-                else:
+                conn.execute(text("CREATE INDEX IF NOT EXISTS ix_visit_device_type ON visitor_event (device_type)"))
+                conn.execute(text("CREATE INDEX IF NOT EXISTS ix_visit_is_bot ON visitor_event (is_bot)"))
+        else:
+            with db.engine.begin() as conn:
+                for name, typ in cols:
                     try:
                         conn.execute(text(f'ALTER TABLE visitor_event ADD COLUMN {name} {typ}'))
                     except Exception:
                         pass
-            # Index utiles
-            if dialect in ('postgresql','postgres'):
-                conn.execute(text("CREATE INDEX IF NOT EXISTS ix_visit_device_type ON visitor_event (device_type)"))
-                conn.execute(text("CREATE INDEX IF NOT EXISTS ix_visit_is_bot ON visitor_event (is_bot)"))
     except Exception as e:
         logging.warning(f"ensure_visitor_event_columns: {e}")
 
@@ -4014,7 +3981,7 @@ def ensure_product_new_columns():
             "ALTER TABLE product ADD COLUMN guarantees JSON",
         ]
         stmts = stmts_pg if dialect in ('postgresql', 'postgres') else stmts_generic
-        with db.engine.connect() as conn:
+        with db.engine.begin() as conn:  # COMMIT garanti
             for sql in stmts:
                 try:
                     conn.execute(text(sql))
