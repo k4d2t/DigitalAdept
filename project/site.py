@@ -3929,6 +3929,7 @@ if __name__ == '__main__':
             logger.warning(f"Impossible de récupérer l’IP publique: {e}")
         ensure_admin_indexes() 
         ensure_product_new_columns()
+        ensure_visitor_event_columns() 
         db.create_all()
         initialize_database() # Appel de la nouvelle fonction
 
