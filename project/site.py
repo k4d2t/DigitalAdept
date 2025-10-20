@@ -3128,15 +3128,39 @@ def api_admin_visitors_summary():
     s = request.args.get('start_date')
     e = request.args.get('end_date')
     start_date, end_date, grp, _, _ = _parse_period(period, s, e)
-    q = VisitorEvent.query.filter(VisitorEvent.ts >= start_date, VisitorEvent.ts < end_date, VisitorEvent.is_bot == False)
+
+    q = VisitorEvent.query.filter(
+        VisitorEvent.ts >= start_date,
+        VisitorEvent.ts < end_date,
+        VisitorEvent.is_bot == False
+    )
     pageviews = q.count()
-    visitors = db.session.query(db.func.count(db.func.distinct(VisitorEvent.session_id))).filter(
-        VisitorEvent.ts >= start_date, VisitorEvent.ts < end_date, VisitorEvent.is_bot == False
+
+    # Compte distinct sur COALESCE(session_id, ip) pour ne pas perdre le 1er hit sans cookie
+    visitors = db.session.query(
+        db.func.count(
+            db.func.distinct(
+                db.func.coalesce(VisitorEvent.session_id, VisitorEvent.ip)
+            )
+        )
+    ).filter(
+        VisitorEvent.ts >= start_date,
+        VisitorEvent.ts < end_date,
+        VisitorEvent.is_bot == False
     ).scalar() or 0
+
     now = datetime.now(timezone.utc)
-    active_5m = db.session.query(db.func.count(db.func.distinct(VisitorEvent.session_id))).filter(
-        VisitorEvent.ts >= (now - timedelta(minutes=5)), VisitorEvent.is_bot == False
+    active_5m = db.session.query(
+        db.func.count(
+            db.func.distinct(
+                db.func.coalesce(VisitorEvent.session_id, VisitorEvent.ip)
+            )
+        )
+    ).filter(
+        VisitorEvent.ts >= (now - timedelta(minutes=5)),
+        VisitorEvent.is_bot == False
     ).scalar() or 0
+
     return jsonify({"pageviews": int(pageviews), "visitors": int(visitors), "active_5m": int(active_5m)}), 200
 
 @app.route('/api/admin/suivi/visitors/timeseries', methods=['GET'])
@@ -3148,17 +3172,21 @@ def api_admin_visitors_timeseries():
     s = request.args.get('start_date')
     e = request.args.get('end_date')
     start_date, end_date, grp, fmt_in, fmt_out = _parse_period(period, s, e)
+
     rows = db.session.query(
         db.func.to_char(VisitorEvent.ts, grp),
         db.func.count(VisitorEvent.id),
-        db.func.count(db.func.distinct(VisitorEvent.session_id))
+        db.func.count(db.func.distinct(db.func.coalesce(VisitorEvent.session_id, VisitorEvent.ip)))
     ).filter(
-        VisitorEvent.ts >= start_date, VisitorEvent.ts < end_date, VisitorEvent.is_bot == False
+        VisitorEvent.ts >= start_date,
+        VisitorEvent.ts < end_date,
+        VisitorEvent.is_bot == False
     ).group_by(
         db.func.to_char(VisitorEvent.ts, grp)
     ).order_by(
         db.func.to_char(VisitorEvent.ts, grp)
     ).all()
+
     labels, pv, uv = [], [], []
     for k, c_pv, c_uv in rows:
         try:
@@ -3261,7 +3289,6 @@ def api_admin_visitors_live():
         VisitorEvent.is_bot == False
     ).order_by(VisitorEvent.ts.desc()).limit(40).all()
 
-    # Distinct par session si souhaité (ici, on retourne les événements récents)
     live = []
     for ev in rows:
         live.append({
@@ -3275,8 +3302,11 @@ def api_admin_visitors_live():
             "country": ev.country
         })
 
-    active_sessions = db.session.query(db.func.count(db.func.distinct(VisitorEvent.session_id))).filter(
-        VisitorEvent.ts >= since, VisitorEvent.is_bot == False
+    active_sessions = db.session.query(
+        db.func.count(db.func.distinct(db.func.coalesce(VisitorEvent.session_id, VisitorEvent.ip)))
+    ).filter(
+        VisitorEvent.ts >= since,
+        VisitorEvent.is_bot == False
     ).scalar() or 0
 
     return jsonify({
