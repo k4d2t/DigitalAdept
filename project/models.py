@@ -202,7 +202,7 @@ class Payout(db.Model):
     provider_payload = db.Column(db.JSON, nullable=True)
     created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     updated_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc), onupdate=lambda: datetime.now(timezone.utc))
-
+    
 # --- Analytics visiteurs ---
 class VisitorEvent(db.Model):
     __tablename__ = 'visitor_event'
@@ -210,6 +210,8 @@ class VisitorEvent(db.Model):
         db.Index('ix_visit_ts', 'ts'),
         db.Index('ix_visit_path', 'path'),
         db.Index('ix_visit_session', 'session_id'),
+        db.Index('ix_visit_device_type', 'device_type'),
+        db.Index('ix_visit_is_bot', 'is_bot'),
     )
     id = db.Column(db.Integer, primary_key=True)
     ts = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
@@ -220,3 +222,12 @@ class VisitorEvent(db.Model):
     referrer = db.Column(db.String(255), nullable=True)
     country = db.Column(db.String(8), nullable=True)  # depuis la session
     is_bot = db.Column(db.Boolean, default=False)
+
+    # Nouveaux champs appareil / OS / navigateur
+    device_type = db.Column(db.String(16), nullable=True)     # 'mobile' | 'desktop' | 'tablet' | 'unknown'
+    device_brand = db.Column(db.String(32), nullable=True)
+    device_model = db.Column(db.String(64), nullable=True)
+    os_name = db.Column(db.String(32), nullable=True)
+    os_version = db.Column(db.String(32), nullable=True)
+    browser_name = db.Column(db.String(32), nullable=True)
+    browser_version = db.Column(db.String(32), nullable=True)
