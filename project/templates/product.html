@@ -146,6 +146,23 @@
   </section>
   {% endif %}
 
+  <!-- 3bis) DÉMO VIDÉO (nouveau) -->
+  {% if produit.demo_video_url %}
+  <section class="product-video">
+    <div class="video-wrapper">
+      <iframe
+        src="{{ produit.demo_video_url }}"
+        title="Démo vidéo"
+        loading="lazy"
+        allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture; web-share"
+        allowfullscreen></iframe>
+    </div>
+    {% if produit.demo_video_text %}
+      <p class="video-caption">{{ produit.demo_video_text }}</p>
+    {% endif %}
+  </section>
+  {% endif %}
+
   <!-- 4) PROMO (scaring) -->
   {% if produit.old_price and produit.old_price > produit.price %}
   <section class="promo-scare">
@@ -187,6 +204,47 @@
       </button>
     </div>
   </section>
+
+  <!-- 6bis) BÉNÉFICES / CONTENU / GARANTIES (nouveaux) -->
+  {% set benefits = produit.benefits if produit.benefits is iterable else [] %}
+  {% set includes = produit.includes if produit.includes is iterable else [] %}
+  {% set guarantees = produit.guarantees if produit.guarantees is iterable else [] %}
+  {% if (benefits and benefits|length) or (includes and includes|length) or (guarantees and guarantees|length) %}
+  <section class="product-sections">
+    {% if benefits and benefits|length %}
+      <div class="product-section">
+        <h2>Pourquoi tu vas aimer</h2>
+        <ul class="product-list">
+          {% for b in benefits %}
+            <li>{{ b }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+
+    {% if includes and includes|length %}
+      <div class="product-section">
+        <h2>Ce que tu reçois</h2>
+        <ul class="product-list">
+          {% for i in includes %}
+            <li>{{ i }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+
+    {% if guarantees and guarantees|length %}
+      <div class="product-section">
+        <h2>Garanties</h2>
+        <ul class="product-list">
+          {% for g in guarantees %}
+            <li>{{ g }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endif %}
+  </section>
+  {% endif %}
 
   <!-- 7) AVIS CLIENTS -->
   {% set testimonials = comments|selectattr('comment')|list %}
@@ -238,7 +296,6 @@
   <!-- 9) DESCRIPTION LONGUE (amélioration de rendu) -->
   {% if produit.description %}
   <section class="product-description">
- 
     <div class="description-content">
       {{ produit.description|safe }}
     </div>
@@ -296,6 +353,9 @@
 
   <!-- 12) PRIX + CTA -->
   <section class="price-cta">
+    {% if produit.final_cta_title %}
+      <h2 class="cta-title">{{ produit.final_cta_title }}</h2>
+    {% endif %}
     <div class="product-price-detailed">
       {% if produit.old_price %}
         <span class="old-price" data-price="{{ produit.old_price }}" data-currency="{{ produit.currency }}">{{ produit.old_price }} {{ produit.currency }}</span>
