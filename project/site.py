@@ -119,7 +119,8 @@ app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
 # Initialisation SQLAlchemy
 db.init_app(app)
 
-# --- Bootstrap DB (une seule fois) ---
+# Remplace le contenu de bootstrap_db_once par l’appel à ensure_visitor_event_columns
+
 def bootstrap_db_once():
     if getattr(app, '_da_bootstrapped', False):
         return
@@ -127,6 +128,7 @@ def bootstrap_db_once():
         with app.app_context():
             ensure_admin_indexes()
             ensure_product_new_columns()
+            ensure_visitor_event_columns()  # <-- ajout
             db.create_all()
             initialize_database()
         app._da_bootstrapped = True
@@ -189,12 +191,109 @@ def _ensure_device_cookie(response):
         pass
     return response
 
+# À AJOUTER sous vos helpers analytics existants (_is_bot etc.), juste AVANT track_visit
+
+def _parse_user_agent(ua: str):
+    """
+    Parse minimaliste du User-Agent (sans lib externe):
+    - device_type: mobile/desktop/tablet/unknown
+    - device_brand/model: heuristiques Android/iPhone/iPad
+    - os_name/os_version
+    - browser_name/browser_version
+    """
+    info = {
+        "device_type": "unknown",
+        "device_brand": None,
+        "device_model": None,
+        "os_name": None,
+        "os_version": None,
+        "browser_name": None,
+        "browser_version": None,
+    }
+    if not ua:
+        return info
+
+    ua_l = ua.lower()
+
+    # Type d'appareil
+    if "mobile" in ua_l or "iphone" in ua_l or ("android" in ua_l and "mobile" in ua_l):
+        info["device_type"] = "mobile"
+    elif "ipad" in ua_l or "tablet" in ua_l or ("android" in ua_l and "tablet" in ua_l):
+        info["device_type"] = "tablet"
+    elif "windows" in ua_l or "macintosh" in ua_l or "linux" in ua_l:
+        info["device_type"] = "desktop"
+
+    # OS
+    import re as _re
+    if "android" in ua_l:
+        info["os_name"] = "Android"
+        m = _re.search(r'Android\s([0-9._]+)', ua)
+        if m: info["os_version"] = m.group(1)
+        # Marque / modèle Android (heuristique)
+        # Exemple: "...; SAMSUNG SM-G991B Build/..." ou "...; Pixel 7 Build/..."
+        m2 = _re.search(r';\s*([A-Z][A-Z0-9\- ]+)\s+([A-Z0-9][A-Za-z0-9\-\s]+)\s+Build/', ua)
+        if m2:
+            brand = m2.group(1).strip().title()
+            model = m2.group(2).strip()
+            # Normalisations simples
+            if brand.startswith("Samsung"): brand = "Samsung"
+            if brand.startswith("Pixel"): brand = "Google"
+            info["device_brand"] = brand[:32]
+            info["device_model"] = model[:64]
+    elif "iphone" in ua_l:
+        info["os_name"] = "iOS"
+        m = _re.search(r'iPhone OS\s([0-9_]+)', ua)
+        if m: info["os_version"] = m.group(1).replace('_','.')
+        info["device_brand"] = "Apple"
+        info["device_model"] = "iPhone"
+    elif "ipad" in ua_l:
+        info["os_name"] = "iPadOS"
+        m = _re.search(r'OS\s([0-9_]+)\slike Mac OS X', ua)
+        if m: info["os_version"] = m.group(1).replace('_','.')
+        info["device_brand"] = "Apple"
+        info["device_model"] = "iPad"
+    elif "windows" in ua_l:
+        info["os_name"] = "Windows"
+        m = _re.search(r'Windows NT\s([0-9._]+)', ua)
+        if m: info["os_version"] = m.group(1)
+    elif "macintosh" in ua_l or "mac os x" in ua_l:
+        info["os_name"] = "macOS"
+        m = _re.search(r'Mac OS X\s([0-9_]+)', ua)
+        if m: info["os_version"] = m.group(1).replace('_','.')
+    elif "linux" in ua_l and "android" not in ua_l:
+        info["os_name"] = "Linux"
+
+    # Navigateur
+    # Ordre important (Edge/Edg, Chrome, Safari, Firefox, Opera)
+    m = None
+    if "edg/" in ua_l or "edge/" in ua_l:
+        info["browser_name"] = "Edge"
+        m = _re.search(r'(Edg|Edge)/([0-9.]+)', ua)
+    elif "opr/" in ua_l or "opera" in ua_l:
+        info["browser_name"] = "Opera"
+        m = _re.search(r'(OPR|Opera)/([0-9.]+)', ua)
+    elif "chrome/" in ua_l and "chromium" not in ua_l and "edg/" not in ua_l:
+        info["browser_name"] = "Chrome"
+        m = _re.search(r'Chrome/([0-9.]+)', ua)
+    elif "safari/" in ua_l and "chrome/" not in ua_l:
+        info["browser_name"] = "Safari"
+        m = _re.search(r'Version/([0-9.]+)', ua)
+    elif "firefox/" in ua_l:
+        info["browser_name"] = "Firefox"
+        m = _re.search(r'Firefox/([0-9.]+)', ua)
+    if m and not info["browser_version"]:
+        info["browser_version"] = m.group(2) if len(m.groups()) > 1 else m.group(1)
+
+    return info
+
 @app.after_request
 def track_visit(response):
     try:
         if _should_track_request():
             from models import VisitorEvent
             ua = request.headers.get('User-Agent', '') or ''
+            parsed = _parse_user_agent(ua)
+
             ev = VisitorEvent(
                 ts=datetime.now(timezone.utc),
                 session_id=request.cookies.get('da_device_id'),
@@ -203,7 +302,14 @@ def track_visit(response):
                 path=(request.full_path[:255] if request.full_path else request.path[:255]),
                 referrer=(request.referrer[:255] if request.referrer else None),
                 country=(session.get('country') or None),
-                is_bot=_is_bot(ua)
+                is_bot=_is_bot(ua),
+                device_type=parsed.get("device_type"),
+                device_brand=parsed.get("device_brand"),
+                device_model=parsed.get("device_model"),
+                os_name=parsed.get("os_name"),
+                os_version=parsed.get("os_version"),
+                browser_name=parsed.get("browser_name"),
+                browser_version=parsed.get("browser_version"),
             )
             if not ev.is_bot:
                 db.session.add(ev)
@@ -3081,6 +3187,104 @@ def api_admin_visitors_top_pages():
     out = [{"path": (r[0] or "/"), "pageviews": int(r[1] or 0)} for r in rows]
     return jsonify(out), 200
 
+# Ajoute ces 2 NOUVELLES routes API (après vos autres APIs /api/admin/suivi/visitors/*)
+
+@app.route('/api/admin/suivi/visitors/devices', methods=['GET'])
+def api_admin_visitors_devices():
+    if not session.get('admin_logged_in'):
+        return jsonify({"error": "Unauthorized"}), 401
+    from models import VisitorEvent
+    period = request.args.get('period', 'this_month')
+    s = request.args.get('start_date')
+    e = request.args.get('end_date')
+    start_date, end_date, _, _, _ = _parse_period(period, s, e)
+
+    base = VisitorEvent.query.filter(
+        VisitorEvent.ts >= start_date,
+        VisitorEvent.ts < end_date,
+        VisitorEvent.is_bot == False
+    )
+
+    # Répartition par type
+    rows_type = db.session.query(
+        VisitorEvent.device_type,
+        db.func.count(VisitorEvent.id)
+    ).filter(
+        VisitorEvent.ts >= start_date, VisitorEvent.ts < end_date, VisitorEvent.is_bot == False
+    ).group_by(VisitorEvent.device_type).all()
+
+    by_type = [{"type": (t or "unknown"), "count": int(c or 0)} for t, c in rows_type]
+
+    # Top marques
+    rows_brand = db.session.query(
+        VisitorEvent.device_brand,
+        db.func.count(VisitorEvent.id)
+    ).filter(
+        VisitorEvent.ts >= start_date, VisitorEvent.ts < end_date, VisitorEvent.is_bot == False,
+        db.func.coalesce(VisitorEvent.device_brand, '') != ''
+    ).group_by(VisitorEvent.device_brand).order_by(db.func.count(VisitorEvent.id).desc()).limit(10).all()
+    top_brands = [{"brand": (b or "Unknown"), "count": int(c or 0)} for b, c in rows_brand]
+
+    # OS et navigateurs (optionnel)
+    rows_os = db.session.query(
+        VisitorEvent.os_name, db.func.count(VisitorEvent.id)
+    ).filter(
+        VisitorEvent.ts >= start_date, VisitorEvent.ts < end_date, VisitorEvent.is_bot == False
+    ).group_by(VisitorEvent.os_name).order_by(db.func.count(VisitorEvent.id).desc()).all()
+    by_os = [{"os": (o or "Unknown"), "count": int(c or 0)} for o, c in rows_os]
+
+    rows_browser = db.session.query(
+        VisitorEvent.browser_name, db.func.count(VisitorEvent.id)
+    ).filter(
+        VisitorEvent.ts >= start_date, VisitorEvent.ts < end_date, VisitorEvent.is_bot == False
+    ).group_by(VisitorEvent.browser_name).order_by(db.func.count(VisitorEvent.id).desc()).all()
+    by_browser = [{"browser": (b or "Unknown"), "count": int(c or 0)} for b, c in rows_browser]
+
+    return jsonify({
+        "by_type": by_type,
+        "top_brands": top_brands,
+        "by_os": by_os,
+        "by_browser": by_browser
+    }), 200
+
+
+@app.route('/api/admin/suivi/visitors/live', methods=['GET'])
+def api_admin_visitors_live():
+    if not session.get('admin_logged_in'):
+        return jsonify({"error": "Unauthorized"}), 401
+    from models import VisitorEvent
+    now = datetime.now(timezone.utc)
+    since = now - timedelta(minutes=5)
+
+    rows = VisitorEvent.query.filter(
+        VisitorEvent.ts >= since,
+        VisitorEvent.is_bot == False
+    ).order_by(VisitorEvent.ts.desc()).limit(40).all()
+
+    # Distinct par session si souhaité (ici, on retourne les événements récents)
+    live = []
+    for ev in rows:
+        live.append({
+            "ts": ev.ts.isoformat(),
+            "path": ev.path or "/",
+            "device_type": ev.device_type or "unknown",
+            "device_brand": ev.device_brand,
+            "device_model": ev.device_model,
+            "os": ev.os_name,
+            "browser": ev.browser_name,
+            "country": ev.country
+        })
+
+    active_sessions = db.session.query(db.func.count(db.func.distinct(VisitorEvent.session_id))).filter(
+        VisitorEvent.ts >= since, VisitorEvent.is_bot == False
+    ).scalar() or 0
+
+    return jsonify({
+        "active_5m": int(active_sessions),
+        "events": live
+    }), 200
+    
+
 @cache.cached(timeout=60)
 def cached_admin_settings_roles_page():
     suivi_tile = Tile.query.filter((Tile.endpoint == 'admin_suivi') | (Tile.name == 'Suivi')).first()
@@ -3591,7 +3795,8 @@ def debug_ip():
         
 
 
-# --- Création des index en prod si manquants (PostgreSQL) ---
+# Remplace la fonction ensure_admin_indexes par cette version (ajout des index visitor_event)
+
 def ensure_admin_indexes():
     try:
         if db.engine.dialect.name in ('postgresql', 'postgres'):
@@ -3600,10 +3805,49 @@ def ensure_admin_indexes():
                 conn.execute(text("CREATE INDEX IF NOT EXISTS ix_ab_cart_created_at ON abandoned_cart (created_at)"))
                 conn.execute(text("CREATE INDEX IF NOT EXISTS ix_ab_cart_status_created ON abandoned_cart (status, created_at)"))
                 conn.execute(text("CREATE INDEX IF NOT EXISTS ix_email_sendlog_sent_at ON email_send_log (sent_at)"))
-                conn.execute(text('CREATE INDEX IF NOT EXISTS ix_user_role_id ON \"user\" (role_id)'))
+                conn.execute(text('CREATE INDEX IF NOT EXISTS ix_user_role_id ON "user" (role_id)'))
                 conn.execute(text("CREATE INDEX IF NOT EXISTS ix_role_tiles_role ON role_tiles (role_id)"))
+                # Nouveaux index analytics (si table déjà là)
+                conn.execute(text("CREATE INDEX IF NOT EXISTS ix_visit_ts ON visitor_event (ts)"))
+                conn.execute(text("CREATE INDEX IF NOT EXISTS ix_visit_path ON visitor_event (path)"))
+                conn.execute(text("CREATE INDEX IF NOT EXISTS ix_visit_session ON visitor_event (session_id)"))
+                conn.execute(text("CREATE INDEX IF NOT EXISTS ix_visit_device_type ON visitor_event (device_type)"))
+                conn.execute(text("CREATE INDEX IF NOT EXISTS ix_visit_is_bot ON visitor_event (is_bot)"))
     except Exception as e:
         logging.warning(f"ensure_admin_indexes: {e}")
+
+# Ajoute cette fonction quelque part avec les autres ensure_* (juste au-dessus de ensure_product_new_columns)
+
+def ensure_visitor_event_columns():
+    """
+    Ajoute à chaud les colonnes device/os/browser si la table visitor_event existe déjà.
+    """
+    try:
+        dialect = db.engine.dialect.name
+        cols = [
+            ("device_type", "VARCHAR(16)"),
+            ("device_brand", "VARCHAR(32)"),
+            ("device_model", "VARCHAR(64)"),
+            ("os_name", "VARCHAR(32)"),
+            ("os_version", "VARCHAR(32)"),
+            ("browser_name", "VARCHAR(32)"),
+            ("browser_version", "VARCHAR(32)"),
+        ]
+        with db.engine.connect() as conn:
+            for name, typ in cols:
+                if dialect in ('postgresql','postgres'):
+                    conn.execute(text(f'ALTER TABLE visitor_event ADD COLUMN IF NOT EXISTS {name} {typ}'))
+                else:
+                    try:
+                        conn.execute(text(f'ALTER TABLE visitor_event ADD COLUMN {name} {typ}'))
+                    except Exception:
+                        pass
+            # Index utiles
+            if dialect in ('postgresql','postgres'):
+                conn.execute(text("CREATE INDEX IF NOT EXISTS ix_visit_device_type ON visitor_event (device_type)"))
+                conn.execute(text("CREATE INDEX IF NOT EXISTS ix_visit_is_bot ON visitor_event (is_bot)"))
+    except Exception as e:
+        logging.warning(f"ensure_visitor_event_columns: {e}")
 
 def ensure_product_new_columns():
     try:
