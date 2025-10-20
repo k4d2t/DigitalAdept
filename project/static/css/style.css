@@ -3417,3 +3417,39 @@ display: none;
 [data-theme="dark"] .comments-section .comment .comment-content { color: #e3f6ff !important; }
 [data-theme="dark"] .comments-section .comment .comment-date { color: #4fc3f7 !important; }
 [data-theme="dark"] .comments-section .comment .comment-rating { color: #bde9fa !important; }
+
+/* Sections ajoutées (vidéo + listes) */
+.product-video {
+  max-width: 980px; margin: 1.2em auto; padding: 0 1em; text-align: center;
+}
+.product-video .video-wrapper {
+  position: relative; width: 100%; padding-top: 56.25%; border-radius: 10px; overflow: hidden; box-shadow: 0 6px 24px #0003;
+}
+.product-video iframe {
+  position: absolute; inset: 0; width: 100%; height: 100%; border: 0; background: #000;
+}
+.product-video .video-caption { color: #cfeaff; margin-top: .5em; }
+
+.product-sections {
+  max-width: 980px; margin: 1.2em auto; padding: 0 1em; display: grid; gap: 1.1em;
+}
+.product-section h2 {
+  margin: 0 0 .35em 0; color: #fff; text-align: center; text-shadow: var(--neon);
+  font-size: clamp(1.25rem, 2.6vw, 1.6rem);
+}
+.product-list {
+  margin: 0; padding: 0; list-style: none; display: grid; gap: .5em;
+}
+.product-list li {
+  padding: .6em .8em;
+  background: rgba(30,34,45,.6);
+  border: 1px solid rgba(79,216,255,.2);
+  border-radius: .7em;
+  color: #e6f2ff;
+}
+
+/* Titre CTA final (optionnel) */
+.price-cta .cta-title {
+  margin: 0 0 .35em 0; color: #fff; text-shadow: var(--neon);
+  font-size: clamp(1.2rem, 2.4vw, 1.5rem); text-align: center;
+}
