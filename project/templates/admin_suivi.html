@@ -177,7 +177,7 @@ document.addEventListener('DOMContentLoaded', function() {
             params.set('end_date', endInput.value);
         }
         try {
-            const res = await fetch(`/api/admin/suivi/metrics?${params.toString()}`, { credentials: 'same-origin' });
+            const res = await fetch(`/api/admin/suivi/metrics?${params.toString()}`, { credentials: 'same-origin', cache: 'no-store' });
             if (!res.ok) return;
             const data = await res.json();
             document.getElementById('kpi-total').textContent = `${fmt.format(Math.round(data.total_revenue))} XOF`;
@@ -212,7 +212,7 @@ document.addEventListener('DOMContentLoaded', function() {
             params.set('end_date', endInput.value);
         }
         try {
-            const res = await fetch(`/api/admin/suivi/visitors/summary?${params.toString()}`, { credentials:'same-origin' });
+            const res = await fetch(`/api/admin/suivi/visitors/summary?${params.toString()}`, { credentials:'same-origin', cache: 'no-store' });
             if (res.ok) {
                 const s = await res.json();
                 document.getElementById('kpi-pageviews').textContent = fmt.format(s.pageviews||0);
@@ -222,7 +222,7 @@ document.addEventListener('DOMContentLoaded', function() {
         } catch(e){}
 
         try {
-            const res2 = await fetch(`/api/admin/suivi/visitors/timeseries?${params.toString()}`, { credentials:'same-origin' });
+            const res2 = await fetch(`/api/admin/suivi/visitors/timeseries?${params.toString()}`, { credentials:'same-origin', cache: 'no-store' });
             if (res2.ok) {
                 const t = await res2.json();
                 visitorsChart.data.labels = t.labels || [];
@@ -242,7 +242,7 @@ document.addEventListener('DOMContentLoaded', function() {
             params.set('end_date', endInput.value);
         }
         try {
-            const res = await fetch(`/api/admin/suivi/visitors/top-pages?${params.toString()}`, { credentials:'same-origin' });
+            const res = await fetch(`/api/admin/suivi/visitors/top-pages?${params.toString()}`, { credentials:'same-origin', cache:'no-store' });
             const list = document.getElementById('topPagesList');
             list.innerHTML = '';
             if (res.ok) {
@@ -261,7 +261,6 @@ document.addEventListener('DOMContentLoaded', function() {
             const res = await fetch('/api/admin/suivi/visitors/live', { credentials: 'same-origin', cache: 'no-store' });
             if (!res.ok) return;
             const data = await res.json();
-            // KPI actif (rafraîchi en “live” aussi)
             if (typeof data.active_5m === 'number') {
                 document.getElementById('kpi-active').textContent = fmt.format(data.active_5m || 0);
             }
@@ -293,7 +292,7 @@ document.addEventListener('DOMContentLoaded', function() {
             params.set('end_date', endInput.value);
         }
         try {
-            const res = await fetch(`/api/admin/suivi/visitors/devices?${params.toString()}`, { credentials:'same-origin' });
+            const res = await fetch(`/api/admin/suivi/visitors/devices?${params.toString()}`, { credentials:'same-origin', cache:'no-store' });
             if (!res.ok) return;
             const data = await res.json();
             const typeList = document.getElementById('devicesByType');
