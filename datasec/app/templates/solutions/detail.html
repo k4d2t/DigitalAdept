@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="py-16 bg-white">
+    <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="max-w-4xl mx-auto">
+            {# Breadcrumb #}
+            <nav class="mb-8 text-sm">
+                <a href="{{ url_for('main.index') }}" class="text-primary-600 hover:text-primary-700">Accueil</a>
+                <span class="mx-2 text-gray-400">/</span>
+                <a href="{{ url_for('solutions.index') }}" class="text-primary-600 hover:text-primary-700">Solutions</a>
+                <span class="mx-2 text-gray-400">/</span>
+                <span class="text-gray-600">{{ solution.title }}</span>
+            </nav>
+            
+            <h1 class="text-4xl md:text-5xl font-bold text-gray-900 mb-4">{{ solution.title }}</h1>
+            <p class="text-xl text-gray-600 mb-8">{{ solution.short_description }}</p>
+            
+            <div class="prose prose-lg max-w-none">
+                <p class="text-gray-700 mb-8">{{ solution.description }}</p>
+                
+                <div class="grid md:grid-cols-2 gap-8 mb-8">
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-900 mb-4">Fonctionnalités</h2>
+                        <ul class="space-y-3">
+                            {% for feature in solution.features %}
+                            <li class="flex items-start">
+                                <svg class="w-6 h-6 text-primary-600 mr-3 mt-1 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                                </svg>
+                                <span class="text-gray-700">{{ feature }}</span>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-900 mb-4">Bénéfices</h2>
+                        <ul class="space-y-3">
+                            {% for benefit in solution.benefits %}
+                            <li class="flex items-start">
+                                <svg class="w-6 h-6 text-accent-600 mr-3 mt-1 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                                </svg>
+                                <span class="text-gray-700">{{ benefit }}</span>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+                
+                {# CTA Box #}
+                <div class="bg-gradient-to-r from-primary-900 to-primary-700 text-white p-8 rounded-lg mt-12">
+                    <h3 class="text-2xl font-bold mb-4">Intéressé par cette solution ?</h3>
+                    <p class="text-blue-100 mb-6">
+                        Demandez une démonstration personnalisée de notre solution et découvrez comment elle peut protéger votre entreprise.
+                    </p>
+                    <a href="{{ url_for('contact.index') }}" class="bg-white text-primary-900 px-6 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors inline-block">
+                        Demander une démonstration
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

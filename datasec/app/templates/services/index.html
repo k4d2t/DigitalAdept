@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="py-16 bg-white">
+    <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center mb-12">
+            <h1 class="text-4xl md:text-5xl font-bold text-gray-900 mb-4">Nos Services</h1>
+            <p class="text-xl text-gray-600">Solutions complètes de cybersécurité pour votre entreprise</p>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {% for slug, service in services.items() %}
+            <article class="bg-gray-50 p-6 rounded-lg hover:shadow-lg transition-shadow">
+                <h2 class="text-2xl font-bold text-gray-900 mb-3">{{ service.title }}</h2>
+                <p class="text-gray-600 mb-4">{{ service.short_description }}</p>
+                <ul class="space-y-2 mb-6">
+                    {% for feature in service.features[:3] %}
+                    <li class="flex items-start text-gray-700">
+                        <svg class="w-5 h-5 text-primary-600 mr-2 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                        </svg>
+                        {{ feature }}
+                    </li>
+                    {% endfor %}
+                </ul>
+                <a href="{{ url_for('services.detail', slug=slug) }}" class="text-primary-600 font-semibold hover:text-primary-700">
+                    En savoir plus →
+                </a>
+            </article>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+{# CTA Section #}
+<section class="py-16 bg-primary-900 text-white">
+    <div class="container mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        <h2 class="text-3xl md:text-4xl font-bold mb-4">Besoin d'un service personnalisé ?</h2>
+        <p class="text-xl mb-8 text-blue-100">Contactez-nous pour discuter de vos besoins spécifiques</p>
+        <a href="{{ url_for('contact.index') }}" class="bg-white text-primary-900 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors inline-block">
+            Nous contacter
+        </a>
+    </div>
+</section>
+{% endblock %}

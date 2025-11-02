@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="py-16 bg-white min-h-screen flex items-center">
+    <div class="container mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        <h1 class="text-9xl font-bold text-yellow-600 mb-4">403</h1>
+        <h2 class="text-3xl font-bold text-gray-900 mb-4">Accès refusé</h2>
+        <p class="text-xl text-gray-600 mb-8">
+            Vous n'avez pas l'autorisation d'accéder à cette page.
+        </p>
+        <a href="{{ url_for('main.index') }}" class="bg-primary-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-primary-700 transition-colors inline-block">
+            Retour à l'accueil
+        </a>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_head %}
+<title>403 - Accès refusé | DataSec</title>
+<meta name="robots" content="noindex, follow">
+{% endblock %}

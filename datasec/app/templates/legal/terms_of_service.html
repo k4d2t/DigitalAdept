@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="py-16 bg-white">
+    <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="max-w-4xl mx-auto prose prose-lg">
+            <h1 class="text-4xl font-bold text-gray-900 mb-8">Conditions Générales de Vente</h1>
+            
+            <h2>Article 1 - Objet</h2>
+            <p>
+                Les présentes conditions générales de vente (CGV) régissent la vente de services de cybersécurité 
+                proposés par DataSec à ses clients professionnels.
+            </p>
+            
+            <h2>Article 2 - Services proposés</h2>
+            <p>
+                DataSec propose les services suivants :
+            </p>
+            <ul>
+                <li>Audits de sécurité</li>
+                <li>Tests d'intrusion (pentest)</li>
+                <li>Formation en cybersécurité</li>
+                <li>SOC (Security Operations Center)</li>
+                <li>Mise en conformité RGPD et ISO</li>
+                <li>Réponse aux incidents</li>
+            </ul>
+            
+            <h2>Article 3 - Tarifs</h2>
+            <p>
+                Les tarifs sont indiqués en euros HT. La TVA applicable sera ajoutée au montant HT. 
+                Les prix peuvent être révisés à tout moment mais sont fermes pour les commandes en cours.
+            </p>
+            
+            <h2>Article 4 - Commande</h2>
+            <p>
+                Toute commande implique l'acceptation sans réserve des présentes CGV. 
+                Une proposition commerciale détaillée sera fournie avant toute prestation.
+            </p>
+            
+            <h2>Article 5 - Paiement</h2>
+            <p>
+                Les conditions de paiement sont précisées dans chaque proposition commerciale. 
+                En général : 30% à la commande, 40% à mi-parcours, 30% à la livraison.
+            </p>
+            
+            <h2>Article 6 - Délais de réalisation</h2>
+            <p>
+                Les délais de réalisation sont indiqués à titre indicatif et peuvent être ajustés 
+                selon la complexité du projet et la disponibilité des ressources.
+            </p>
+            
+            <h2>Article 7 - Confidentialité</h2>
+            <p>
+                DataSec s'engage à maintenir la confidentialité de toutes les informations 
+                communiquées dans le cadre de la prestation. Un accord de confidentialité (NDA) 
+                peut être signé sur demande.
+            </p>
+            
+            <h2>Article 8 - Responsabilité</h2>
+            <p>
+                DataSec s'engage à mettre en œuvre tous les moyens nécessaires pour la bonne 
+                exécution des services. La responsabilité de DataSec est limitée au montant 
+                de la prestation.
+            </p>
+            
+            <h2>Article 9 - Propriété intellectuelle</h2>
+            <p>
+                Les livrables fournis restent la propriété de DataSec jusqu'au paiement intégral. 
+                Le client dispose d'une licence d'utilisation non exclusive.
+            </p>
+            
+            <h2>Article 10 - Résiliation</h2>
+            <p>
+                En cas de manquement grave aux obligations, le contrat peut être résilié de plein droit 
+                après mise en demeure restée sans effet pendant 15 jours.
+            </p>
+            
+            <h2>Article 11 - Litiges</h2>
+            <p>
+                En cas de litige, les parties s'efforceront de trouver une solution amiable. 
+                À défaut, le tribunal de commerce de Paris sera seul compétent.
+            </p>
+            
+            <h2>Article 12 - Droit applicable</h2>
+            <p>
+                Les présentes CGV sont soumises au droit français.
+            </p>
+            
+            <p class="text-sm text-gray-500 mt-8">
+                Dernière mise à jour : {{ current_year }}
+            </p>
+        </div>
+    </div>
+</section>
+{% endblock %}

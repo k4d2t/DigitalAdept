@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="{{ seo.lang|default('fr') }}" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    
+    {# SEO Meta Tags #}
+    <title>{{ seo.title|default('DataSec - Expert en Cybersécurité') }}</title>
+    <meta name="description" content="{{ seo.description|default('DataSec, expert en cybersécurité et solutions IA') }}">
+    <meta name="keywords" content="{{ seo.keywords|default('cybersécurité, sécurité informatique, IA') }}">
+    <meta name="author" content="DataSec">
+    <meta name="robots" content="{{ seo.robots|default('index, follow') }}">
+    
+    {# Canonical URL #}
+    <link rel="canonical" href="{{ seo.canonical|default(request.url) }}">
+    
+    {# Open Graph Meta Tags #}
+    <meta property="og:type" content="{{ seo.og_type|default('website') }}">
+    <meta property="og:title" content="{{ seo.title|default('DataSec') }}">
+    <meta property="og:description" content="{{ seo.description|default('Expert en cybersécurité') }}">
+    <meta property="og:url" content="{{ seo.canonical|default(request.url) }}">
+    <meta property="og:site_name" content="DataSec">
+    {% if seo.og_image %}
+    <meta property="og:image" content="{{ seo.og_image }}">
+    <meta property="og:image:alt" content="{{ seo.title|default('DataSec') }}">
+    {% endif %}
+    <meta property="og:locale" content="{{ seo.og_locale|default('fr_FR') }}">
+    
+    {# Twitter Card Meta Tags #}
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{{ seo.title|default('DataSec') }}">
+    <meta name="twitter:description" content="{{ seo.description|default('Expert en cybersécurité') }}">
+    {% if seo.og_image %}
+    <meta name="twitter:image" content="{{ seo.og_image }}">
+    {% endif %}
+    
+    {# Hreflang Tags #}
+    <link rel="alternate" hreflang="fr" href="{{ request.url }}">
+    <link rel="alternate" hreflang="en" href="{{ request.url }}">
+    <link rel="alternate" hreflang="x-default" href="{{ request.url }}">
+    
+    {# Theme Color #}
+    <meta name="theme-color" content="#1e3a8a">
+    
+    {# Favicon #}
+    <link rel="icon" type="image/x-icon" href="{{ url_for('static', filename='favicon.ico') }}">
+    
+    {# TailwindCSS CDN - In production, use compiled CSS #}
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary': {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            200: '#bfdbfe',
+                            300: '#93c5fd',
+                            400: '#60a5fa',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                            800: '#1e40af',
+                            900: '#1e3a8a',
+                        },
+                        'accent': {
+                            500: '#8b5cf6',
+                            600: '#7c3aed',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    
+    {# Alpine.js for interactivity #}
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    
+    {# Custom CSS #}
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="bg-gray-50 text-gray-900 antialiased" x-data="{ mobileMenuOpen: false }">
+    {# Header #}
+    <header class="bg-white shadow-sm sticky top-0 z-50">
+        <nav class="container mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                {# Logo #}
+                <div class="flex-shrink-0">
+                    <a href="{{ url_for('main.index') }}" class="flex items-center">
+                        <span class="text-2xl font-bold text-primary-900">DataSec</span>
+                    </a>
+                </div>
+                
+                {# Desktop Navigation #}
+                <div class="hidden md:flex md:items-center md:space-x-8">
+                    <a href="{{ url_for('main.index') }}" class="text-gray-700 hover:text-primary-600 transition-colors">Accueil</a>
+                    <a href="{{ url_for('main.about') }}" class="text-gray-700 hover:text-primary-600 transition-colors">À propos</a>
+                    <a href="{{ url_for('services.index') }}" class="text-gray-700 hover:text-primary-600 transition-colors">Services</a>
+                    <a href="{{ url_for('solutions.index') }}" class="text-gray-700 hover:text-primary-600 transition-colors">Solutions</a>
+                    <a href="{{ url_for('main.references') }}" class="text-gray-700 hover:text-primary-600 transition-colors">Références</a>
+                    <a href="{{ url_for('contact.index') }}" class="bg-primary-600 text-white px-4 py-2 rounded-lg hover:bg-primary-700 transition-colors">Contact</a>
+                </div>
+                
+                {# Mobile menu button #}
+                <div class="md:hidden">
+                    <button @click="mobileMenuOpen = !mobileMenuOpen" type="button" class="text-gray-700 hover:text-primary-600">
+                        <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path x-show="!mobileMenuOpen" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                            <path x-show="mobileMenuOpen" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            
+            {# Mobile Navigation #}
+            <div x-show="mobileMenuOpen" 
+                 x-transition:enter="transition ease-out duration-200"
+                 x-transition:enter-start="opacity-0 transform scale-95"
+                 x-transition:enter-end="opacity-100 transform scale-100"
+                 x-transition:leave="transition ease-in duration-150"
+                 x-transition:leave-start="opacity-100 transform scale-100"
+                 x-transition:leave-end="opacity-0 transform scale-95"
+                 class="md:hidden py-4">
+                <a href="{{ url_for('main.index') }}" class="block py-2 text-gray-700 hover:text-primary-600">Accueil</a>
+                <a href="{{ url_for('main.about') }}" class="block py-2 text-gray-700 hover:text-primary-600">À propos</a>
+                <a href="{{ url_for('services.index') }}" class="block py-2 text-gray-700 hover:text-primary-600">Services</a>
+                <a href="{{ url_for('solutions.index') }}" class="block py-2 text-gray-700 hover:text-primary-600">Solutions</a>
+                <a href="{{ url_for('main.references') }}" class="block py-2 text-gray-700 hover:text-primary-600">Références</a>
+                <a href="{{ url_for('contact.index') }}" class="block py-2 text-primary-600 font-semibold">Contact</a>
+            </div>
+        </nav>
+    </header>
+
+    {# Flash Messages #}
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <div class="container mx-auto px-4 sm:px-6 lg:px-8 mt-4">
+                {% for category, message in messages %}
+                    <div class="p-4 rounded-lg {% if category == 'error' %}bg-red-100 text-red-700{% elif category == 'success' %}bg-green-100 text-green-700{% else %}bg-blue-100 text-blue-700{% endif %}" role="alert">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+    {% endwith %}
+
+    {# Main Content #}
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+
+    {# Footer #}
+    <footer class="bg-gray-900 text-white mt-16">
+        <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-12">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-8">
+                {# About #}
+                <div>
+                    <h3 class="text-xl font-bold mb-4">DataSec</h3>
+                    <p class="text-gray-400">Expert en cybersécurité et solutions IA pour protéger votre entreprise.</p>
+                </div>
+                
+                {# Quick Links #}
+                <div>
+                    <h4 class="text-lg font-semibold mb-4">Liens rapides</h4>
+                    <ul class="space-y-2">
+                        <li><a href="{{ url_for('main.index') }}" class="text-gray-400 hover:text-white transition-colors">Accueil</a></li>
+                        <li><a href="{{ url_for('main.about') }}" class="text-gray-400 hover:text-white transition-colors">À propos</a></li>
+                        <li><a href="{{ url_for('services.index') }}" class="text-gray-400 hover:text-white transition-colors">Services</a></li>
+                        <li><a href="{{ url_for('solutions.index') }}" class="text-gray-400 hover:text-white transition-colors">Solutions</a></li>
+                    </ul>
+                </div>
+                
+                {# Services #}
+                <div>
+                    <h4 class="text-lg font-semibold mb-4">Services</h4>
+                    <ul class="space-y-2">
+                        <li><a href="{{ url_for('services.detail', slug='audit-securite') }}" class="text-gray-400 hover:text-white transition-colors">Audit de sécurité</a></li>
+                        <li><a href="{{ url_for('services.detail', slug='pentest') }}" class="text-gray-400 hover:text-white transition-colors">Pentest</a></li>
+                        <li><a href="{{ url_for('services.detail', slug='formation') }}" class="text-gray-400 hover:text-white transition-colors">Formation</a></li>
+                        <li><a href="{{ url_for('services.detail', slug='soc') }}" class="text-gray-400 hover:text-white transition-colors">SOC</a></li>
+                    </ul>
+                </div>
+                
+                {# Contact #}
+                <div>
+                    <h4 class="text-lg font-semibold mb-4">Contact</h4>
+                    <ul class="space-y-2 text-gray-400">
+                        <li>Email: contact@datasec.fr</li>
+                        <li>Tél: +33 1 23 45 67 89</li>
+                        <li><a href="{{ url_for('contact.index') }}" class="text-primary-400 hover:text-primary-300 transition-colors">Formulaire de contact</a></li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="border-t border-gray-800 mt-8 pt-8 flex flex-col md:flex-row justify-between items-center">
+                <p class="text-gray-400 text-sm">© {{ current_year }} DataSec. Tous droits réservés.</p>
+                <div class="flex space-x-4 mt-4 md:mt-0">
+                    <a href="{{ url_for('legal.legal_notice') }}" class="text-gray-400 hover:text-white text-sm transition-colors">Mentions légales</a>
+                    <a href="{{ url_for('legal.privacy_policy') }}" class="text-gray-400 hover:text-white text-sm transition-colors">Confidentialité</a>
+                    <a href="{{ url_for('legal.terms_of_service') }}" class="text-gray-400 hover:text-white text-sm transition-colors">CGV</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>

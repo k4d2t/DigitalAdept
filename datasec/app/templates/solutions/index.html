@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="py-16 bg-white">
+    <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center mb-12">
+            <h1 class="text-4xl md:text-5xl font-bold text-gray-900 mb-4">Nos Solutions</h1>
+            <p class="text-xl text-gray-600">Technologies avancées pour une sécurité optimale</p>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {% for slug, solution in solutions.items() %}
+            <article class="bg-gradient-to-br from-primary-50 to-white p-8 rounded-lg hover:shadow-lg transition-shadow border border-primary-100">
+                <h2 class="text-2xl font-bold text-gray-900 mb-3">{{ solution.title }}</h2>
+                <p class="text-gray-600 mb-6">{{ solution.short_description }}</p>
+                
+                <div class="mb-6">
+                    <h3 class="font-semibold text-gray-900 mb-2">Fonctionnalités:</h3>
+                    <ul class="space-y-2">
+                        {% for feature in solution.features[:3] %}
+                        <li class="flex items-start text-gray-700 text-sm">
+                            <svg class="w-4 h-4 text-primary-600 mr-2 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+                            </svg>
+                            {{ feature }}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                
+                <a href="{{ url_for('solutions.detail', slug=slug) }}" class="text-primary-600 font-semibold hover:text-primary-700">
+                    Découvrir la solution →
+                </a>
+            </article>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+{# Why Solutions #}
+<section class="py-16 bg-gray-50">
+    <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="max-w-3xl mx-auto text-center">
+            <h2 class="text-3xl font-bold text-gray-900 mb-6">Pourquoi choisir nos solutions ?</h2>
+            <p class="text-lg text-gray-600 mb-8">
+                Nos solutions combinent expertise humaine et technologies de pointe pour offrir une protection maximale contre les cybermenaces.
+            </p>
+            <a href="{{ url_for('contact.index') }}" class="bg-primary-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-primary-700 transition-colors inline-block">
+                Demander une démonstration
+            </a>
+        </div>
+    </div>
+</section>
+{% endblock %}

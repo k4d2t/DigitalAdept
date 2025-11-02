@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="py-16 bg-white">
+    <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="max-w-4xl mx-auto prose prose-lg">
+            <h1 class="text-4xl font-bold text-gray-900 mb-8">Politique de Confidentialité</h1>
+            
+            <p class="text-xl text-gray-600">
+                Chez DataSec, nous prenons la protection de vos données personnelles très au sérieux.
+            </p>
+            
+            <h2>Collecte des données</h2>
+            <p>
+                Nous collectons les données suivantes lorsque vous utilisez notre site :
+            </p>
+            <ul>
+                <li>Informations de contact (nom, email, téléphone, entreprise)</li>
+                <li>Messages envoyés via le formulaire de contact</li>
+                <li>Données de navigation (pages visitées, durée de visite)</li>
+                <li>Adresse IP et informations techniques (navigateur, système d'exploitation)</li>
+            </ul>
+            
+            <h2>Utilisation des données</h2>
+            <p>
+                Vos données sont utilisées uniquement pour :
+            </p>
+            <ul>
+                <li>Répondre à vos demandes de contact</li>
+                <li>Améliorer nos services</li>
+                <li>Analyser l'utilisation du site</li>
+                <li>Respecter nos obligations légales</li>
+            </ul>
+            
+            <h2>Base légale</h2>
+            <p>
+                Le traitement de vos données repose sur :
+            </p>
+            <ul>
+                <li>Votre consentement (formulaire de contact)</li>
+                <li>L'exécution d'un contrat (services commandés)</li>
+                <li>Notre intérêt légitime (analyse du site, sécurité)</li>
+            </ul>
+            
+            <h2>Durée de conservation</h2>
+            <p>
+                Nous conservons vos données :
+            </p>
+            <ul>
+                <li>Messages de contact : 3 ans</li>
+                <li>Données de navigation : 13 mois</li>
+                <li>Données contractuelles : durée légale applicable</li>
+            </ul>
+            
+            <h2>Vos droits</h2>
+            <p>
+                Conformément au RGPD, vous disposez des droits suivants :
+            </p>
+            <ul>
+                <li>Droit d'accès à vos données</li>
+                <li>Droit de rectification</li>
+                <li>Droit à l'effacement</li>
+                <li>Droit à la limitation du traitement</li>
+                <li>Droit à la portabilité</li>
+                <li>Droit d'opposition</li>
+                <li>Droit de retirer votre consentement</li>
+            </ul>
+            
+            <p>
+                Pour exercer vos droits, contactez-nous : <a href="mailto:contact@datasec.fr">contact@datasec.fr</a>
+            </p>
+            
+            <h2>Cookies</h2>
+            <p>
+                Nous utilisons des cookies essentiels pour le fonctionnement du site. 
+                Aucun cookie publicitaire ou de tracking tiers n'est utilisé.
+            </p>
+            
+            <h2>Sécurité</h2>
+            <p>
+                Nous mettons en œuvre des mesures techniques et organisationnelles appropriées pour protéger vos données :
+            </p>
+            <ul>
+                <li>Chiffrement HTTPS</li>
+                <li>Stockage sécurisé</li>
+                <li>Accès restreint</li>
+                <li>Sauvegardes régulières</li>
+            </ul>
+            
+            <h2>Contact DPO</h2>
+            <p>
+                Pour toute question concernant vos données :<br>
+                Email : dpo@datasec.fr<br>
+                Adresse : DataSec, 123 Rue de la Cybersécurité, 75001 Paris
+            </p>
+            
+            <h2>Réclamation</h2>
+            <p>
+                Vous avez le droit d'introduire une réclamation auprès de la CNIL :<br>
+                <a href="https://www.cnil.fr" target="_blank" rel="noopener">www.cnil.fr</a>
+            </p>
+            
+            <p class="text-sm text-gray-500 mt-8">
+                Dernière mise à jour : {{ current_year }}
+            </p>
+        </div>
+    </div>
+</section>
+{% endblock %}

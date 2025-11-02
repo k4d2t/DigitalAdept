@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="py-16 bg-white">
+    <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="max-w-4xl mx-auto prose prose-lg">
+            <h1 class="text-4xl font-bold text-gray-900 mb-8">Mentions Légales</h1>
+            
+            <h2>Éditeur du site</h2>
+            <p>
+                <strong>DataSec</strong><br>
+                Société par actions simplifiée (SAS)<br>
+                Capital social : 50 000 €<br>
+                SIRET : 123 456 789 00012<br>
+                RCS Paris B 123 456 789<br>
+                Siège social : 123 Rue de la Cybersécurité, 75001 Paris, France
+            </p>
+            
+            <h2>Directeur de la publication</h2>
+            <p>
+                M. John Doe<br>
+                Président de DataSec
+            </p>
+            
+            <h2>Hébergement</h2>
+            <p>
+                Ce site est hébergé par :<br>
+                <strong>Railway Corp.</strong><br>
+                3333 20th Street, San Francisco, CA 94110, USA
+            </p>
+            
+            <h2>Contact</h2>
+            <p>
+                Email : contact@datasec.fr<br>
+                Téléphone : +33 1 23 45 67 89
+            </p>
+            
+            <h2>Propriété intellectuelle</h2>
+            <p>
+                L'ensemble du contenu de ce site (textes, images, vidéos, etc.) est protégé par le droit d'auteur. 
+                Toute reproduction, même partielle, est interdite sans autorisation préalable.
+            </p>
+            
+            <h2>Données personnelles</h2>
+            <p>
+                Conformément à la loi « Informatique et Libertés » et au RGPD, vous disposez d'un droit d'accès, 
+                de rectification et de suppression des données vous concernant. Pour exercer ce droit, 
+                contactez-nous à : contact@datasec.fr
+            </p>
+            
+            <p class="text-sm text-gray-500 mt-8">
+                Dernière mise à jour : {{ current_year }}
+            </p>
+        </div>
+    </div>
+</section>
+{% endblock %}
