@@ -72,7 +72,15 @@ def verify_hcaptcha(response_token):
     
     if not secret_key:
         current_app.logger.warning('hCaptcha secret key not configured')
+        # In production, you should make CAPTCHA mandatory
+        # For development/MVP without CAPTCHA configured, we allow it
+        # TODO: Make CAPTCHA mandatory in production
         return True  # Skip verification if not configured
+    
+    # Check if response_token exists and is not empty
+    if not response_token:
+        current_app.logger.warning('hCaptcha response token is empty')
+        return False
     
     try:
         verify_response = requests.post(

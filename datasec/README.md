@@ -415,3 +415,69 @@ Pour toute question ou assistance :
 - [ ] Portfolio projets détaillés
 - [ ] Système de devis en ligne
 - [ ] Chatbot IA pour support
+
+## ⚠️ Production Optimizations (Before Going Live)
+
+### Required for Production
+
+1. **Environment Variables**
+   - Set strong `SECRET_KEY` (use `python -c "import secrets; print(secrets.token_hex(32))"`)
+   - Configure `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`
+   - Configure `HCAPTCHA_SITE_KEY` and `HCAPTCHA_SECRET_KEY`
+   - Set `FLASK_ENV=production`
+
+2. **Database**
+   - Use PostgreSQL instead of SQLite
+   - Configure regular backups
+   - Set up connection pooling limits
+
+3. **Security**
+   - Enable rate limiting with Redis backend
+   - Make hCaptcha mandatory (currently optional for MVP)
+   - Review and tighten CSP policy for your specific needs
+   - Add integrity checks (SRI) to CDN resources
+
+4. **Performance**
+   - Build TailwindCSS for production (removes unused CSS)
+   - Use Redis for caching instead of filesystem
+   - Optimize images and add lazy loading
+   - Consider CDN for static assets
+
+5. **Monitoring**
+   - Set up error tracking (Sentry, etc.)
+   - Configure uptime monitoring
+   - Set up log aggregation
+   - Monitor Core Web Vitals
+
+### Recommended Optimizations
+
+1. **TailwindCSS Production Build**
+   ```bash
+   # Install Tailwind CLI
+   npm install -D tailwindcss
+   npx tailwindcss -i ./app/static/css/style.css -o ./app/static/css/output.css --minify
+   ```
+   Then update templates to use `output.css` instead of CDN.
+
+2. **Alpine.js with Build Step**
+   - Download Alpine.js locally or use npm
+   - Add integrity attribute to script tag
+   - Consider using Alpine.js build mode
+
+3. **Security Headers Enhancement**
+   ```python
+   # In production, tighten CSP by removing 'unsafe-inline'
+   # Use nonce-based CSP or external scripts only
+   ```
+
+4. **Rate Limiting with Redis**
+   ```python
+   # In .env
+   REDIS_URL=redis://your-redis-url
+   ```
+
+5. **Content Optimization**
+   - Compress and optimize images
+   - Use WebP format with fallbacks
+   - Implement proper lazy loading
+   - Minify CSS and JavaScript
