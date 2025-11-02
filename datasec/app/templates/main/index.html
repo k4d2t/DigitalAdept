@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+
+{% block content %}
+{# Hero Section #}
+<section class="bg-gradient-to-r from-primary-900 to-primary-700 text-white">
+    <div class="container mx-auto px-4 sm:px-6 lg:px-8 py-20">
+        <div class="max-w-3xl">
+            <h1 class="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 animate-fade-in">
+                Protégez votre entreprise avec DataSec
+            </h1>
+            <p class="text-xl md:text-2xl mb-8 text-blue-100">
+                Expert en cybersécurité et solutions IA pour sécuriser votre infrastructure et vos données
+            </p>
+            <div class="flex flex-col sm:flex-row gap-4">
+                <a href="{{ url_for('contact.index') }}" class="bg-white text-primary-900 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors text-center">
+                    Demander un audit
+                </a>
+                <a href="{{ url_for('services.index') }}" class="border-2 border-white text-white px-8 py-3 rounded-lg font-semibold hover:bg-white hover:text-primary-900 transition-colors text-center">
+                    Nos services
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+
+{# Services Section #}
+<section class="py-16 bg-white">
+    <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center mb-12">
+            <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Nos services de cybersécurité</h2>
+            <p class="text-xl text-gray-600">Solutions complètes pour protéger votre entreprise</p>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {# Audit #}
+            <article class="bg-gray-50 p-6 rounded-lg hover:shadow-lg transition-shadow">
+                <div class="text-primary-600 mb-4">
+                    <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                    </svg>
+                </div>
+                <h3 class="text-xl font-bold mb-2">Audit de sécurité</h3>
+                <p class="text-gray-600 mb-4">Évaluation complète de votre infrastructure pour identifier les vulnérabilités</p>
+                <a href="{{ url_for('services.detail', slug='audit-securite') }}" class="text-primary-600 font-semibold hover:text-primary-700">En savoir plus →</a>
+            </article>
+            
+            {# Pentest #}
+            <article class="bg-gray-50 p-6 rounded-lg hover:shadow-lg transition-shadow">
+                <div class="text-primary-600 mb-4">
+                    <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
+                    </svg>
+                </div>
+                <h3 class="text-xl font-bold mb-2">Tests d'intrusion</h3>
+                <p class="text-gray-600 mb-4">Simulation d'attaques pour tester la résilience de vos systèmes</p>
+                <a href="{{ url_for('services.detail', slug='pentest') }}" class="text-primary-600 font-semibold hover:text-primary-700">En savoir plus →</a>
+            </article>
+            
+            {# Formation #}
+            <article class="bg-gray-50 p-6 rounded-lg hover:shadow-lg transition-shadow">
+                <div class="text-primary-600 mb-4">
+                    <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
+                    </svg>
+                </div>
+                <h3 class="text-xl font-bold mb-2">Formation</h3>
+                <p class="text-gray-600 mb-4">Sensibilisation et formation de vos équipes aux bonnes pratiques</p>
+                <a href="{{ url_for('services.detail', slug='formation') }}" class="text-primary-600 font-semibold hover:text-primary-700">En savoir plus →</a>
+            </article>
+            
+            {# SOC #}
+            <article class="bg-gray-50 p-6 rounded-lg hover:shadow-lg transition-shadow">
+                <div class="text-primary-600 mb-4">
+                    <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                    </svg>
+                </div>
+                <h3 class="text-xl font-bold mb-2">SOC - Surveillance 24/7</h3>
+                <p class="text-gray-600 mb-4">Centre de supervision de la sécurité avec surveillance continue</p>
+                <a href="{{ url_for('services.detail', slug='soc') }}" class="text-primary-600 font-semibold hover:text-primary-700">En savoir plus →</a>
+            </article>
+            
+            {# Conformité #}
+            <article class="bg-gray-50 p-6 rounded-lg hover:shadow-lg transition-shadow">
+                <div class="text-primary-600 mb-4">
+                    <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                </div>
+                <h3 class="text-xl font-bold mb-2">Conformité RGPD & ISO</h3>
+                <p class="text-gray-600 mb-4">Accompagnement pour la mise en conformité réglementaire</p>
+                <a href="{{ url_for('services.detail', slug='conformite') }}" class="text-primary-600 font-semibold hover:text-primary-700">En savoir plus →</a>
+            </article>
+            
+            {# Incident Response #}
+            <article class="bg-gray-50 p-6 rounded-lg hover:shadow-lg transition-shadow">
+                <div class="text-primary-600 mb-4">
+                    <svg class="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.879 16.121A3 3 0 1012.015 11L11 14H9c0 .768.293 1.536.879 2.121z"/>
+                    </svg>
+                </div>
+                <h3 class="text-xl font-bold mb-2">Réponse aux incidents</h3>
+                <p class="text-gray-600 mb-4">Intervention rapide en cas de cyberattaque ou d'incident de sécurité</p>
+                <a href="{{ url_for('services.detail', slug='incident-response') }}" class="text-primary-600 font-semibold hover:text-primary-700">En savoir plus →</a>
+            </article>
+        </div>
+    </div>
+</section>
+
+{# Why Choose Us #}
+<section class="py-16 bg-gray-50">
+    <div class="container mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="text-center mb-12">
+            <h2 class="text-3xl md:text-4xl font-bold text-gray-900 mb-4">Pourquoi choisir DataSec ?</h2>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div class="text-center">
+                <div class="text-primary-600 mb-4 flex justify-center">
+                    <svg class="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/>
+                    </svg>
+                </div>
+                <h3 class="text-xl font-bold mb-2">Expertise reconnue</h3>
+                <p class="text-gray-600">Plus de 10 ans d'expérience en cybersécurité</p>
+            </div>
+            
+            <div class="text-center">
+                <div class="text-primary-600 mb-4 flex justify-center">
+                    <svg class="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                </div>
+                <h3 class="text-xl font-bold mb-2">Disponibilité 24/7</h3>
+                <p class="text-gray-600">Support et surveillance en continu</p>
+            </div>
+            
+            <div class="text-center">
+                <div class="text-primary-600 mb-4 flex justify-center">
+                    <svg class="w-16 h-16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                    </svg>
+                </div>
+                <h3 class="text-xl font-bold mb-2">Technologies IA</h3>
+                <p class="text-gray-600">Solutions innovantes basées sur l'intelligence artificielle</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+{# CTA Section #}
+<section class="py-16 bg-primary-900 text-white">
+    <div class="container mx-auto px-4 sm:px-6 lg:px-8 text-center">
+        <h2 class="text-3xl md:text-4xl font-bold mb-4">Prêt à sécuriser votre entreprise ?</h2>
+        <p class="text-xl mb-8 text-blue-100">Contactez-nous pour un audit gratuit de votre infrastructure</p>
+        <a href="{{ url_for('contact.index') }}" class="bg-white text-primary-900 px-8 py-3 rounded-lg font-semibold hover:bg-gray-100 transition-colors inline-block">
+            Demander un audit gratuit
+        </a>
+    </div>
+</section>
+{% endblock %}
