@@ -116,4 +116,4 @@ def detail(slug):
         'og_type': 'article',
     }
     
-    return render_template('services/detail.html', seo=seo, service=service, slug=slug)
+    return render_template('services/detail.html', seo=seo, service=service, slug=slug, SERVICES=SERVICES)

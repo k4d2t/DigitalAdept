@@ -14,3 +14,9 @@
     </div>
 </section>
 {% endblock %}
+
+{% block extra_head %}
+{# Override SEO for error page #}
+<title>404 - Page non trouvée | DataSec</title>
+<meta name="robots" content="noindex, follow">
+{% endblock %}
